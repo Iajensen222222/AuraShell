@@ -1,0 +1,92 @@
+# Build directories
+build/
+cmake_build/
+out/
+.vs/
+.vscode/
+
+# Visual Studio
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.sln.DotSettings
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Generated files
+*.obj
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+
+# Compiled shaders
+*.cso
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+*.lnk
+
+# Dependencies
+vcpkg_installed/
+packages/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Generated headers
+src/*/version.h
+generated/
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# Test results
+TestResults/
+coverage/
+*.trx
+
+# Local development
+*.local
+.env.local
+settings.local.json
+
+# Installer
+*.msi
+*.msix
+
+# Performance traces
+*.etl
+*.etl.gz
+
+# clang/LLVM tools
+compile_commands.json
+
+# NuGet
+.nuget/
+packages/
+*.nupkg
+
+# vcpkg lock files (optional - can commit for reproducibility)
+# vcpkg-lock.json

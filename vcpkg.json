@@ -1,0 +1,29 @@
+{
+  "name": "aurashell",
+  "version-string": "0.1.0",
+  "description": "High-performance Windows 11 customization utility with modular architecture",
+  "homepage": "https://github.com/Iajensen222222/AuraShell",
+  "license": "MIT",
+
+  "dependencies": [
+    "cppwinrt",
+    "spdlog",
+    "nlohmann-json",
+    "catch2"
+  ],
+
+  "features": {
+    "tests": {
+      "description": "Build unit and integration test suite",
+      "dependencies": [
+        "catch2"
+      ]
+    },
+    "docs": {
+      "description": "Build API documentation (requires Doxygen)",
+      "dependencies": [
+        "doxygen"
+      ]
+    }
+  }
+}
