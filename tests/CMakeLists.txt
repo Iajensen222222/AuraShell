@@ -20,6 +20,12 @@ add_executable(test_runner
     unit/test_ipc_message.cpp
     unit/test_ipc_handshake.cpp
     unit/test_taskbar_controller.cpp
+    unit/test_hover_detection.cpp
+    unit/test_icon_overlay.cpp
+    unit/test_animations.cpp
+    unit/test_multi_monitor.cpp
+    unit/test_service_ipc.cpp
+    unit/test_config_logic.cpp
 )
 
 # Link against Catch2 and core library modules
@@ -29,6 +35,8 @@ target_link_libraries(test_runner PRIVATE
     aurashell_platform
     aurashell_ipc
     aurashell_taskbar_engine
+    aurashell_service
+    aurashell_config_app
 )
 
 # Add include directories
@@ -36,7 +44,9 @@ target_include_directories(test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/include"
     "${CMAKE_SOURCE_DIR}/src/core/platform"
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
+    "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
+    "${CMAKE_SOURCE_DIR}/src/app"
 )
 
 # Register tests with CTest
@@ -48,3 +58,10 @@ set_target_properties(test_runner PROPERTIES
 )
 
 message(STATUS "Unit tests configured successfully")
+
+# ============================================================================
+# Integration Tests (Phase 6+)
+# Requires: aurashell_service, aurashell_config_app, named pipe IPC
+# Run with: ctest -R "[integration]"
+# ============================================================================
+add_subdirectory(integration)

@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <string>
 
-namespace aura::ipc {
+#include "message_types.h"
 
-// Forward declaration
-struct Message;
+namespace aura::ipc {
 
 // ============================================================================
 // Named Pipe Client - Connects to IPC server

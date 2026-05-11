@@ -8,15 +8,6 @@
 
 namespace aura::ipc {
 
-// Message structure for binary communication
-struct Message {
-    uint32_t messageType;
-    uint32_t sequenceNumber;
-    uint32_t payloadSize;
-    uint32_t reserved;
-    uint8_t payload[2048];
-};
-
 // ============================================================================
 // RAII Helper: Automatic handle cleanup
 // ============================================================================

@@ -38,6 +38,10 @@ public:
     /// Get scale factor for a monitor (96 DPI = 1.0, 192 DPI = 2.0)
     static float getScaleFactor(HMONITOR hMonitor);
 
+    /// Pure-math overload: convert a raw DPI value to a scale factor.
+    /// Useful for unit tests and DPI math without a live HMONITOR.
+    [[nodiscard]] static float getScaleFactor(uint32_t dpi) noexcept;
+
     /// Get scale factor for the monitor containing a window
     static float getScaleFactorForWindow(HWND hwnd);
 

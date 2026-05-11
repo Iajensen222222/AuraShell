@@ -5,7 +5,7 @@
 #include <chrono>
 #include <atomic>
 
-#include "taskbar_engine/taskbar_controller.h"
+#include "taskbar_controller.h"
 
 using namespace aura::taskbar;
 
@@ -192,6 +192,7 @@ TEST_CASE("TaskbarController::IconEnumeration", "[taskbar][icons]") {
         int y = (taskbar_rect.top + taskbar_rect.bottom) / 2;
 
         TaskbarIconInfo* icon = tc.findIconAtPosition(x, y);
+        (void)icon;  // May be nullptr or valid, both acceptable
 
         // Either finds an icon or returns nullptr (acceptable both ways)
         // Just verify no crash occurred
@@ -215,6 +216,7 @@ TEST_CASE("TaskbarController::IconEnumeration", "[taskbar][icons]") {
     SECTION("icon cache invalidates on external trigger") {
         const auto& icons1 = tc.getTaskbarIcons();
         size_t count1 = icons1.size();
+        (void)count1;  // Used for cache validation
 
         // Manually refresh cache
         tc.refreshIconCache();
@@ -258,6 +260,7 @@ TEST_CASE("TaskbarController::HybridMonitoring", "[taskbar][monitoring]") {
 
     SECTION("WM_DISPLAYCHANGE updates DPI and geometry") {
         uint32_t dpi_before = tc.getTaskbarDpi();
+        (void)dpi_before;  // Track before state for validation
 
         HWND taskbar_hwnd = tc.getTaskbarWindowHandle();
         tc.handleWindowMessage(taskbar_hwnd, WM_DISPLAYCHANGE, 0, 0);
@@ -299,6 +302,7 @@ TEST_CASE("TaskbarController::CacheManagement", "[taskbar][cache]") {
     SECTION("refreshIconCache() updates icon list") {
         const auto& icons_before = tc.getTaskbarIcons();
         size_t count_before = icons_before.size();
+        (void)count_before;  // Track before state for validation
 
         tc.refreshIconCache();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -333,6 +337,7 @@ TEST_CASE("TaskbarController::ObserverPattern", "[taskbar][callbacks]") {
 
         uint32_t cb_id = tc.registerStateChangeCallback(
             [&callback_count](const TaskbarState& state) {
+                (void)state;  // Unused, just testing callback invocation
                 ++callback_count;
             }
         );
@@ -354,6 +359,7 @@ TEST_CASE("TaskbarController::ObserverPattern", "[taskbar][callbacks]") {
 
         uint32_t cb_id = tc.registerStateChangeCallback(
             [&callback_count](const TaskbarState& state) {
+                (void)state;  // Unused
                 ++callback_count;
             }
         );
@@ -432,6 +438,7 @@ TEST_CASE("TaskbarController::DPIIntegration", "[taskbar][dpi]") {
         const auto& icons = tc.getTaskbarIcons();
 
         uint32_t taskbar_dpi = tc.getTaskbarDpi();
+        (void)taskbar_dpi;  // Verify DPI is available
 
         for (const auto& icon : icons) {
             // Icon DPI should match or be compatible with taskbar DPI

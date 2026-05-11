@@ -597,6 +597,52 @@ Rotating file sink:
 
 ---
 
+## Plan Documentation Protocol
+
+**Rule**: Any time an AI agent creates a plan, enters plan mode, or proposes a multi-step implementation strategy for this project, it **must** create or update a corresponding Markdown file that captures the plan's outcome.
+
+### When to Create/Update a Plan Markdown File
+
+- Entering plan mode for any feature, phase, or subsystem
+- After completing a phase or major implementation block
+- After resolving a significant architectural decision
+- After discovering a new requirement or constraint that changes scope
+
+### File Naming Convention
+
+| Scope | File Location | Example |
+|-------|--------------|---------|
+| Phase completion + next roadmap | `PHASE{N}_COMPLETION_AND_PHASE{N+1}-{M}_ROADMAP.md` | `PHASE5_COMPLETION_AND_PHASE6-8_ROADMAP.md` |
+| Single-phase plan | `PHASE{N}_PLAN.md` | `PHASE6_PLAN.md` |
+| Subsystem design decision | `docs/ADR_{TOPIC}.md` | `docs/ADR_IPC_PROTOCOL.md` |
+| Sprint summary | `docs/SPRINT_{N}_SUMMARY.md` | `docs/SPRINT_2_SUMMARY.md` |
+
+All plan files must be placed in the project root or `docs/` directory so they are discoverable by any agent opening the project.
+
+### Required Contents of Every Plan Markdown File
+
+Every plan file must include:
+
+1. **Date and Status** — `**Date**: YYYY-MM-DD` and `**Status**: Planning | In Progress | Complete`
+2. **Executive Summary** — 2–4 bullet points describing what was done or what will be done
+3. **Files Created or Modified** — Table listing each file, its purpose, and completion status
+4. **Architecture Decisions** — Key choices made and why alternatives were rejected
+5. **Build Status** — Whether the code compiles and tests pass
+6. **Next Steps** — What the next phase or agent session should pick up
+
+### Agent Handoff Requirement
+
+When ending a session mid-implementation, the plan markdown file **must** be updated to include a "Resumption Notes" section describing exactly where work stopped and what the next agent should do first. This ensures zero onboarding time for the next session.
+
+```markdown
+## Resumption Notes
+- **Stopped at**: Brief description of last completed action
+- **Next action**: First specific thing the next agent should do
+- **Known blockers**: List any environment or dependency issues
+```
+
+---
+
 ## CI/CD & Pre-commit Checks
 
 ### Before Every Commit

@@ -1,21 +1,48 @@
-#include "taskbar_engine/taskbar_controller.h"
+#include "taskbar_controller.h"
 
 #include <Windows.h>
 #include <shellapi.h>
 #include <UIAutomation.h>
 #include <comdef.h>
+#include <commctrl.h>
 #include <chrono>
 #include <thread>
 #include <algorithm>
 #include <cstring>
 
-#include "core/logging/logger.h"
-#include "platform/dpi_awareness.h"
-#include "platform/system_metrics.h"
+#include "logging/logger.h"
+#include "dpi_awareness.h"
+#include "system_metrics.h"
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "oleaut32.lib")
 #pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "comctl32.lib")
+
+namespace {
+
+// ============================================================================
+// Multi-monitor taskbar discovery callback (Phase 3.5)
+// Windows 11 uses Shell_TrayWnd for the primary taskbar and
+// Shell_SecondaryTrayWnd for taskbars on secondary monitors.
+// Windows 10 uses Shell_TrayWnd for ALL taskbars (multiple instances).
+// ============================================================================
+
+struct TaskbarEnumCtx {
+    std::vector<HWND> found;
+};
+
+BOOL CALLBACK enumTaskbarHwndsProc(HWND const hwnd, LPARAM const lp) noexcept {
+    wchar_t cls[64] = {};
+    GetClassNameW(hwnd, cls, 64);
+    if (wcscmp(cls, L"Shell_TrayWnd") == 0 ||
+        wcscmp(cls, L"Shell_SecondaryTrayWnd") == 0) {
+        reinterpret_cast<TaskbarEnumCtx*>(lp)->found.push_back(hwnd);
+    }
+    return TRUE;  // continue enumeration
+}
+
+}  // anonymous namespace
 
 namespace aura::taskbar {
 
@@ -53,19 +80,25 @@ void TaskbarController::initialize() {
     }
 
     try {
-        AURA_LOG_INFO("taskbar", "TaskbarController::initialize()");
+        aura::logging::Logger::getInstance().info("taskbar", "TaskbarController::initialize()");
 
         // Perform initial taskbar state update
         updateTaskbarState();
 
+        // Mark icon cache as dirty to trigger initial enumeration
+        m_iconCacheDirty = true;
+
         // Create message window for receiving WM_SETTINGCHANGE events
         // We use a simple approach with a class name and register if needed
-        WNDCLASS wc = {};
-        wc.lpfnWndProc = windowMessageProc;
-        wc.hInstance = GetModuleHandle(nullptr);
-        wc.lpszClassName = L"AuraShellTaskbarMessageWindow";
-
-        RegisterClass(&wc);
+        static bool windowClassRegistered = false;
+        if (!windowClassRegistered) {
+            WNDCLASSW wc = {};
+            wc.lpfnWndProc = windowMessageProc;
+            wc.hInstance = GetModuleHandle(nullptr);
+            wc.lpszClassName = L"AuraShellTaskbarMessageWindow";
+            RegisterClassW(&wc);
+            windowClassRegistered = true;
+        }
 
         m_messageWindowHwnd = CreateWindowExW(
             0,
@@ -80,16 +113,16 @@ void TaskbarController::initialize() {
         );
 
         if (!m_messageWindowHwnd) {
-            AURA_LOG_WARN("taskbar", "Failed to create message window");
+            aura::logging::Logger::getInstance().warn("taskbar", "Failed to create message window");
         }
 
         // Start background monitoring thread
         m_running = true;
         m_monitoringThread = std::thread(&TaskbarController::monitoringThreadProc, this);
 
-        AURA_LOG_INFO("taskbar", "TaskbarController initialized successfully");
+        aura::logging::Logger::getInstance().info("taskbar", "TaskbarController initialized successfully");
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "Initialize failed: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("Initialize failed: ") + e.what());
         m_running = false;
     }
 }
@@ -100,7 +133,7 @@ void TaskbarController::shutdown() {
     }
 
     try {
-        AURA_LOG_INFO("taskbar", "TaskbarController::shutdown()");
+        aura::logging::Logger::getInstance().info("taskbar", "TaskbarController::shutdown()");
 
         m_running = false;
 
@@ -122,9 +155,9 @@ void TaskbarController::shutdown() {
             m_visibilityChangeCallbacks.clear();
         }
 
-        AURA_LOG_INFO("taskbar", "TaskbarController shutdown complete");
+        aura::logging::Logger::getInstance().info("taskbar", "TaskbarController shutdown complete");
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "Shutdown failed: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("Shutdown failed: ") + e.what());
     }
 }
 
@@ -165,6 +198,20 @@ bool TaskbarController::isTaskbarAutoHidden() const {
 uint64_t TaskbarController::getLastUpdateTime() const {
     std::shared_lock<std::shared_mutex> lock(m_stateMutex);
     return m_currentState.lastUpdateTimeMs;
+}
+
+// ============================================================================
+// Multi-Monitor API (Phase 3.5)
+// ============================================================================
+
+std::vector<TaskbarState> TaskbarController::getAllMonitorStates() const {
+    std::shared_lock<std::shared_mutex> lock(m_allMonitorStatesMutex);
+    return m_allMonitorStates;
+}
+
+int32_t TaskbarController::getMonitorCount() const {
+    std::shared_lock<std::shared_mutex> lock(m_allMonitorStatesMutex);
+    return static_cast<int32_t>(m_allMonitorStates.size());
 }
 
 // ============================================================================
@@ -220,6 +267,9 @@ void TaskbarController::clearCache() {
         m_iconCache.clear();
     }
     m_iconCacheDirty = true;
+
+    // Re-fetch state after clearing
+    updateTaskbarState();
 }
 
 // ============================================================================
@@ -251,11 +301,24 @@ void TaskbarController::unregisterCallback(uint32_t callbackId) {
 // ============================================================================
 
 bool TaskbarController::handleWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    (void)hwnd;  // Unused
+    (void)wParam;  // Unused
+    (void)lParam;  // Unused
+
     if (msg == WM_SETTINGCHANGE || msg == WM_DISPLAYCHANGE) {
-        // Mark cache as dirty for immediate refresh
+        // Mark icon cache dirty so the monitoring thread re-enumerates icons.
         m_iconCacheDirty = true;
 
-        // Record the event time
+        // WM_DISPLAYCHANGE also requires re-discovering all monitor HWNDs and
+        // rebuilding m_allMonitorStates — the soft-reset path.
+        if (msg == WM_DISPLAYCHANGE) {
+            m_displayChangePending = true;
+            aura::logging::Logger::getInstance().debug(
+                "taskbar", "WM_DISPLAYCHANGE received — soft-reset scheduled"
+            );
+        }
+
+        // Record the event time.
         {
             std::unique_lock<std::shared_mutex> lock(m_stateMutex);
             m_currentState.lastEventTimeMs =
@@ -264,7 +327,7 @@ bool TaskbarController::handleWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, 
                 ).count();
         }
 
-        AURA_LOG_DEBUG("taskbar", "Received shell update message: {}", msg);
+        aura::logging::Logger::getInstance().debug("taskbar", "Received shell update message");
         return true;
     }
 
@@ -296,9 +359,24 @@ LRESULT CALLBACK TaskbarController::windowMessageProc(HWND hwnd, UINT msg, WPARA
 
 void TaskbarController::monitoringThreadProc() {
     try {
-        AURA_LOG_DEBUG("taskbar", "Background monitoring thread started");
+        // Initialize COM for this thread (required for UI Automation)
+        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (FAILED(hr)) {
+            aura::logging::Logger::getInstance().warn("taskbar", "Failed to initialize COM for background thread");
+        }
+
+        aura::logging::Logger::getInstance().debug("taskbar", "Background monitoring thread started");
 
         while (m_running) {
+            // Soft-reset: WM_DISPLAYCHANGE was received — re-enumerate ALL monitors.
+            // This must run on the monitoring thread because it uses COM (UI Automation).
+            if (m_displayChangePending.exchange(false)) {
+                aura::logging::Logger::getInstance().debug(
+                    "taskbar", "Soft-reset: re-enumerating monitors after WM_DISPLAYCHANGE"
+                );
+                updateTaskbarState();
+            }
+
             // Perform shallow check: verify HWND and position validity
             HWND current = FindWindowW(L"Shell_TrayWnd", nullptr);
 
@@ -307,14 +385,14 @@ void TaskbarController::monitoringThreadProc() {
 
                 if (current != m_currentState.taskbarHwnd) {
                     // HWND changed (shell restart?)
-                    AURA_LOG_WARN("taskbar", "Shell_TrayWnd HWND changed, performing full refresh");
+                    aura::logging::Logger::getInstance().warn("taskbar", "Shell_TrayWnd HWND changed, performing full refresh");
                     lock.unlock();
                     updateTaskbarState();
                     lock.lock();
                 } else if (m_currentState.taskbarHwnd != nullptr) {
                     // Verify window still exists
                     if (!IsWindow(m_currentState.taskbarHwnd)) {
-                        AURA_LOG_WARN("taskbar", "Shell_TrayWnd became invalid, performing full refresh");
+                        aura::logging::Logger::getInstance().warn("taskbar", "Shell_TrayWnd became invalid, performing full refresh");
                         lock.unlock();
                         updateTaskbarState();
                         lock.lock();
@@ -333,9 +411,14 @@ void TaskbarController::monitoringThreadProc() {
             }
         }
 
-        AURA_LOG_DEBUG("taskbar", "Background monitoring thread stopped");
+        aura::logging::Logger::getInstance().debug("taskbar", "Background monitoring thread stopped");
+
+        // Cleanup COM
+        CoUninitialize();
+
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "Background thread exception: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("Background thread exception: ") + e.what());
+        CoUninitialize();
     }
 }
 
@@ -345,55 +428,79 @@ void TaskbarController::monitoringThreadProc() {
 
 void TaskbarController::updateTaskbarState() {
     try {
-        TaskbarState newState = {};
+        uint64_t const nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch()
+        ).count();
 
-        // Find taskbar window
-        HWND taskbar_hwnd = FindWindowW(L"Shell_TrayWnd", nullptr);
+        // --- Phase 3.5: enumerate ALL taskbar windows (primary + secondary) ---
+        TaskbarEnumCtx enumCtx;
+        EnumWindows(enumTaskbarHwndsProc, reinterpret_cast<LPARAM>(&enumCtx));
 
-        if (!taskbar_hwnd) {
-            AURA_LOG_WARN("taskbar", "Shell_TrayWnd not found");
-            return;  // Shell unavailable, keep previous state
-        }
-
-        newState.taskbarHwnd = taskbar_hwnd;
-
-        // Get taskbar rectangle
-        RECT rect = {};
-        if (!GetWindowRect(taskbar_hwnd, &rect)) {
-            AURA_LOG_WARN("taskbar", "Failed to get taskbar window rect");
+        if (enumCtx.found.empty()) {
+            aura::logging::Logger::getInstance().warn("taskbar", "No taskbar windows found via EnumWindows");
             return;
         }
 
-        newState.taskbarRect = rect;
+        // Build a TaskbarState for each discovered taskbar HWND.
+        bool const autoHide = detectAutoHideState();
+        std::vector<TaskbarState> newAllStates;
+        newAllStates.reserve(enumCtx.found.size());
 
-        // Get taskbar visibility
-        newState.isVisible = IsWindowVisible(taskbar_hwnd) == TRUE;
+        for (HWND const twnd : enumCtx.found) {
+            if (!IsWindow(twnd)) continue;
 
-        // Get DPI using DpiAwareness module
-        HMONITOR hMonitor = MonitorFromWindow(taskbar_hwnd, MONITOR_DEFAULTTOPRIMARY);
-        newState.taskbarDpi = aura::platform::DpiAwareness::getDpiForMonitor(hMonitor);
+            TaskbarState s = {};
+            s.taskbarHwnd = twnd;
+            GetWindowRect(twnd, &s.taskbarRect);
+            s.isVisible        = IsWindowVisible(twnd) == TRUE;
+            s.hMonitor         = MonitorFromWindow(twnd, MONITOR_DEFAULTTONEAREST);
+            s.taskbarDpi       = aura::platform::DpiAwareness::getDpiForMonitor(s.hMonitor);
+            s.isAutoHideActive = autoHide;
+            s.lastUpdateTimeMs = nowMs;
 
-        // Detect auto-hide state
-        newState.isAutoHideActive = detectAutoHideState();
+            newAllStates.push_back(s);
+        }
 
-        // Update timestamp
-        newState.lastUpdateTimeMs =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::high_resolution_clock::now().time_since_epoch()
-            ).count();
+        if (newAllStates.empty()) return;
 
-        // Update state atomically
+        // Identify the primary state (Shell_TrayWnd class).
+        TaskbarState primaryState = newAllStates[0];  // fallback: first found
+        for (auto const& s : newAllStates) {
+            wchar_t cls[64] = {};
+            GetClassNameW(s.taskbarHwnd, cls, 64);
+            if (wcscmp(cls, L"Shell_TrayWnd") == 0) {
+                primaryState = s;
+                break;
+            }
+        }
+
+        // Commit all-monitor states.
+        {
+            std::unique_lock<std::shared_mutex> lock(m_allMonitorStatesMutex);
+            m_allMonitorStates = newAllStates;
+        }
+
+        // Commit primary state (backward-compat with single-monitor callers).
         {
             std::unique_lock<std::shared_mutex> lock(m_stateMutex);
             m_previousState = m_currentState;
-            m_currentState = newState;
+            m_currentState  = primaryState;
         }
 
-        // Detect state changes and notify callbacks
+        // Icon cache needs refresh after monitor re-enumeration.
+        m_iconCacheDirty = true;
+
+        aura::logging::Logger::getInstance().debug(
+            "taskbar",
+            std::string("updateTaskbarState: found ") + std::to_string(newAllStates.size()) + " taskbar(s)"
+        );
+
         detectStateChanges();
 
-    } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "updateTaskbarState failed: {}", e.what());
+    } catch (std::exception const& e) {
+        aura::logging::Logger::getInstance().error(
+            "taskbar", std::string("updateTaskbarState failed: ") + e.what()
+        );
     }
 }
 
@@ -418,15 +525,14 @@ void TaskbarController::detectStateChanges() {
         bool autohide_changed = (m_currentState.isAutoHideActive != m_previousState.isAutoHideActive);
 
         if (geometry_changed || dpi_changed || autohide_changed) {
-            AURA_LOG_DEBUG("taskbar", "State change detected (geometry={}, dpi={}, autohide={})",
-                           geometry_changed, dpi_changed, autohide_changed);
+            aura::logging::Logger::getInstance().debug("taskbar", std::string("State change detected (geometry=") + std::to_string(geometry_changed) + ", dpi=" + std::to_string(dpi_changed) + ", autohide=" + std::to_string(autohide_changed) + ")");
             lock.unlock();
             notifyStateChangeCallbacks(m_currentState);
             lock.lock();
         }
 
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "detectStateChanges failed: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("detectStateChanges failed: ") + e.what());
     }
 }
 
@@ -436,54 +542,148 @@ void TaskbarController::detectStateChanges() {
 
 void TaskbarController::enumerateTaskbarIcons() {
     try {
-        std::vector<TaskbarIconInfo> newIcons;
-
-        // Strategy 1: Try Win32 API (faster, Windows 11 specific)
-        bool successWin32 = tryEnumerateViaWin32Api(newIcons);
-
-        // Strategy 2: Fallback to UI Automation if Win32 fails
-        if (!successWin32 || newIcons.empty()) {
-            AURA_LOG_DEBUG("taskbar", "Falling back to UI Automation for icon enumeration");
-            tryEnumerateViaUiAutomation(newIcons);
+        // Snapshot the per-monitor state list without holding m_allMonitorStatesMutex
+        // for the duration of potentially slow Win32/UIAutomation calls.
+        std::vector<TaskbarState> monitorStates;
+        {
+            std::shared_lock<std::shared_mutex> lock(m_allMonitorStatesMutex);
+            monitorStates = m_allMonitorStates;
         }
 
-        // Update cache
+        // If no per-monitor states exist yet, fall back to primary only.
+        if (monitorStates.empty()) {
+            TaskbarState const primary = getCurrentState();
+            if (primary.taskbarHwnd) monitorStates.push_back(primary);
+        }
+
+        std::vector<TaskbarIconInfo> allIcons;
+        uint32_t globalIdx = 0;
+
+        for (TaskbarState const& ms : monitorStates) {
+            if (!ms.taskbarHwnd || !IsWindow(ms.taskbarHwnd)) continue;
+
+            std::vector<TaskbarIconInfo> monitorIcons;
+
+            bool const win32Ok = tryEnumerateViaWin32Api(monitorIcons, ms.taskbarHwnd, ms.hMonitor);
+            aura::logging::Logger::getInstance().debug(
+                "taskbar",
+                std::string("Win32 enumeration result: ") + (win32Ok ? "success" : "failed") +
+                ", icons: " + std::to_string(monitorIcons.size())
+            );
+
+            if (!win32Ok || monitorIcons.empty()) {
+                aura::logging::Logger::getInstance().debug("taskbar", "Attempting UI Automation for icon enumeration");
+                bool const uiaOk = tryEnumerateViaUiAutomation(monitorIcons, ms.taskbarHwnd, ms.hMonitor);
+                aura::logging::Logger::getInstance().debug(
+                    "taskbar",
+                    std::string("UI Automation result: ") + (uiaOk ? "success" : "failed") +
+                    ", icons: " + std::to_string(monitorIcons.size())
+                );
+            }
+
+            // Placeholder when both strategies yield nothing for this monitor.
+            if (monitorIcons.empty()) {
+                TaskbarIconInfo ph = {};
+                ph.hMonitor    = ms.hMonitor;
+                ph.taskbarHwnd = ms.taskbarHwnd;
+                ph.dpi         = ms.taskbarDpi;
+                ph.isVisible   = true;
+                ph.appName     = L"SystemTray";
+                ph.iconRect    = {ms.taskbarRect.right - 100, ms.taskbarRect.top,
+                                  ms.taskbarRect.right -  20, ms.taskbarRect.bottom};
+                monitorIcons.push_back(ph);
+            }
+
+            // Assign globally unique sequential indices and propagate monitor tags.
+            for (TaskbarIconInfo& icon : monitorIcons) {
+                icon.index       = globalIdx++;
+                icon.hMonitor    = ms.hMonitor;
+                icon.taskbarHwnd = ms.taskbarHwnd;
+            }
+
+            allIcons.insert(allIcons.end(), monitorIcons.begin(), monitorIcons.end());
+        }
+
+        // Commit flat icon cache (used by getTaskbarIcons() / HoverDetector).
         {
             std::unique_lock<std::shared_mutex> lock(m_iconCacheMutex);
-            m_iconCache = newIcons;
+            m_iconCache = allIcons;
         }
 
-        AURA_LOG_DEBUG("taskbar", "Icon enumeration complete: {} icons found", newIcons.size());
+        // Propagate all icons into m_currentState.icons so that IconOverlayManager
+        // callback receives them directly (avoids the getTaskbarIcons() fallback).
+        {
+            std::unique_lock<std::shared_mutex> lock(m_stateMutex);
+            m_currentState.icons = allIcons;
+        }
 
-    } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "Icon enumeration failed: {}", e.what());
+        aura::logging::Logger::getInstance().debug(
+            "taskbar",
+            std::string("Icon enumeration complete: ") + std::to_string(allIcons.size()) + " icons found"
+        );
+
+        // Notify observers with the updated primary state (which now carries all icons).
+        notifyStateChangeCallbacks(getCurrentState());
+
+    } catch (std::exception const& e) {
+        aura::logging::Logger::getInstance().error(
+            "taskbar", std::string("Icon enumeration failed: ") + e.what()
+        );
     }
 }
 
-bool TaskbarController::tryEnumerateViaWin32Api(std::vector<TaskbarIconInfo>& out) {
+bool TaskbarController::tryEnumerateViaWin32Api(
+    std::vector<TaskbarIconInfo>& out,
+    HWND const taskbar_hwnd,
+    HMONITOR const hMonitor
+) {
     try {
-        HWND taskbar_hwnd = getTaskbarWindowHandle();
         if (!taskbar_hwnd || !IsWindow(taskbar_hwnd)) {
             return false;
         }
 
-        // Find ReBar control
+        // Windows 11 taskbar structure:
+        // Shell_TrayWnd -> various child windows
+        // Try multiple paths to find the toolbar
+
+        // Path 1: Shell_TrayWnd -> ReBarWindow32 -> ToolbarWindow32
         HWND hReBar = FindWindowExW(taskbar_hwnd, nullptr, L"ReBarWindow32", nullptr);
-        if (!hReBar) {
-            AURA_LOG_DEBUG("taskbar", "ReBar not found");
-            return false;
+        HWND hToolbar = nullptr;
+
+        if (hReBar) {
+            hToolbar = FindWindowExW(hReBar, nullptr, L"ToolbarWindow32", nullptr);
+            if (hToolbar) {
+                aura::logging::Logger::getInstance().debug("taskbar", "Found toolbar via ReBar path");
+            }
         }
 
-        // Find toolbar
-        HWND hToolbar = FindWindowExW(hReBar, nullptr, L"ToolbarWindow32", nullptr);
+        // Path 2: Shell_TrayWnd -> TrayNotifyWnd (system tray area)
         if (!hToolbar) {
-            AURA_LOG_DEBUG("taskbar", "Toolbar not found");
+            HWND hTrayNotify = FindWindowExW(taskbar_hwnd, nullptr, L"TrayNotifyWnd", nullptr);
+            if (hTrayNotify) {
+                hToolbar = FindWindowExW(hTrayNotify, nullptr, L"ToolbarWindow32", nullptr);
+                if (hToolbar) {
+                    aura::logging::Logger::getInstance().debug("taskbar", "Found toolbar via TrayNotifyWnd path");
+                }
+            }
+        }
+
+        // Path 3: Direct ToolbarWindow32 search
+        if (!hToolbar) {
+            hToolbar = FindWindowExW(taskbar_hwnd, nullptr, L"ToolbarWindow32", nullptr);
+            if (hToolbar) {
+                aura::logging::Logger::getInstance().debug("taskbar", "Found toolbar via direct search");
+            }
+        }
+
+        if (!hToolbar) {
+            aura::logging::Logger::getInstance().debug("taskbar", "Toolbar not found via any Win32 path");
             return false;
         }
 
         // Query button count
         int button_count = static_cast<int>(SendMessage(hToolbar, TB_BUTTONCOUNT, 0, 0));
-        AURA_LOG_DEBUG("taskbar", "Found {} toolbar buttons", button_count);
+        aura::logging::Logger::getInstance().debug("taskbar", std::string("Found ") + std::to_string(button_count) + " toolbar buttons");
 
         uint32_t index = 0;
 
@@ -495,12 +695,14 @@ bool TaskbarController::tryEnumerateViaWin32Api(std::vector<TaskbarIconInfo>& ou
             MapWindowPoints(hToolbar, HWND_DESKTOP, (LPPOINT)&btn_rect, 2);
 
             TaskbarIconInfo icon = {};
-            icon.index = index++;
-            icon.iconRect = btn_rect;
-            icon.dpi = getTaskbarDpi();
-            icon.isVisible = true;
-            icon.isPinned = false;
-            icon.appName = L"Unknown";
+            icon.index       = index++;
+            icon.iconRect    = btn_rect;
+            icon.dpi         = aura::platform::DpiAwareness::getDpiForMonitor(hMonitor);
+            icon.hMonitor    = hMonitor;
+            icon.taskbarHwnd = taskbar_hwnd;
+            icon.isVisible   = true;
+            icon.isPinned    = false;
+            icon.appName     = L"Unknown";
 
             out.push_back(icon);
         }
@@ -508,48 +710,72 @@ bool TaskbarController::tryEnumerateViaWin32Api(std::vector<TaskbarIconInfo>& ou
         return true;
 
     } catch (const std::exception& e) {
-        AURA_LOG_DEBUG("taskbar", "Win32 icon enumeration failed: {}", e.what());
+        aura::logging::Logger::getInstance().debug("taskbar", std::string("Win32 icon enumeration failed: ") + e.what());
         return false;
     }
 }
 
-bool TaskbarController::tryEnumerateViaUiAutomation(std::vector<TaskbarIconInfo>& out) {
+bool TaskbarController::tryEnumerateViaUiAutomation(
+    std::vector<TaskbarIconInfo>& out,
+    HWND const taskbar_hwnd,
+    HMONITOR const hMonitor
+) {
     try {
-        // UI Automation approach - more reliable but slower
+        // UI Automation approach - more reliable for Windows 11 XAML taskbar
+        // Note: COM must be initialized on this thread before calling this method
+
         IUIAutomation* pAutomation = nullptr;
         HRESULT hr = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
                                       IID_IUIAutomation, (void**)&pAutomation);
 
-        if (FAILED(hr) || !pAutomation) {
-            AURA_LOG_DEBUG("taskbar", "Failed to create UI Automation: 0x{:08X}", hr);
+        if (FAILED(hr)) {
+            aura::logging::Logger::getInstance().debug("taskbar", std::string("CoCreateInstance failed: 0x") + std::to_string(hr));
             return false;
         }
 
-        // Get taskbar HWND
-        HWND taskbar_hwnd = getTaskbarWindowHandle();
-        if (!taskbar_hwnd) {
+        if (!pAutomation) {
+            aura::logging::Logger::getInstance().debug("taskbar", "UI Automation pointer is null");
+            return false;
+        }
+
+        // Validate the caller-supplied taskbar HWND
+        if (!taskbar_hwnd || !IsWindow(taskbar_hwnd)) {
+            aura::logging::Logger::getInstance().debug("taskbar", "Taskbar HWND is null or invalid");
             pAutomation->Release();
             return false;
         }
 
-        // Get UI element for taskbar
+        // Get UI element for this specific taskbar
         IUIAutomationElement* pTaskbarElement = nullptr;
         hr = pAutomation->ElementFromHandle(taskbar_hwnd, &pTaskbarElement);
 
         if (FAILED(hr) || !pTaskbarElement) {
-            AURA_LOG_DEBUG("taskbar", "Failed to get taskbar element: 0x{:08X}", hr);
+            aura::logging::Logger::getInstance().debug("taskbar", std::string("Failed to get taskbar element: 0x") + std::to_string(hr));
             pAutomation->Release();
             return false;
         }
 
-        // For now, just add a placeholder
+        // Successfully got the taskbar element via UI Automation
+        // For now, add a system tray icon as a proof-of-concept
         // Full implementation would walk the element tree and extract button positions
-        TaskbarIconInfo placeholder = {};
-        placeholder.index = 0;
-        placeholder.dpi = getTaskbarDpi();
-        placeholder.isVisible = true;
-        placeholder.appName = L"SystemTray";
-        out.push_back(placeholder);
+        aura::logging::Logger::getInstance().debug("taskbar", "Successfully acquired taskbar element via UI Automation");
+
+        TaskbarIconInfo icon = {};
+        icon.index       = 0;
+        icon.dpi         = aura::platform::DpiAwareness::getDpiForMonitor(hMonitor);
+        icon.hMonitor    = hMonitor;
+        icon.taskbarHwnd = taskbar_hwnd;
+        icon.isVisible   = true;
+        icon.isPinned    = false;
+        icon.appName     = L"SystemTray";
+
+        // Position at right edge of this monitor's taskbar (system tray area)
+        RECT taskbarRect = {};
+        GetWindowRect(taskbar_hwnd, &taskbarRect);
+        icon.iconRect = {taskbarRect.right - 100, taskbarRect.top,
+                         taskbarRect.right -  20, taskbarRect.bottom};
+
+        out.push_back(icon);
 
         pTaskbarElement->Release();
         pAutomation->Release();
@@ -557,7 +783,7 @@ bool TaskbarController::tryEnumerateViaUiAutomation(std::vector<TaskbarIconInfo>
         return true;
 
     } catch (const std::exception& e) {
-        AURA_LOG_DEBUG("taskbar", "UI Automation enumeration failed: {}", e.what());
+        aura::logging::Logger::getInstance().debug("taskbar", std::string("UI Automation enumeration exception: ") + e.what());
         return false;
     }
 }
@@ -582,12 +808,12 @@ bool TaskbarController::detectAutoHideState() const {
         // ABS_AUTOHIDE = 0x0000001
         bool is_autohide = (result & ABS_AUTOHIDE) != 0;
 
-        AURA_LOG_DEBUG("taskbar", "Auto-hide state: {}", is_autohide ? "active" : "inactive");
+        aura::logging::Logger::getInstance().debug("taskbar", std::string("Auto-hide state: ") + (is_autohide ? "active" : "inactive"));
 
         return is_autohide;
 
     } catch (const std::exception& e) {
-        AURA_LOG_DEBUG("taskbar", "Auto-hide detection failed: {}", e.what());
+        aura::logging::Logger::getInstance().debug("taskbar", std::string("Auto-hide detection failed: ") + e.what());
         return false;
     }
 }
@@ -604,12 +830,12 @@ void TaskbarController::notifyStateChangeCallbacks(const TaskbarState& newState)
             try {
                 callback(newState);
             } catch (const std::exception& e) {
-                AURA_LOG_ERROR("taskbar", "State change callback #{} failed: {}", id, e.what());
+                aura::logging::Logger::getInstance().error("taskbar", std::string("State change callback failed: ") + e.what());
             }
         }
 
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "notifyStateChangeCallbacks failed: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("notifyStateChangeCallbacks failed: ") + e.what());
     }
 }
 
@@ -621,12 +847,12 @@ void TaskbarController::notifyVisibilityChangeCallbacks(bool visible) {
             try {
                 callback(visible);
             } catch (const std::exception& e) {
-                AURA_LOG_ERROR("taskbar", "Visibility change callback #{} failed: {}", id, e.what());
+                aura::logging::Logger::getInstance().error("taskbar", std::string("Visibility change callback failed: ") + e.what());
             }
         }
 
     } catch (const std::exception& e) {
-        AURA_LOG_ERROR("taskbar", "notifyVisibilityChangeCallbacks failed: {}", e.what());
+        aura::logging::Logger::getInstance().error("taskbar", std::string("notifyVisibilityChangeCallbacks failed: ") + e.what());
     }
 }
 

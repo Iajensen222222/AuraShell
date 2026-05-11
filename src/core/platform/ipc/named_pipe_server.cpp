@@ -6,15 +6,6 @@
 
 namespace aura::ipc {
 
-// Message structure for binary communication
-struct Message {
-    uint32_t messageType;
-    uint32_t sequenceNumber;
-    uint32_t payloadSize;
-    uint32_t reserved;
-    uint8_t payload[2048];
-};
-
 // ============================================================================
 // RAII Helper: Automatic handle cleanup
 // ============================================================================
@@ -69,34 +60,40 @@ NamedPipeServer::~NamedPipeServer() {
 }
 
 bool NamedPipeServer::initialize() {
+    return initialize(nullptr);  // default: no security restriction
+}
+
+bool NamedPipeServer::initialize(SECURITY_ATTRIBUTES const* const pSa) {
     try {
         if (m_running) {
             return true;  // Already initialized
         }
 
-        // Create named pipe with overlapped I/O for timeout handling
-        HANDLE hPipe = CreateNamedPipeW(
+        // Create named pipe with overlapped I/O for timeout handling.
+        // pSa carries the DACL; nullptr = default (Everyone) security.
+        HANDLE const hPipe = CreateNamedPipeW(
             PIPE_NAME,
-            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,  // Duplex + async I/O
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-            1,                          // Max instances
-            PIPE_BUFFER_SIZE,           // Output buffer size
-            PIPE_BUFFER_SIZE,           // Input buffer size
-            DEFAULT_TIMEOUT_MS,         // Timeout
-            nullptr                     // Default security
+            1,                // Max instances — one App connection at a time
+            PIPE_BUFFER_SIZE,
+            PIPE_BUFFER_SIZE,
+            DEFAULT_TIMEOUT_MS,
+            const_cast<SECURITY_ATTRIBUTES*>(pSa)   // Win32 API is non-const
         );
 
         if (hPipe == INVALID_HANDLE_VALUE) {
-            DWORD err = GetLastError();
+            DWORD const err = GetLastError();
             spdlog::error("CreateNamedPipeW failed: 0x{:08X}", err);
             return false;
         }
 
-        m_pipe = hPipe;
+        m_pipe    = hPipe;
         m_running = true;
-        spdlog::info("NamedPipeServer initialized successfully");
+        spdlog::info("NamedPipeServer initialized (DACL={})",
+                     pSa ? "custom" : "default");
         return true;
-    } catch (const std::exception& e) {
+    } catch (std::exception const& e) {
         spdlog::error("NamedPipeServer::initialize exception: {}", e.what());
         return false;
     }

@@ -18,24 +18,27 @@ namespace aura::taskbar {
 // ============================================================================
 
 struct TaskbarIconInfo {
-    uint32_t index;                    // Position in taskbar (0 = leftmost)
-    HWND targetWindowHwnd;             // Associated window handle
-    std::wstring appName;              // Application name / label
-    RECT iconRect;                     // Bounding rectangle in screen coords
-    uint32_t dpi;                      // DPI at icon location (for scaling)
-    bool isVisible;                    // Icon currently visible
-    bool isPinned;                     // Pinned vs. running app
+    uint32_t     index           = 0;       // Global sequential index (unique across all monitors)
+    HWND         targetWindowHwnd = nullptr; // Associated app window handle
+    std::wstring appName;                    // Application name / label
+    RECT         iconRect        = {};       // Bounding rect in virtual screen coords
+    uint32_t     dpi             = 96;       // DPI at icon location (for scaling)
+    bool         isVisible       = true;
+    bool         isPinned        = false;
+    HMONITOR     hMonitor        = nullptr;  // Monitor that owns this icon (Phase 3.5)
+    HWND         taskbarHwnd     = nullptr;  // Taskbar HWND this icon belongs to (Phase 3.5)
 };
 
 struct TaskbarState {
-    HWND taskbarHwnd;                  // Shell_TrayWnd handle
-    RECT taskbarRect;                  // Full taskbar bounding box
-    uint32_t taskbarDpi;               // Taskbar monitor's DPI
-    bool isVisible;                    // Taskbar is visible (not minimized)
-    bool isAutoHideActive;             // Auto-hide mode active
-    std::vector<TaskbarIconInfo> icons;// Icon information
-    uint64_t lastUpdateTimeMs;         // Last refresh timestamp
-    uint64_t lastEventTimeMs;          // When last WM_SETTINGCHANGE received
+    HWND     taskbarHwnd      = nullptr;  // Shell_TrayWnd / Shell_SecondaryTrayWnd
+    RECT     taskbarRect      = {};       // Full taskbar bounding box (virtual screen coords)
+    uint32_t taskbarDpi       = 96;       // Taskbar monitor's DPI
+    bool     isVisible        = false;
+    bool     isAutoHideActive = false;
+    std::vector<TaskbarIconInfo> icons;   // All icons visible on this monitor's taskbar
+    uint64_t lastUpdateTimeMs = 0;
+    uint64_t lastEventTimeMs  = 0;
+    HMONITOR hMonitor         = nullptr;  // Monitor that owns this taskbar (Phase 3.5)
 };
 
 // ============================================================================
@@ -65,6 +68,11 @@ public:
     uint32_t getTaskbarDpi() const;
     bool isTaskbarVisible() const;
     bool isTaskbarAutoHidden() const;
+
+    // Multi-monitor API (Phase 3.5)
+    // Returns a snapshot of every monitor's taskbar state (index 0 = primary).
+    [[nodiscard]] std::vector<TaskbarState> getAllMonitorStates() const;
+    [[nodiscard]] int32_t                  getMonitorCount()      const;
 
     // Icon enumeration (cached, refreshed on state change)
     const std::vector<TaskbarIconInfo>& getTaskbarIcons() const;
@@ -107,8 +115,11 @@ private:
     static LRESULT CALLBACK windowMessageProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     // Helper methods for icon enumeration
-    bool tryEnumerateViaWin32Api(std::vector<TaskbarIconInfo>& out);
-    bool tryEnumerateViaUiAutomation(std::vector<TaskbarIconInfo>& out);
+    // Per-taskbar enumeration — taskbarHwnd and hMonitor tag every icon (Phase 3.5)
+    bool tryEnumerateViaWin32Api(std::vector<TaskbarIconInfo>& out,
+                                 HWND taskbarHwnd, HMONITOR hMonitor);
+    bool tryEnumerateViaUiAutomation(std::vector<TaskbarIconInfo>& out,
+                                     HWND taskbarHwnd, HMONITOR hMonitor);
 
     // Helper for detecting auto-hide state
     bool detectAutoHideState() const;
@@ -138,6 +149,11 @@ private:
 
     // Message window for receiving shell update events
     HWND m_messageWindowHwnd{nullptr};
+
+    // Multi-monitor state (Phase 3.5) — one TaskbarState per monitor, index 0 = primary
+    mutable std::shared_mutex    m_allMonitorStatesMutex;
+    std::vector<TaskbarState>    m_allMonitorStates;
+    std::atomic<bool>            m_displayChangePending{false};  // set by WM_DISPLAYCHANGE
 
     // Last queried state for change detection
     bool m_previouslyVisible{true};

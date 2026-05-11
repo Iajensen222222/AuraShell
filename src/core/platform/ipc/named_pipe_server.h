@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <string>
 
-namespace aura::ipc {
+#include "message_types.h"
 
-// Forward declaration
-struct Message;
+namespace aura::ipc {
 
 // ============================================================================
 // Named Pipe Server - Listens for IPC connections
@@ -49,8 +48,14 @@ public:
     NamedPipeServer& operator=(const NamedPipeServer&) = delete;
 
     // Lifecycle management
-    // Initialize the named pipe server (creates the listening pipe)
+
+    // Initialize with default (unrestricted) security — backward-compatible.
     bool initialize();
+
+    // Initialize with caller-supplied SECURITY_ATTRIBUTES.
+    // Pass a DACL-restricted descriptor to enforce access control on the pipe.
+    // pSa must remain valid for the lifetime of the server.
+    bool initialize(SECURITY_ATTRIBUTES const* pSa);
 
     // Shutdown the server (closes all connections)
     bool shutdown();

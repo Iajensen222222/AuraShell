@@ -77,8 +77,11 @@ uint32_t DpiAwareness::getDpiForWindow(HWND hwnd) {
 }
 
 float DpiAwareness::getScaleFactor(HMONITOR hMonitor) {
-    uint32_t dpi = getDpiForMonitor(hMonitor);
-    return dpi / 96.0f;
+    return getScaleFactor(getDpiForMonitor(hMonitor));
+}
+
+float DpiAwareness::getScaleFactor(uint32_t const dpi) noexcept {
+    return static_cast<float>(dpi) / 96.0f;
 }
 
 float DpiAwareness::getScaleFactorForWindow(HWND hwnd) {
