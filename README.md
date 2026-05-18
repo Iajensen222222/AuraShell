@@ -9,6 +9,7 @@
 
 ## Quick Links
 
+- **[Website](https://iajensen222222.github.io/AuraShell-Website/)** - Landing page, features, and download
 - **[Architecture Overview](./docs/ARCHITECTURE.md)** - Modular design and layered architecture
 - **[Implementation Roadmap](./PLAN.md)** - Sprint breakdown and timeline
 - **[System Instructions](./CLAUDE.md)** - Coding standards and constraints

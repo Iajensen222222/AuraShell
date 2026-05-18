@@ -1,0 +1,124 @@
+name: Bug report
+description: Report a crash, incorrect behavior, or visual glitch in AuraShell.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. The more details you give, the faster it can be reproduced and fixed.
+
+        **Before filing**, please confirm:
+        - You're on the latest release (check https://github.com/Iajensen222222/AuraShell/releases)
+        - You've searched existing issues for duplicates
+        - This is **not** a security vulnerability (those go to SECURITY.md, not here)
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug. Include what you expected vs. what actually occurred.
+      placeholder: |
+        I clicked X, expected Y, but Z happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Numbered steps to reproduce the bug from a clean AuraShell launch.
+      placeholder: |
+        1. Launch AuraShell
+        2. Open Visuals page
+        3. Toggle the audio visualizer on
+        4. ...
+    validations:
+      required: true
+
+  - type: input
+    id: aurashell-version
+    attributes:
+      label: AuraShell version
+      description: From Settings → About, or the installer filename (e.g., 0.1.0).
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: windows-build
+    attributes:
+      label: Windows build
+      description: "Run `winver` and copy the build number (e.g., 22631.3737)."
+      placeholder: "22631.3737"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gpu-vendor
+    attributes:
+      label: GPU vendor
+      options:
+        - NVIDIA
+        - AMD
+        - Intel
+        - Multiple / hybrid
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: gpu-model
+    attributes:
+      label: GPU model and driver version
+      description: "From Device Manager → Display adapters. Include driver version if known."
+      placeholder: "RTX 3070, driver 552.44"
+
+  - type: dropdown
+    id: dpi-scaling
+    attributes:
+      label: Display DPI scaling
+      options:
+        - 100%
+        - 125%
+        - 150%
+        - 175%
+        - 200%
+        - Mixed (multi-monitor)
+    validations:
+      required: true
+
+  - type: input
+    id: monitors
+    attributes:
+      label: Monitor configuration
+      description: Number of monitors, resolutions, and refresh rates.
+      placeholder: "Single 2560×1440 @ 144Hz"
+
+  - type: input
+    id: antivirus
+    attributes:
+      label: Antivirus / security software
+      description: Defender, Malwarebytes, Bitdefender, ESET, etc. Helpful for SmartScreen and injection-related issues.
+      placeholder: "Windows Defender + Malwarebytes Premium"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log excerpt
+      description: |
+        Logs live at `%LOCALAPPDATA%\AuraShell\logs\aurashell.log`. Paste the section around the error, or attach the file.
+        **Logs contain no personal data** (no filenames, no usernames) — safe to share.
+      render: text
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I've searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I'm on the latest released version of AuraShell.
+          required: true
+        - label: This is a bug, not a security vulnerability (those go to SECURITY.md).
+          required: true

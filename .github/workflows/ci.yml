@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build-and-test:
+    name: Build and test (Windows / MSVC)
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # Note: no submodules — vcpkg lives at ../vcpkg locally (parent workspace),
+        # not as a submodule of this repo. CI uses a fresh vcpkg clone below.
+
+      - name: Export GitHub Actions cache env for vcpkg binary cache
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Bootstrap vcpkg
+        # Always clone fresh for reproducibility — avoids stale pre-installed versions.
+        # The binary cache (x-gha,readwrite) means packages compile once and are cached
+        # for all subsequent runs; the clone itself is lightweight (~30 MB).
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg-ci"
+          & "$env:GITHUB_WORKSPACE\vcpkg-ci\bootstrap-vcpkg.bat" -disableMetrics
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg-ci" >> $env:GITHUB_ENV
+
+      - name: Configure (CMake)
+        # -DCMAKE_TOOLCHAIN_FILE overrides the hardcoded ../vcpkg path in CMakeLists.txt.
+        # vcpkg manifest mode reads vcpkg.json and auto-installs packages during configure.
+        shell: pwsh
+        run: |
+          cmake -B build -S . `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_MANIFEST_DIR="$env:GITHUB_WORKSPACE" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_TESTS=ON
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        shell: pwsh
+        working-directory: build
+        run: ctest --output-on-failure -C Release --timeout 120
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/Testing/**/*.log
+          retention-days: 14
