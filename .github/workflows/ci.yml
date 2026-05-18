@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         # Note: no submodules — vcpkg lives at ../vcpkg locally (parent workspace),
         # not as a submodule of this repo. CI uses a fresh vcpkg clone below.
 
