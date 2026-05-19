@@ -26,6 +26,13 @@ add_executable(test_runner
     unit/test_multi_monitor.cpp
     unit/test_service_ipc.cpp
     unit/test_config_logic.cpp
+    unit/test_ui_logic.cpp          # Phase 10.1: StyleManager, color math, spring
+    unit/test_navigation.cpp        # Phase 10.2: NavigationManager, hit-test, spring
+    unit/test_ui_interactions.cpp   # Phase 10.5: Card hit-test, CardHover anim, easing
+    unit/test_personalization.cpp   # Phase 10.6: ColorGrid, Slider, IPC boundary checks
+    unit/test_behavior_logic.cpp    # Phase 10.7: BehaviorPage hit-tests, config defaults
+    unit/test_shell_customization.cpp # Phase 10.9: ShellIconModifier path utils, result codes
+    unit/test_spectrum_analyzer.cpp   # Sprint 2: FFT math, frequency band mapping
 )
 
 # Link against Catch2 and core library modules
@@ -33,6 +40,7 @@ target_link_libraries(test_runner PRIVATE
     Catch2::Catch2WithMain
     aurashell_logging
     aurashell_platform
+    aurashell_audio
     aurashell_ipc
     aurashell_taskbar_engine
     aurashell_service
@@ -42,6 +50,7 @@ target_link_libraries(test_runner PRIVATE
 # Add include directories
 target_include_directories(test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/include"
+    "${CMAKE_SOURCE_DIR}/src/core/audio"
     "${CMAKE_SOURCE_DIR}/src/core/platform"
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
