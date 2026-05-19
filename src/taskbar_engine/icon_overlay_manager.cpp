@@ -811,9 +811,21 @@ void IconOverlayManager::drawOverlay(
 ) noexcept {
     if (!hwnd || !IsWindow(hwnd)) return;
 
-    int const width  = iconRect.right  - iconRect.left;
-    int const height = iconRect.bottom - iconRect.top;
-    if (width <= 0 || height <= 0) return;
+    int const iW = iconRect.right  - iconRect.left;
+    int const iH = iconRect.bottom - iconRect.top;
+    if (iW <= 0 || iH <= 0) return;
+
+    // Hover scale: Active/Pressed expand up to 25% around the icon centre.
+    // alpha is the AnimationController progress [0, 1] — eased by OutQuad on
+    // enter (150ms) and InOutCubic on exit (180ms).
+    float const scaleMax = (state == OverlayVisualState::Active ||
+                            state == OverlayVisualState::Pressed) ? 0.25f : 0.0f;
+    float const scale    = 1.0f + scaleMax * alpha;
+    int   const width    = static_cast<int>(iW * scale + 0.5f);
+    int   const height   = static_cast<int>(iH * scale + 0.5f);
+    // Keep the scaled window centred on the original icon rect
+    int   const dstX     = iconRect.left - (width  - iW) / 2;
+    int   const dstY     = iconRect.top  - (height - iH) / 2;
 
     // Phase 7: start timing this frame.
     auto const frameStart = std::chrono::high_resolution_clock::now();
@@ -898,7 +910,7 @@ void IconOverlayManager::drawOverlay(
     // ------------------------------------------------------------------
     if (hBitmap) {
         POINT ptSrc = {0, 0};
-        POINT ptDst = {iconRect.left, iconRect.top};
+        POINT ptDst = {dstX, dstY};
         SIZE  szWnd = {width, height};
         BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};  // non-const: Win32 API takes BLENDFUNCTION*
         UpdateLayeredWindow(hwnd, screenDC, &ptDst, &szWnd, memDC, &ptSrc, 0, &bf, ULW_ALPHA);
