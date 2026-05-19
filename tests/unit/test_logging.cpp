@@ -6,32 +6,7 @@
 #include <thread>
 #include <chrono>
 
-// Mock logger interface for testing (before implementation)
-namespace aura::logging {
-
-class Logger {
-public:
-    static Logger& getInstance();
-
-    // Logging methods
-    void debug(const std::string& module, const std::string& msg);
-    void info(const std::string& module, const std::string& msg);
-    void warn(const std::string& module, const std::string& msg);
-    void error(const std::string& module, const std::string& msg);
-
-    // Test utilities
-    void setOutputPath(const std::string& path);
-    std::string getOutputPath() const;
-    void clearLogs();
-    bool isInitialized() const;
-
-private:
-    Logger();
-    std::string m_outputPath;
-    bool m_initialized;
-};
-
-} // namespace aura::logging
+#include "logger.h"
 
 // ============================================================================
 // TESTS: Logger Initialization & Configuration
@@ -112,16 +87,18 @@ TEST_CASE("Logger::LogOutput", "[logging]") {
         std::string line;
         int lineCount = 0;
 
+        // spdlog uses lowercase level names: "debug", "info", "warning", "error".
+        // Warn maps to "warning" in spdlog (not "warn").
         while (std::getline(logFile, line)) {
             lineCount++;
             if (lineCount == 1) {
-                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("DEBUG"));
+                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("debug"));
             } else if (lineCount == 2) {
-                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("INFO"));
+                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("info"));
             } else if (lineCount == 3) {
-                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("WARN"));
+                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("warning"));
             } else if (lineCount == 4) {
-                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("ERROR"));
+                REQUIRE_THAT(line, Catch::Matchers::ContainsSubstring("error"));
             }
         }
 
