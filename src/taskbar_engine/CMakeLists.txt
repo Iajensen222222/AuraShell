@@ -9,6 +9,7 @@ add_library(aurashell_taskbar_engine
     taskbar_controller.cpp
     hover_detector.cpp
     icon_overlay_manager.cpp
+    acrylic_backdrop.cpp
 )
 
 # Link dependencies

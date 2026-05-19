@@ -108,6 +108,9 @@ void IconOverlayManager::initialize() {
             }
         );
 
+        // Acrylic backdrop — initialize once; follows the hovered icon
+        m_acrylicBackdrop.initialize(GetModuleHandle(nullptr));
+
         // Start the animation controller — pre-reserve 32 slots (no runtime alloc).
         // The tick callback extracts overlay data and calls drawOverlay with the
         // live alpha value. It runs on the animation thread, serialised by m_renderMutex.
@@ -160,6 +163,9 @@ void IconOverlayManager::shutdown() {
 
         // Stop animation controller first — it calls drawOverlay, which needs D2D
         m_animController.shutdown();
+
+        // Destroy the acrylic backdrop before overlay windows
+        m_acrylicBackdrop.shutdown();
 
         // Release D2D resources after the animation thread has exited
         {
@@ -592,18 +598,20 @@ void IconOverlayManager::onTaskbarStateChanged(const TaskbarState& newState) {
 }
 
 void IconOverlayManager::onHoverEnter(const TaskbarIconInfo& icon) {
-    // Find overlay for this icon and set to Active state
+    HWND overlayHwnd = nullptr;
     {
         std::shared_lock<std::shared_mutex> lock(m_overlaysMutex);
-
         for (auto& overlay : m_overlays) {
             if (overlay.iconIndex == icon.index) {
+                overlayHwnd = overlay.hwnd;
                 lock.unlock();
                 setOverlayVisualState(overlay.iconIndex, OverlayVisualState::Active);
-                return;
+                break;
             }
         }
     }
+    // Show the DWM acrylic backdrop behind the D2D glow overlay
+    m_acrylicBackdrop.showAt(icon.iconRect, overlayHwnd);
 }
 
 void IconOverlayManager::onHoverExit() {
@@ -611,19 +619,15 @@ void IconOverlayManager::onHoverExit() {
     {
         std::shared_lock<std::shared_mutex> lock(m_overlaysMutex);
         std::vector<uint32_t> indices;
-
         for (const auto& overlay : m_overlays) {
-            if (overlay.visualState == OverlayVisualState::Active) {
+            if (overlay.visualState == OverlayVisualState::Active)
                 indices.push_back(overlay.iconIndex);
-            }
         }
-
         lock.unlock();
-
-        for (uint32_t idx : indices) {
+        for (uint32_t idx : indices)
             setOverlayVisualState(idx, OverlayVisualState::Inactive);
-        }
     }
+    m_acrylicBackdrop.hide();
 }
 
 LRESULT CALLBACK IconOverlayManager::overlayWindowProc(

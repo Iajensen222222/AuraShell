@@ -14,6 +14,7 @@
 #include "animation_controller.h"
 #include "taskbar_controller.h"
 #include "hover_detector.h"
+#include "acrylic_backdrop.h"
 
 namespace aura::taskbar {
 
@@ -455,6 +456,9 @@ private:
 
     // Animation — drives smooth alpha transitions for all overlay slots
     AnimationController m_animController;
+
+    // Acrylic DWM backdrop companion window — shows behind the D2D glow overlay
+    AcrylicBackdrop m_acrylicBackdrop;
 
     // Phase 7: render timing stats — updated inside drawOverlay() which may be
     // called from the animation thread; each field is individually atomic.
