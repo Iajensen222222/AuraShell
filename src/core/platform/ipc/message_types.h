@@ -37,6 +37,9 @@ enum class MessageType : uint32_t {
 
     // Phase 4: generic ack (sequenceNumber echoes the ack'd message)
     ACK                = 0x0070,
+
+    // Sprint 4: real-time audio band data (Service → App, ~10fps)
+    AUDIO_BANDS        = 0x0080,
 };
 
 // ============================================================================
@@ -118,5 +121,15 @@ struct StatusPayload {
 
 // PUSH_CONFIG — raw JSON, stored inline in the variable-length payload
 // Callers set payloadSize = strlen(json) and copy into payload[].
+
+// AUDIO_BANDS — sent by the Service ~10fps when AudioEngine is active.
+// The receiver (config app / WinUI) uses the band data to drive visualizer UI.
+struct AudioBandsPayload {
+    float    bands[128];    // Per-band magnitudes, 0.0 – 1.0 (SpectrumAnalyzer output)
+    float    peak;          // Max across all bands (0.0 – 1.0)
+    bool     audioPresent;  // True when any band is above silence threshold
+    uint8_t  _pad[3];       // Explicit alignment padding
+};
+static_assert(sizeof(AudioBandsPayload) <= 2048, "AudioBandsPayload too large");
 
 }  // namespace aura::ipc

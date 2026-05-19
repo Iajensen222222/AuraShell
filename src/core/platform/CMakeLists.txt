@@ -5,6 +5,7 @@ add_library(aurashell_platform OBJECT
     dpi_awareness.cpp
     system_metrics.cpp
     window_manager.cpp
+    virtual_desktop.cpp
 )
 
 target_include_directories(aurashell_platform
@@ -19,6 +20,7 @@ target_link_libraries(aurashell_platform
         spdlog::spdlog
         shcore.lib
         user32.lib
+        Ole32       # CoCreateInstance for IVirtualDesktopManager
 )
 
 # Set C++ standard

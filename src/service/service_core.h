@@ -56,6 +56,11 @@ public:
     // Push a raw JSON config blob to the connected App.
     bool pushConfig(std::string const& configJson);
 
+    // Push the current AudioEngine frequency bands to the connected App.
+    // Call periodically (e.g., every 100ms) from the IPC dispatch thread.
+    // Returns false when no client is connected or AudioEngine is not initialized.
+    bool pushAudioBands();
+
     // ========================================================================
     // State queries (thread-safe)
     // ========================================================================

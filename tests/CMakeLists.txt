@@ -33,6 +33,7 @@ add_executable(test_runner
     unit/test_behavior_logic.cpp    # Phase 10.7: BehaviorPage hit-tests, config defaults
     unit/test_shell_customization.cpp # Phase 10.9: ShellIconModifier path utils, result codes
     unit/test_spectrum_analyzer.cpp   # Sprint 2: FFT math, frequency band mapping
+    unit/test_virtual_desktop.cpp     # Sprint 4: VirtualDesktopDetector smoke tests
 )
 
 # Link against Catch2 and core library modules

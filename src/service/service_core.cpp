@@ -1,10 +1,12 @@
 #include "service_core.h"
 
 #include <Windows.h>
+#include <algorithm>
 #include <cstring>
 
 #include "message_types.h"
 #include "logging/logger.h"
+#include "audio_engine.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -169,6 +171,27 @@ bool ServiceCore::pushConfig(std::string const& configJson) {
     return m_pipeServer.sendMessage(msg, 2000);
 }
 
+bool ServiceCore::pushAudioBands() {
+    if (!m_running.load(std::memory_order_relaxed)) return false;
+
+    auto& engine = aura::audio::AudioEngine::getInstance();
+    if (!engine.isInitialized()) return false;
+
+    aura::ipc::AudioBandsPayload payload = {};
+    auto bands = engine.getFrequencyBands();
+    static_assert(bands.size() == 128, "Band count mismatch");
+    std::copy(bands.begin(), bands.end(), payload.bands);
+    payload.peak         = engine.getPeakLevel();
+    payload.audioPresent = engine.isAudioPresent();
+
+    aura::ipc::Message msg;
+    msg.messageType    = static_cast<uint32_t>(aura::ipc::MessageType::AUDIO_BANDS);
+    msg.sequenceNumber = 0;
+    msg.setPayload(payload);
+
+    return m_pipeServer.sendMessage(msg, /*timeoutMs=*/50);
+}
+
 // ============================================================================
 // Phase 8: Watchdog & event callback registration
 // ============================================================================
@@ -225,9 +248,12 @@ void ServiceCore::ipcThreadProc() {
         bool clientDroppedUnexpectedly = true;
 
         // Per-client message loop.
+        // kReceiveTimeoutMs must exceed the App's poll interval (5 s) so the
+        // connection is not torn down between polls; 30 s leaves comfortable margin.
+        constexpr uint32_t kReceiveTimeoutMs = 30000;
         while (m_running.load(std::memory_order_relaxed)) {
             aura::ipc::Message request;
-            if (!m_pipeServer.receiveMessage(request, 2000)) {
+            if (!m_pipeServer.receiveMessage(request, kReceiveTimeoutMs)) {
                 break;  // client disconnected or timeout
             }
             if (!request.isValid()) continue;
@@ -268,8 +294,9 @@ void ServiceCore::ipcThreadProc() {
             } else if (type == aura::ipc::MessageType::PUSH_THEME) {
                 // Config App is pushing a theme change to the service (Worker → Manager).
                 // Store it so QUERY_STATE reflects the new theme immediately.
-                auto const& tp = request.getPayload<aura::ipc::ThemePayload>();
-                std::wstring const newTheme(tp.themeName);
+                aura::ipc::ThemePayload const* tp = request.getPayload<aura::ipc::ThemePayload>();
+                if (!tp) break;
+                std::wstring const newTheme(tp->themeName);
 
                 ThemeReceivedCallback themeCb;
                 {
