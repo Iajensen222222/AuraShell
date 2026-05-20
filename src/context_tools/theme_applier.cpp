@@ -56,9 +56,14 @@ void ThemeApplier::apply(const aura::app::ThemeConfig& theme) {
 
     broadcastSettingChange();
 
+    int const _needed = WideCharToMultiByte(CP_UTF8, 0,
+        theme.themeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string _narrow(static_cast<size_t>(_needed > 0 ? _needed - 1 : 0), '\0');
+    if (_needed > 0)
+        WideCharToMultiByte(CP_UTF8, 0, theme.themeName.c_str(), -1,
+                            &_narrow[0], _needed, nullptr, nullptr);
     aura::logging::Logger::getInstance().info("theme",
-        "ThemeApplier: applied theme '" +
-        std::string(theme.themeName.begin(), theme.themeName.end()) + "'");
+        "ThemeApplier: applied theme '" + _narrow + "'");
 }
 
 void ThemeApplier::restoreDefaults() {

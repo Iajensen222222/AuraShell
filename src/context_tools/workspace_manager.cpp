@@ -125,8 +125,14 @@ void WorkspaceManager::dispatchTheme(const aura::app::ThemeConfig& theme) {
         try { cb(theme); } catch (...) {}
     }
 
+    int const _n = WideCharToMultiByte(CP_UTF8, 0,
+        theme.themeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string _name(static_cast<size_t>(_n > 0 ? _n - 1 : 0), '\0');
+    if (_n > 0)
+        WideCharToMultiByte(CP_UTF8, 0, theme.themeName.c_str(), -1,
+                            &_name[0], _n, nullptr, nullptr);
     aura::logging::Logger::getInstance().info("workspace",
-        "Theme dispatched: " + std::string(theme.themeName.begin(), theme.themeName.end()));
+        "Theme dispatched: " + _name);
 }
 
 std::string WorkspaceManager::guidToString(GUID g) {

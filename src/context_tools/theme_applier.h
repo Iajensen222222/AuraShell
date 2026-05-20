@@ -3,6 +3,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <vector>
 #include <windows.h>
 
 #include "theme_model.h"

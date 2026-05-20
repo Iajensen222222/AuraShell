@@ -16,9 +16,15 @@ bool ConfigChangeObserver::watch(const std::wstring& directory,
     m_thread = std::thread(&ConfigChangeObserver::watcherThreadProc,
                            this, directory, filename, std::move(onChanged));
 
+    // Convert wstring filename to UTF-8 for the logger.
+    int const needed = WideCharToMultiByte(CP_UTF8, 0,
+        filename.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string narrow(static_cast<size_t>(needed > 0 ? needed - 1 : 0), '\0');
+    if (needed > 0)
+        WideCharToMultiByte(CP_UTF8, 0, filename.c_str(), -1,
+                            &narrow[0], needed, nullptr, nullptr);
     aura::logging::Logger::getInstance().info("config",
-        "ConfigChangeObserver: watching " +
-        std::string(filename.begin(), filename.end()));
+        "ConfigChangeObserver: watching " + narrow);
     return true;
 }
 
