@@ -112,6 +112,19 @@ public sealed class AuraShellClient : IDisposable
         catch { return false; }
     }
 
+    // ── Unsolicited message reading ────────────────────────────────────────
+
+    /// <summary>
+    /// Reads the next raw message frame from the pipe without sending a request first.
+    /// Used by the audio stream background reader. Returns null if the pipe is closed.
+    /// </summary>
+    public async Task<AuraMessage?> ReadNextMessageAsync(CancellationToken ct)
+    {
+        if (!IsConnected) return null;
+        try { return await ReceiveAsync(ct).ConfigureAwait(false); }
+        catch { return null; }
+    }
+
     // ── Binary framing helpers ─────────────────────────────────────────────
 
     private async Task SendAsync(AuraMessage msg, CancellationToken ct)
@@ -144,6 +157,10 @@ public sealed class AuraShellClient : IDisposable
     }
 
     private static T GetPayload<T>(AuraMessage msg) where T : struct =>
+        BytesToStruct<T>(msg.Payload);
+
+    /// <summary>Extracts a typed payload from a received message frame.</summary>
+    public static T ExtractPayload<T>(AuraMessage msg) where T : struct =>
         BytesToStruct<T>(msg.Payload);
 
     private static byte[] StructToBytes<T>(T s) where T : struct

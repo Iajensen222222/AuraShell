@@ -17,6 +17,13 @@ public sealed class ServiceManager
 
     public event EventHandler<ServiceState>? StateChanged;
 
+    // ── Audio streaming ────────────────────────────────────────────────────
+
+    /// <summary>Fired on the calling thread when a new AUDIO_BANDS frame arrives.</summary>
+    public event EventHandler<AuraConfig.Models.AudioBandsPayload>? AudioBandsReceived;
+
+    private CancellationTokenSource? _audioCts;
+
     // ── Internals ──────────────────────────────────────────────────────────
     private readonly AuraShellClient _client = new();
     private DispatcherQueueTimer? _pollTimer;
@@ -49,6 +56,47 @@ public sealed class ServiceManager
     {
         _pollTimer?.Stop();
         _polling = false;
+    }
+
+    /// <summary>
+    /// Starts a background loop that reads unsolicited AUDIO_BANDS messages from the
+    /// service and fires <see cref="AudioBandsReceived"/>. Safe to call multiple times —
+    /// stops the previous reader first.
+    /// </summary>
+    public void StartAudioStream()
+    {
+        StopAudioStream();
+        _audioCts = new CancellationTokenSource();
+        var ct = _audioCts.Token;
+        _ = Task.Run(async () =>
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                // Ensure connected before trying to read.
+                if (!_client.IsConnected)
+                {
+                    await Task.Delay(500, ct).ConfigureAwait(false);
+                    continue;
+                }
+
+                var msg = await _client.ReadNextMessageAsync(ct).ConfigureAwait(false);
+                if (msg is null) { await Task.Delay(100, ct).ConfigureAwait(false); continue; }
+
+                if (msg.Value.MessageType == (uint)AuraConfig.Models.AuraMessageType.AudioBands)
+                {
+                    var payload = AuraShellClient.ExtractPayload<AuraConfig.Models.AudioBandsPayload>(msg.Value);
+                    if (payload.Bands != null)
+                        AudioBandsReceived?.Invoke(this, payload);
+                }
+            }
+        }, ct);
+    }
+
+    public void StopAudioStream()
+    {
+        _audioCts?.Cancel();
+        _audioCts?.Dispose();
+        _audioCts = null;
     }
 
     /// <summary>Apply a preset by pushing a ThemeConfig to the service.</summary>

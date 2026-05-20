@@ -67,6 +67,30 @@
                 </StackPanel>
             </Border>
 
+            <!-- AUDIO VISUALIZER card -->
+            <TextBlock Text="AUDIO VISUALIZER"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Live Audio Bands" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Text="Real-time frequency spectrum from the system audio."
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                    <Canvas x:Name="VisualizerCanvas"
+                            Height="80"
+                            HorizontalAlignment="Stretch"
+                            Background="Transparent" />
+                </StackPanel>
+            </Border>
+
             <!-- OPTIONS card -->
             <TextBlock Text="OPTIONS"
                        Style="{ThemeResource CaptionTextBlockStyle}"
