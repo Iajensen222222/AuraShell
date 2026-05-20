@@ -8,7 +8,7 @@
 #define AppURL         "https://iajensen222222.github.io/AuraShell-Website/"
 #define AppExeName     "AuraConfig.exe"
 #define ServiceExeName "AuraShellService.exe"
-#define BuildBinDir    "..\out\build\x64-Release\bin"
+#define BuildBinDir    "..\out\build\x64-Release\bin\Release"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
