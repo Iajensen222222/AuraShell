@@ -35,6 +35,7 @@ add_executable(test_runner
     unit/test_spectrum_analyzer.cpp   # Sprint 2: FFT math, frequency band mapping
     unit/test_virtual_desktop.cpp     # Sprint 4: VirtualDesktopDetector smoke tests
     unit/test_performance_logger.cpp  # Sprint 5: idle CPU, memory, FPS tracking
+    unit/test_icon_replacer.cpp       # Sprint 7: icon override catalog, JSON persistence
 )
 
 # Link against Catch2 and core library modules

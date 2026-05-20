@@ -10,6 +10,7 @@ add_library(aurashell_taskbar_engine
     hover_detector.cpp
     icon_overlay_manager.cpp
     acrylic_backdrop.cpp
+    icon_replacer.cpp
 )
 
 # Link dependencies
@@ -20,6 +21,7 @@ target_link_libraries(aurashell_taskbar_engine PRIVATE
     d2d1.lib
     dwrite.lib
     dwmapi.lib   # DwmFlush — vsync-aligned animation ticks
+    nlohmann_json::nlohmann_json  # icon_replacer.cpp JSON serialization
 )
 
 # Include directories

@@ -10,6 +10,7 @@ add_executable(integration_test_runner
     test_theme_apply.cpp
     test_audio_workspace.cpp
     test_ipc_live.cpp
+    test_shell_integration.cpp
 )
 
 target_link_libraries(integration_test_runner PRIVATE
@@ -20,12 +21,14 @@ target_link_libraries(integration_test_runner PRIVATE
     aurashell_audio
     aurashell_context_tools
     aurashell_taskbar_engine
+    aurashell_system_integration
     aurashell_config_app
 )
 
 target_include_directories(integration_test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/include"
     "${CMAKE_SOURCE_DIR}/src/core/platform"
+    "${CMAKE_SOURCE_DIR}/src/system_integration"
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/core/audio"

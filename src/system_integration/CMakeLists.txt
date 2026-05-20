@@ -1,6 +1,8 @@
 add_library(aurashell_system_integration STATIC
     shell_integration.cpp
     shell_integration.h
+    hotkey_manager.cpp
+    hotkey_manager.h
 )
 
 target_include_directories(aurashell_system_integration PUBLIC
@@ -12,11 +14,14 @@ target_include_directories(aurashell_system_integration PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
     "${CMAKE_SOURCE_DIR}/src/visual_enhancements"
+    "${CMAKE_SOURCE_DIR}/src/context_tools"
+    "${CMAKE_SOURCE_DIR}/src/app"
 )
 
 target_link_libraries(aurashell_system_integration PRIVATE
     aurashell_taskbar_engine
     aurashell_visual_enhancements
+    aurashell_context_tools
     aurashell_logging
     Shell32
 )

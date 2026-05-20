@@ -6,6 +6,7 @@
 
 #include "icon_overlay_manager.h"
 #include "audio_visualizer.h"
+#include "hotkey_manager.h"
 #include "logging/logger.h"
 
 #pragma comment(lib, "shell32.lib")
@@ -45,6 +46,9 @@ bool ShellIntegration::initialize(HINSTANCE hInstance) {
     createTrayIcon();
     onPowerStatusChange(); // snapshot initial power state
 
+    // Register global hotkeys on the same message-only HWND.
+    HotkeyManager::getInstance().initialize(m_hwnd);
+
     m_initialized = true;
     aura::logging::Logger::getInstance().info("shell", "ShellIntegration initialized");
     return true;
@@ -52,6 +56,7 @@ bool ShellIntegration::initialize(HINSTANCE hInstance) {
 
 void ShellIntegration::shutdown() {
     if (!m_initialized) return;
+    HotkeyManager::getInstance().shutdown();
     destroyTrayIcon();
     if (m_hwnd) { DestroyWindow(m_hwnd); m_hwnd = nullptr; }
     UnregisterClassW(kClass, m_hInstance);
@@ -179,6 +184,10 @@ LRESULT CALLBACK ShellIntegration::staticWndProc(HWND hwnd, UINT msg,
 }
 
 LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    // Route global hotkeys before the standard switch.
+    if (HotkeyManager::getInstance().handleMessage(msg, wp, lp))
+        return 0;
+
     // WM_TASKBARCREATED is a dynamically registered message — compare at runtime.
     if (msg == m_wmTaskbarCreated) {
         onTaskbarCreated();
