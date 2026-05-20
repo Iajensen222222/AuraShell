@@ -19,6 +19,7 @@ public enum AuraMessageType : uint
     PushConfig        = 0x0051,
     StatusReport      = 0x0060,
     Ack               = 0x0070,
+    AudioBands        = 0x0080,
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -78,6 +79,20 @@ public struct ThemePayload
     public string ThemeName;
     public uint   ColorCount;
     public uint   AnimationSpeedPct;
+}
+
+/// <summary>
+/// Matches C++ AudioBandsPayload: float bands[128] + float peak + bool audioPresent.
+/// Total size: 512 + 4 + 4 = 520 bytes (Pack=4 pads the trailing bool to 4 bytes).
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
+public struct AudioBandsPayload
+{
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
+    public float[] Bands;
+    public float Peak;
+    [MarshalAs(UnmanagedType.I1)]
+    public bool AudioPresent;
 }
 
 // ── High-level models ───────────────────────────────────────────────────────
