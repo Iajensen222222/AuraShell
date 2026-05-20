@@ -92,7 +92,7 @@ jobs:
       # ── Upload artifacts for review ──────────────────────────────────────────
       - name: Upload installer artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-${{ github.ref_name }}
           path: installer\Output\*.exe
@@ -100,7 +100,7 @@ jobs:
 
       - name: Upload test logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs-${{ github.ref_name }}
           path: |
