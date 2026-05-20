@@ -69,7 +69,8 @@ public sealed partial class DashboardPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ServiceManager.Instance.StateChanged += OnServiceStateChanged;
+        ServiceManager.Instance.StateChanged      += OnServiceStateChanged;
+        ServiceManager.Instance.PerfStatsReceived += OnPerfStatsReceived;
         UpdateStatusBar(ServiceManager.Instance.CurrentState);
 
         if (Presets.Count > 0)
@@ -78,7 +79,18 @@ public sealed partial class DashboardPage : Page
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        ServiceManager.Instance.StateChanged -= OnServiceStateChanged;
+        ServiceManager.Instance.StateChanged      -= OnServiceStateChanged;
+        ServiceManager.Instance.PerfStatsReceived -= OnPerfStatsReceived;
+    }
+
+    private void OnPerfStatsReceived(object? sender, PerfStatsPayload p)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            CpuText.Text = $"CPU: {p.CpuPercent:F1}%";
+            MemText.Text = $"MEM: {p.MemoryMB:F0} MB";
+            FpsText.Text = $"FPS: {p.AvgFps:F0}";
+        });
     }
 
     private void OnServiceStateChanged(object? sender, ServiceState state)

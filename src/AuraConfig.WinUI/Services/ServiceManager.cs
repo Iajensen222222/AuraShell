@@ -22,6 +22,9 @@ public sealed class ServiceManager
     /// <summary>Fired on the calling thread when a new AUDIO_BANDS frame arrives.</summary>
     public event EventHandler<AuraConfig.Models.AudioBandsPayload>? AudioBandsReceived;
 
+    /// <summary>Fired when a PERF_STATS frame arrives (~0.5fps from the service).</summary>
+    public event EventHandler<AuraConfig.Models.PerfStatsPayload>? PerfStatsReceived;
+
     private CancellationTokenSource? _audioCts;
 
     // ── Internals ──────────────────────────────────────────────────────────
@@ -87,6 +90,11 @@ public sealed class ServiceManager
                     var payload = AuraShellClient.ExtractPayload<AuraConfig.Models.AudioBandsPayload>(msg.Value);
                     if (payload.Bands != null)
                         AudioBandsReceived?.Invoke(this, payload);
+                }
+                else if (msg.Value.MessageType == (uint)AuraConfig.Models.AuraMessageType.PerfStats)
+                {
+                    var p = AuraShellClient.ExtractPayload<AuraConfig.Models.PerfStatsPayload>(msg.Value);
+                    PerfStatsReceived?.Invoke(this, p);
                 }
             }
         }, ct);
