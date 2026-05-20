@@ -37,6 +37,8 @@ int WINAPI wWinMain(
     // Initialize audio engine and visualizer overlay.
     auto& ae = aura::audio::AudioEngine::getInstance();
     ae.initialize();
+    ae.setSensitivity(settings.getConfig().audioVisualizer.sensitivity);
+    ae.setSmoothing(settings.getConfig().audioVisualizer.smoothing);
 
     auto& viz = aura::visual::AudioVisualizerOverlay::getInstance();
     viz.initialize(hInst, &ae);

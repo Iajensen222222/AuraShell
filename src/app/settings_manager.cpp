@@ -112,6 +112,29 @@ bool SettingsManager::loadFrom(std::wstring const& path) {
             }
         }
 
+        if (j.contains("audioVisualizer")) {
+            json const& av = j.at("audioVisualizer");
+            cfg.audioVisualizer.enabled         = av.value("enabled",         true);
+            cfg.audioVisualizer.sensitivity     = av.value("sensitivity",     1.0f);
+            cfg.audioVisualizer.smoothing       = av.value("smoothing",       0.25f);
+            cfg.audioVisualizer.brightness      = av.value("brightness",      1.0f);
+            cfg.audioVisualizer.overlayHeightPx = av.value("overlayHeightPx", 80u);
+        }
+
+        if (j.contains("hover")) {
+            json const& hv = j.at("hover");
+            cfg.hover.enabled  = hv.value("enabled",  true);
+            cfg.hover.scaleMax = hv.value("scaleMax",  0.25f);
+            cfg.hover.enterMs  = hv.value("enterMs",   150u);
+            cfg.hover.exitMs   = hv.value("exitMs",    180u);
+        }
+
+        if (j.contains("acrylic")) {
+            json const& ac = j.at("acrylic");
+            cfg.acrylic.enabled     = ac.value("enabled",     true);
+            cfg.acrylic.tintOpacity = ac.value("tintOpacity", 0.15f);
+        }
+
         {
             std::lock_guard<std::mutex> lk(m_mutex);
             m_config = std::move(cfg);
@@ -164,6 +187,24 @@ bool SettingsManager::saveTo(std::wstring const& path) const {
     j["monitorAutoHide"]     = m_config.monitorAutoHide;
     j["enableMultiMonitor"]  = m_config.enableMultiMonitor;
     j["activeTheme"]         = t;
+
+    j["audioVisualizer"] = {
+        {"enabled",         m_config.audioVisualizer.enabled},
+        {"sensitivity",     m_config.audioVisualizer.sensitivity},
+        {"smoothing",       m_config.audioVisualizer.smoothing},
+        {"brightness",      m_config.audioVisualizer.brightness},
+        {"overlayHeightPx", m_config.audioVisualizer.overlayHeightPx},
+    };
+    j["hover"] = {
+        {"enabled",  m_config.hover.enabled},
+        {"scaleMax", m_config.hover.scaleMax},
+        {"enterMs",  m_config.hover.enterMs},
+        {"exitMs",   m_config.hover.exitMs},
+    };
+    j["acrylic"] = {
+        {"enabled",     m_config.acrylic.enabled},
+        {"tintOpacity", m_config.acrylic.tintOpacity},
+    };
 
     std::ofstream file(path);
     if (!file.is_open()) {

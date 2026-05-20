@@ -21,6 +21,26 @@ struct ThemeConfig {
     bool         glowEnabled    = true;
 };
 
+struct AudioVisualizerConfig {
+    bool     enabled         = true;
+    float    sensitivity     = 1.0f;
+    float    smoothing       = 0.25f;
+    float    brightness      = 1.0f;
+    uint32_t overlayHeightPx = 80;
+};
+
+struct HoverConfig {
+    bool     enabled  = true;
+    float    scaleMax = 0.25f;
+    uint32_t enterMs  = 150;
+    uint32_t exitMs   = 180;
+};
+
+struct AcrylicConfig {
+    bool  enabled     = true;
+    float tintOpacity = 0.15f;
+};
+
 struct AppConfig {
     ThemeConfig  activeTheme;
     bool         autoStartService   = true;
@@ -28,9 +48,14 @@ struct AppConfig {
     int          version            = 1;
 
     // Phase 10.7: behavior settings
-    bool         autoStartApp       = false;  // registry Run key for AuraConfig.exe
-    bool         monitorAutoHide    = true;   // taskbar auto-hide detection
-    bool         enableMultiMonitor = true;   // multi-monitor overlay support
+    bool         autoStartApp       = false;
+    bool         monitorAutoHide    = true;
+    bool         enableMultiMonitor = true;
+
+    // Sprint 4+: subsystem configs
+    AudioVisualizerConfig audioVisualizer;
+    HoverConfig           hover;
+    AcrylicConfig         acrylic;
 };
 
 }  // namespace aura::app
