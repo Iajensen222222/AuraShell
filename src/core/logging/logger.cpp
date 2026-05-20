@@ -62,6 +62,9 @@ void Logger::initialize() {
         const size_t MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10 MB
         const size_t MAX_FILES = 5;
 
+        // Drop any previously registered logger with this name before re-creating.
+        spdlog::drop("AuraShell");
+
         // Create sinks
         std::vector<spdlog::sink_ptr> sinks;
 
@@ -69,7 +72,8 @@ void Logger::initialize() {
             auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logPath.string(),
                 MAX_FILE_SIZE,
-                MAX_FILES
+                MAX_FILES,
+                true  // truncate = true so each initialize() starts a clean file
             );
             sinks.push_back(file_sink);
         } catch (...) {
@@ -83,7 +87,8 @@ void Logger::initialize() {
             m_logger = std::make_shared<spdlog::logger>("AuraShell", sinks.begin(), sinks.end());
             m_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
             m_logger->set_level(spdlog::level::debug);
-            m_logger->flush_on(spdlog::level::err);
+            // Flush every message so reads in tests always see current content.
+            m_logger->flush_on(spdlog::level::trace);
             spdlog::register_logger(m_logger);
             m_initialized = true;
         }
@@ -147,10 +152,24 @@ std::string Logger::getOutputPath() const {
 
 void Logger::clearLogs() {
     try {
+        // Flush and release the spdlog sink so the file handle is closed before
+        // we delete the file.  Without this, on Windows the "deleted" file
+        // descriptor remains open and spdlog keeps appending to it.
+        if (m_logger) {
+            m_logger->flush();
+        }
+        spdlog::drop("AuraShell");
+        m_logger.reset();
+        m_initialized = false;
+
+        // Now delete the log file with no open handles.
         std::filesystem::path logPath(m_outputPath);
         logPath /= L"aurashell.log";
         std::error_code ec;
         std::filesystem::remove(logPath, ec);
+
+        // Re-initialize so subsequent logging works (truncate=true opens a fresh file).
+        initialize();
     } catch (...) {
         // Silently fail
     }

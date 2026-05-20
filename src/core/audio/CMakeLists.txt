@@ -17,3 +17,8 @@ target_link_libraries(aurashell_audio PRIVATE
 )
 
 target_compile_features(aurashell_audio PUBLIC cxx_std_20)
+
+if(MSVC)
+    target_compile_options(aurashell_audio PRIVATE /W4 /WX /permissive-)
+    target_compile_definitions(aurashell_audio PRIVATE NOMINMAX UNICODE _UNICODE)
+endif()

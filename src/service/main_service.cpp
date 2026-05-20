@@ -2,6 +2,7 @@
 //
 // Usage (must be run as Administrator for install/uninstall/start/stop):
 //   AuraShellService.exe             — normal SCM dispatch (launched by Windows)
+//   AuraShellService.exe --console   — run IPC server in-process (Ctrl+C to stop)
 //   AuraShellService.exe --install   — register service with SCM (AUTO_START)
 //   AuraShellService.exe --uninstall — stop and delete service registration
 //   AuraShellService.exe --start     — start the registered service
@@ -282,6 +283,39 @@ int wmain(int const argc, wchar_t const* const argv[]) {
     // Parse the first argument (if any).
     std::wstring const arg = (argc >= 2) ? argv[1] : L"";
 
+    if (arg == L"--console") {
+        // Run the IPC server in-process without SCM (useful for development /
+        // integration testing).  Press Ctrl+C or close the window to stop.
+        std::printf("AuraShellService [console mode] — press Ctrl+C to stop\n");
+        std::printf("Named pipe: \\\\.\\pipe\\AuraShell_Control\n\n");
+
+        aura::service::ServiceCore& svc = aura::service::ServiceCore::getInstance();
+        if (!svc.initialize()) {
+            std::printf("[ERR] ServiceCore::initialize() failed\n");
+            return 1;
+        }
+        std::printf("[OK]  Service running — waiting for AuraConfig app connection\n");
+
+        // Block until Ctrl+C (SetConsoleCtrlHandler would be cleaner, but
+        // WaitForSingleObject on a manual event is fine for a dev-mode tool).
+        HANDLE hStop = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        SetConsoleCtrlHandler([](DWORD) -> BOOL {
+            // Signal the stop event on any console event (Ctrl+C, close, etc.)
+            HANDLE h = OpenEventW(EVENT_MODIFY_STATE, FALSE, L"AuraShellConsoleModeStop");
+            if (h) { SetEvent(h); CloseHandle(h); }
+            return TRUE;
+        }, TRUE);
+        // Give the ctrl handler a named event to signal.
+        CloseHandle(hStop);
+        hStop = CreateEventW(nullptr, TRUE, FALSE, L"AuraShellConsoleModeStop");
+        WaitForSingleObject(hStop, INFINITE);
+        CloseHandle(hStop);
+
+        std::printf("\n[OK]  Shutting down...\n");
+        svc.shutdown();
+        return 0;
+    }
+
     if (arg == L"--install") {
         return doInstall();
     }
@@ -295,7 +329,7 @@ int wmain(int const argc, wchar_t const* const argv[]) {
         return doStop();
     }
 
-    // No recognized flag (or --run) → normal SCM dispatch path.
+    // No recognized flag → normal SCM dispatch path.
     SERVICE_TABLE_ENTRYW const dispatchTable[] = {
         { const_cast<LPWSTR>(SVC_NAME),
           aura::service::ServiceCore::serviceMain },

@@ -61,21 +61,22 @@ NamedPipeClient::~NamedPipeClient() {
 }
 
 bool NamedPipeClient::connect(uint32_t timeoutMs, uint32_t maxRetries) {
-    // timeoutMs will be used in Phase 2 implementation for overlapped I/O timeout handling
-    (void)timeoutMs;  // Suppress unused parameter warning during stub phase
+    // maxRetries is kept for API compatibility but timeoutMs is now the primary
+    // constraint.  The loop retries until the deadline regardless of attempt count.
+    (void)maxRetries;
 
     try {
         if (m_connected) {
-            return true;  // Already connected
+            return true;
         }
 
+        using Clock = std::chrono::steady_clock;
+        const auto deadline = Clock::now() + std::chrono::milliseconds(timeoutMs);
         uint32_t attemptCount = 0;
-        const uint32_t totalAttempts = maxRetries + 1;
 
-        while (attemptCount < totalAttempts) {
+        while (Clock::now() < deadline) {
             attemptCount++;
 
-            // Try to open the named pipe
             HANDLE hPipe = CreateFileW(
                 PIPE_NAME,
                 GENERIC_READ | GENERIC_WRITE,
@@ -87,15 +88,12 @@ bool NamedPipeClient::connect(uint32_t timeoutMs, uint32_t maxRetries) {
             );
 
             if (hPipe != INVALID_HANDLE_VALUE) {
-                // Connection successful, configure pipe
                 DWORD pipeMode = PIPE_READMODE_MESSAGE;
                 if (!SetNamedPipeHandleState(hPipe, &pipeMode, nullptr, nullptr)) {
-                    DWORD err = GetLastError();
-                    spdlog::error("SetNamedPipeHandleState failed: 0x{:08X}", err);
+                    spdlog::error("SetNamedPipeHandleState failed: 0x{:08X}", GetLastError());
                     CloseHandle(hPipe);
                     return false;
                 }
-
                 m_pipe = hPipe;
                 m_connected = true;
                 m_retryCount = attemptCount - 1;
@@ -105,40 +103,26 @@ bool NamedPipeClient::connect(uint32_t timeoutMs, uint32_t maxRetries) {
 
             DWORD err = GetLastError();
 
-            // Check if pipe doesn't exist (server not listening)
-            if (err == ERROR_FILE_NOT_FOUND) {
-                if (attemptCount < totalAttempts) {
-                    // Calculate backoff: exponential with max
-                    uint32_t backoffMs = 50 * attemptCount;  // 50ms, 100ms, 150ms, ...
-                    if (backoffMs > 500) backoffMs = 500;
+            auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                deadline - Clock::now()).count();
+            if (remainingMs <= 0) break;
 
-                    spdlog::debug("Pipe not found, retrying in {}ms (attempt {}/{})",
-                                 backoffMs, attemptCount, totalAttempts);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
-                    continue;
-                } else {
-                    spdlog::warn("Failed to connect after {} attempts", totalAttempts);
-                    return false;
-                }
-            } else if (err == ERROR_PIPE_BUSY) {
-                // All instances busy, retry
-                if (attemptCount < totalAttempts) {
-                    uint32_t backoffMs = 100 * attemptCount;
-                    if (backoffMs > 500) backoffMs = 500;
-
-                    spdlog::debug("Pipe busy, retrying in {}ms (attempt {}/{})",
-                                 backoffMs, attemptCount, totalAttempts);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
-                    continue;
-                }
-                return false;
+            if (err == ERROR_PIPE_BUSY) {
+                // Server is busy — wait up to remaining time for a slot.
+                DWORD waitMs = static_cast<DWORD>(std::min<long long>(remainingMs, 200));
+                WaitNamedPipeW(PIPE_NAME, waitMs);
+            } else if (err == ERROR_FILE_NOT_FOUND) {
+                // Pipe doesn't exist yet — sleep a short interval and retry.
+                DWORD sleepMs = static_cast<DWORD>(std::min<long long>(remainingMs, 50));
+                spdlog::debug("Pipe not found, waiting {}ms (attempt {})", sleepMs, attemptCount);
+                std::this_thread::sleep_for(std::chrono::milliseconds(sleepMs));
             } else {
-                // Unexpected error
                 spdlog::error("CreateFileW failed: 0x{:08X}", err);
                 return false;
             }
         }
 
+        spdlog::warn("Failed to connect after {} attempt(s)", attemptCount);
         return false;
     } catch (const std::exception& e) {
         spdlog::error("NamedPipeClient::connect exception: {}", e.what());
