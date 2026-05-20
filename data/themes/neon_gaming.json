@@ -1,0 +1,8 @@
+{
+  "themeName": "Neon Gaming",
+  "accentColor": { "r": 255, "g": 0, "b": 128, "a": 255 },
+  "animSpeedPct": 150,
+  "showOnHover": true,
+  "showOnLaunch": true,
+  "glowEnabled": true
+}

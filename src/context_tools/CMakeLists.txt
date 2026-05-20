@@ -1,6 +1,7 @@
 add_library(aurashell_context_tools STATIC
     workspace_manager.cpp
     theme_applier.cpp
+    theme_preset_loader.cpp
 )
 
 target_include_directories(aurashell_context_tools PUBLIC
@@ -17,6 +18,7 @@ target_include_directories(aurashell_context_tools PRIVATE
 target_link_libraries(aurashell_context_tools PRIVATE
     aurashell_platform
     aurashell_logging
+    nlohmann_json::nlohmann_json
 )
 
 target_compile_features(aurashell_context_tools PUBLIC cxx_std_20)

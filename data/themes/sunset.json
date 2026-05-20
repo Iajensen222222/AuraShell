@@ -1,0 +1,8 @@
+{
+  "themeName": "Sunset",
+  "accentColor": { "r": 255, "g": 140, "b": 0, "a": 255 },
+  "animSpeedPct": 100,
+  "showOnHover": true,
+  "showOnLaunch": true,
+  "glowEnabled": true
+}

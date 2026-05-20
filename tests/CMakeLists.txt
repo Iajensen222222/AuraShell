@@ -37,6 +37,7 @@ add_executable(test_runner
     unit/test_performance_logger.cpp  # Sprint 5: idle CPU, memory, FPS tracking
     unit/test_icon_replacer.cpp       # Sprint 7: icon override catalog, JSON persistence
     unit/test_hotkey_manager.cpp      # Sprint 7: global hotkey lifecycle and dispatch
+    unit/test_theme_presets.cpp       # Sprint 8: ThemePresetLoader JSON parsing and catalog
 )
 
 # Link against Catch2 and core library modules
@@ -48,6 +49,7 @@ target_link_libraries(test_runner PRIVATE
     aurashell_ipc
     aurashell_taskbar_engine
     aurashell_system_integration
+    aurashell_context_tools
     aurashell_service
     aurashell_config_app
 )
@@ -61,6 +63,7 @@ target_include_directories(test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
     "${CMAKE_SOURCE_DIR}/src/system_integration"
+    "${CMAKE_SOURCE_DIR}/src/context_tools"
     "${CMAKE_SOURCE_DIR}/src/app"
 )
 

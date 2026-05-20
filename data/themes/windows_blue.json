@@ -1,0 +1,8 @@
+{
+  "themeName": "Windows Blue",
+  "accentColor": { "r": 0, "g": 120, "b": 212, "a": 255 },
+  "animSpeedPct": 100,
+  "showOnHover": true,
+  "showOnLaunch": true,
+  "glowEnabled": true
+}

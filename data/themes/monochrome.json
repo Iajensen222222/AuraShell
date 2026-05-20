@@ -1,0 +1,8 @@
+{
+  "themeName": "Monochrome",
+  "accentColor": { "r": 118, "g": 118, "b": 118, "a": 255 },
+  "animSpeedPct": 70,
+  "showOnHover": true,
+  "showOnLaunch": false,
+  "glowEnabled": false
+}

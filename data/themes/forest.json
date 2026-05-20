@@ -1,0 +1,8 @@
+{
+  "themeName": "Forest",
+  "accentColor": { "r": 16, "g": 124, "b": 16, "a": 255 },
+  "animSpeedPct": 80,
+  "showOnHover": true,
+  "showOnLaunch": true,
+  "glowEnabled": true
+}
