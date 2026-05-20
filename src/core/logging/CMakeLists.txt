@@ -3,6 +3,8 @@
 add_library(aurashell_logging STATIC
     logger.cpp
     logger.h
+    performance_logger.cpp
+    performance_logger.h
 )
 
 target_include_directories(aurashell_logging

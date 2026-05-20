@@ -34,6 +34,7 @@ add_executable(test_runner
     unit/test_shell_customization.cpp # Phase 10.9: ShellIconModifier path utils, result codes
     unit/test_spectrum_analyzer.cpp   # Sprint 2: FFT math, frequency band mapping
     unit/test_virtual_desktop.cpp     # Sprint 4: VirtualDesktopDetector smoke tests
+    unit/test_performance_logger.cpp  # Sprint 5: idle CPU, memory, FPS tracking
 )
 
 # Link against Catch2 and core library modules
