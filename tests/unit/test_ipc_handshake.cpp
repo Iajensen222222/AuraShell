@@ -5,116 +5,15 @@
 #include <memory>
 #include <windows.h>
 
-// Forward declarations for IPC classes
-namespace aura::ipc {
+// Use the real headers so the class layout matches the linked implementation.
+// The old hand-rolled forward declarations had wrong/missing private members
+// (ODR violation) which caused stack corruption and spurious test failures.
+#include "named_pipe_server.h"
+#include "named_pipe_client.h"
+#include "message_types.h"
 
-enum class MessageType : uint32_t {
-    HANDSHAKE_REQUEST = 0x0001,
-    HANDSHAKE_RESPONSE = 0x0002,
-    CONFIG_RELOAD = 0x0010,
-    CONFIG_APPLY = 0x0011,
-    THEME_CHANGE = 0x0020,
-    QUERY_STATE = 0x0030,
-    ENABLE_FEATURE = 0x0040,
-    DISABLE_FEATURE = 0x0041,
-};
-
-struct Message {
-    uint32_t messageType;
-    uint32_t sequenceNumber;
-    uint32_t payloadSize;
-    uint32_t reserved;
-    uint8_t payload[2048];
-
-    Message() : messageType(0), sequenceNumber(0), payloadSize(0), reserved(0) {
-        std::memset(payload, 0, sizeof(payload));
-    }
-
-    bool isValid() const {
-        return messageType != 0 && payloadSize <= 2048;
-    }
-
-    template<typename T>
-    T* getPayload() {
-        if (payloadSize < sizeof(T)) return nullptr;
-        return reinterpret_cast<T*>(payload);
-    }
-
-    template<typename T>
-    void setPayload(const T& data) {
-        if (sizeof(T) > 2048) return;
-        std::memcpy(payload, &data, sizeof(T));
-        payloadSize = sizeof(T);
-    }
-};
-
-struct HandshakePayload {
-    uint32_t clientPID;
-    uint32_t clientVersion;
-    uint32_t capabilities;
-};
-
-// ============================================================================
-// Named Pipe Server Interface
-// ============================================================================
-
-class NamedPipeServer {
-public:
-    static constexpr const wchar_t* PIPE_NAME = L"\\\\.\\pipe\\AuraShell_Control";
-    static constexpr uint32_t PIPE_BUFFER_SIZE = 4096;
-    static constexpr uint32_t DEFAULT_TIMEOUT_MS = 5000;
-
-    NamedPipeServer();
-    ~NamedPipeServer();
-
-    // Lifecycle
-    bool initialize();
-    bool shutdown();
-    bool isRunning() const;
-
-    // Message handling (blocking, call from dedicated thread)
-    bool waitForClient(uint32_t timeoutMs = DEFAULT_TIMEOUT_MS);
-    bool receiveMessage(Message& outMsg, uint32_t timeoutMs = DEFAULT_TIMEOUT_MS);
-    bool sendMessage(const Message& msg, uint32_t timeoutMs = DEFAULT_TIMEOUT_MS);
-
-    // Cleanup
-    void disconnectClient();
-
-private:
-    HANDLE m_pipe;
-    HANDLE m_clientConnected;
-    bool m_running;
-    DWORD m_clientPID;
-};
-
-// ============================================================================
-// Named Pipe Client Interface
-// ============================================================================
-
-class NamedPipeClient {
-public:
-    static constexpr const wchar_t* PIPE_NAME = L"\\\\.\\pipe\\AuraShell_Control";
-    static constexpr uint32_t DEFAULT_TIMEOUT_MS = 5000;
-    static constexpr uint32_t DEFAULT_RETRIES = 2;
-
-    NamedPipeClient();
-    ~NamedPipeClient();
-
-    // Connection
-    bool connect(uint32_t timeoutMs = DEFAULT_TIMEOUT_MS, uint32_t maxRetries = DEFAULT_RETRIES);
-    bool isConnected() const;
-    bool disconnect();
-
-    // Message exchange
-    bool sendMessage(const Message& msg, uint32_t timeoutMs = DEFAULT_TIMEOUT_MS);
-    bool receiveMessage(Message& outMsg, uint32_t timeoutMs = DEFAULT_TIMEOUT_MS);
-
-private:
-    HANDLE m_pipe;
-    bool m_connected;
-};
-
-} // namespace aura::ipc
+// All types (Message, HandshakePayload, NamedPipeServer, NamedPipeClient)
+// are now provided by the included headers above.
 
 // ============================================================================
 // TESTS: Named Pipe Server Creation & Lifecycle
@@ -370,9 +269,16 @@ TEST_CASE("NamedPipeHandshake::TimeoutHandling", "[ipc][handshake][timeout]") {
         REQUIRE(server.initialize());
 
         std::thread serverThread([&server]() {
+            // Must call waitForClient first; receiveMessage on an unaccepted pipe
+            // returns immediately with m_clientCurrentlyConnected == false.
+            bool clientArrived = server.waitForClient(3000);
+            REQUIRE(clientArrived);
+
+            // Client is now connected but will not send any data.
+            // receiveMessage should wait the full 500ms before timing out.
             Message msg;
             auto start = std::chrono::high_resolution_clock::now();
-            bool received = server.receiveMessage(msg, 500);  // 500ms timeout
+            bool received = server.receiveMessage(msg, 500);
             auto elapsed = std::chrono::high_resolution_clock::now() - start;
 
             REQUIRE(!received);
@@ -382,13 +288,12 @@ TEST_CASE("NamedPipeHandshake::TimeoutHandling", "[ipc][handshake][timeout]") {
             REQUIRE(ms <= 700);
         });
 
-        // Connect but don't send anything
+        // Give server thread a moment to enter waitForClient
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
+        // Connect but send nothing — server should timeout in receiveMessage
         NamedPipeClient client;
-        client.connect(1000);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        client.connect(3000);
 
         serverThread.join();
         server.shutdown();
@@ -632,7 +537,14 @@ TEST_CASE("NamedPipeHandshake::ErrorHandling", "[ipc][handshake][errors]") {
         serverThread.join();
         server.shutdown();
 
-        // After shutdown, client should not be connected
+        // Named pipes don't push a disconnect notification to the client —
+        // the client learns of disconnection only on the next send/receive.
+        // Attempt a send to trigger the detection.
+        Message pingMsg;
+        pingMsg.messageType = static_cast<uint32_t>(MessageType::HANDSHAKE_REQUEST);
+        client.sendMessage(pingMsg, 500);  // expected to fail; updates m_connected
+
+        // After the failed send, client should report disconnected
         REQUIRE(!client.isConnected());
     }
 }

@@ -34,6 +34,10 @@
 using namespace aura::service;
 using namespace aura::app;
 using namespace aura::taskbar;
+using namespace aura::ipc;
+
+// Bring nested enum into scope without unqualified collision risk.
+using ConnectResult    = AppClient::ConnectResult;
 
 // ============================================================================
 // Helpers
@@ -141,7 +145,7 @@ TEST_CASE_METHOD(FullStackFixture,
     REQUIRE(client.connect(2000) == ConnectResult::Connected);
 
     ThemeConfig cfg{};
-    cfg.themeName    = "neon_blue";
+    cfg.themeName    = L"neon_blue";
     cfg.animSpeedPct = 150;
     cfg.glowEnabled  = true;
 
@@ -190,7 +194,7 @@ TEST_CASE_METHOD(FullStackFixture,
     REQUIRE(client.connect(2000) == ConnectResult::Connected);
 
     ThemeConfig cfg{};
-    cfg.themeName = "aurora_purple";
+    cfg.themeName = L"aurora_purple";
     REQUIRE(client.pushTheme(cfg));
 
     // Wait for the IPC thread to invoke the callback chain.
@@ -280,7 +284,8 @@ TEST_CASE_METHOD(FullStackFixture,
         REQUIRE(client.connect(2000) == ConnectResult::Connected);
 
         QueryStateResponse resp{};
-        client.queryState(resp);  // at least one successful exchange
+        bool const queried = client.queryState(resp);  // at least one successful exchange
+        (void)queried;
         // Destructor closes the handle without sending ACK — triggers watchdog.
     }
 

@@ -223,13 +223,17 @@ TEST_CASE("HoverDetector::HoverStateTransitions", "[hover][state]") {
         if (icons.size() > 0) {
             RECT taskbarRect = fixture.tc->getTaskbarRect();
 
+            // Raise debounce so the background polling thread (real mouse != icon)
+            // cannot interfere between the two manual position updates.
+            hd.setDebounceDelayMs(10);
+
             // Move to icon first
             POINT iconCenter = {
                 (icons[0].iconRect.left + icons[0].iconRect.right) / 2,
                 (icons[0].iconRect.top + icons[0].iconRect.bottom) / 2
             };
             hd.updateMousePosition(iconCenter);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
             // Move outside taskbar
             POINT outsidePoint = {
@@ -237,7 +241,9 @@ TEST_CASE("HoverDetector::HoverStateTransitions", "[hover][state]") {
                 taskbarRect.top - 100
             };
             hd.updateMousePosition(outsidePoint);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+            hd.setDebounceDelayMs(50);  // restore default
 
             // Should have detected exit
             REQUIRE(hoverExitCount > 0);
@@ -343,11 +349,18 @@ TEST_CASE("HoverDetector::DebouncingAndFlickerPrevention", "[hover][debounce]") 
 
             hoverEnterCount = 0;
 
+            // Use a long debounce so the background polling thread (which sees the
+            // real mouse position, not the test's fake position) cannot fire
+            // spurious enter/exit events during the 200ms test window.
+            hd.setDebounceDelayMs(500);
+
             // Simulate sustained hover (multiple updates at same position)
             for (int i = 0; i < 10; i++) {
                 hd.updateMousePosition(iconCenter);
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
+
+            hd.setDebounceDelayMs(50);  // restore default
 
             // Should only generate 1 enter event
             REQUIRE(hoverEnterCount == 1);
@@ -391,7 +404,14 @@ TEST_CASE("HoverDetector::ObserverPatternIntegration", "[hover][observer]") {
     }
 
     SECTION("Updates icon hit-test regions on icon changes") {
+        // The background monitoring thread populates the icon list asynchronously.
+        // Wait up to 500ms for it to propagate before asserting.
         const auto& icons = fixture.tc->getTaskbarIcons();
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+        while (hd.getCachedIcons().size() != icons.size() &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
         const auto& hoverDetectorIcons = hd.getCachedIcons();
 
         // Should have same icon count
