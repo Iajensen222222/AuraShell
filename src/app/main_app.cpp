@@ -14,12 +14,14 @@ int WINAPI wWinMain(
     LPWSTR    /*pCmdLine*/,
     int       /*nShowCmd*/
 ) {
-    aura::logging::Logger::getInstance().initialize("config_app");
     aura::logging::Logger::getInstance().info("app", "AuraConfig starting");
 
     // Load persisted settings (missing file → defaults, never fatal).
     aura::app::SettingsManager& settings = aura::app::SettingsManager::getInstance();
-    settings.load();
+    bool const settingsLoaded = settings.load();
+    if (!settingsLoaded) {
+        aura::logging::Logger::getInstance().warn("app", "Settings not found — using defaults");
+    }
 
     // Best-effort connection to the service — UI works without it.
     aura::app::AppClient client;

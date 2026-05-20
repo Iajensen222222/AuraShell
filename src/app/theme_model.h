@@ -26,6 +26,11 @@ struct AppConfig {
     bool         autoStartService   = true;
     std::string  lastServiceVersion;
     int          version            = 1;
+
+    // Phase 10.7: behavior settings
+    bool         autoStartApp       = false;  // registry Run key for AuraConfig.exe
+    bool         monitorAutoHide    = true;   // taskbar auto-hide detection
+    bool         enableMultiMonitor = true;   // multi-monitor overlay support
 };
 
 }  // namespace aura::app

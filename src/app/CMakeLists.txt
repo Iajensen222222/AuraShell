@@ -7,6 +7,15 @@ add_library(aurashell_config_app STATIC
     settings_manager.cpp
     app_client.cpp
     config_window.cpp
+    ui_styles.cpp           # Phase 10.1: StyleManager, spring integrator, HSL math
+    navigation_manager.cpp  # Phase 10.2: Sidebar, kinetic accent bar, page routing
+    page_dashboard.cpp      # Phase 10.3/10.4: Immersive dashboard, hero preview, grid layout
+    card_renderer.cpp       # Phase 10.4: D2D gradient cards, shadow rings, acrylic border
+    page_visuals.cpp        # Phase 10.6: Color picker, speed slider, options toggles
+    page_behavior.cpp       # Phase 10.7: Shell monitoring, auto-start, SCM integration
+    page_about.cpp          # Phase 10.8: Version info, license, live log viewer
+    shell_icon_modifier.cpp # Phase 10.9: IShellLinkW COM utility for icon customization
+    page_desktop_items.cpp  # Phase 10.9: Drag-drop shortcut/folder icon customizer page
 )
 
 target_include_directories(aurashell_config_app PUBLIC
@@ -20,6 +29,7 @@ target_link_libraries(aurashell_config_app PUBLIC
     aurashell_ipc
     aurashell_logging
     nlohmann_json::nlohmann_json
+    dwmapi.lib              # DwmGetColorizationColor (ui_styles.cpp)
 )
 
 target_compile_definitions(aurashell_config_app PRIVATE

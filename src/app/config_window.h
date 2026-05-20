@@ -1,18 +1,29 @@
 #pragma once
 
 #include <Windows.h>
+#include <array>
+#include <d2d1.h>
+#include <wrl.h>
 
 #include "app_client.h"
 #include "settings_manager.h"
+#include "navigation_manager.h"
+#include "page_dashboard.h"
+#include "page_visuals.h"    // Phase 10.6
+#include "page_behavior.h"   // Phase 10.7
+#include "page_about.h"          // Phase 10.8
+#include "page_desktop_items.h"  // Phase 10.9
 
 namespace aura::app {
 
 // ============================================================================
 // ConfigWindow — Win32 window with Windows 11 Mica backdrop.
 //
-// Layout: 460 × 380 client area, non-resizable.
-// Mica applied via DwmSetWindowAttribute(DWMWA_SYSTEMBACKDROP_TYPE).
-// Controls: native Win32 EDIT, BUTTON, static, BS_AUTOCHECKBOX, trackbar.
+// Phase 10.4 layout: 1280 × 800 client area ("Experience" window).
+//   • 220px sidebar  (NavigationManager, x=0)
+//   • 1060px content (page panels, x=220)
+//
+// Phase 10.8: owns one shared ID2D1Factory passed to all page modules.
 // ============================================================================
 
 class ConfigWindow {
@@ -33,14 +44,6 @@ private:
     static LRESULT CALLBACK windowProc(HWND, UINT, WPARAM, LPARAM);
     LRESULT handleMessage(HWND, UINT, WPARAM, LPARAM);
 
-    void onApply();
-    void onSave();
-    void onRestoreDefaults();
-    void updateStatusBar();
-
-    [[nodiscard]] ThemeConfig collectFromControls() const;
-    void populateControls(ThemeConfig const& theme);
-
     static bool s_classRegistered;
 
     // ---- Window ----
@@ -50,42 +53,31 @@ private:
     AppClient&       m_client;
     SettingsManager& m_settings;
 
-    // ---- Child controls ----
-    HWND m_themeEdit{nullptr};
-    HWND m_speedSlider{nullptr};
-    HWND m_speedLabel{nullptr};
-    HWND m_hoverCheck{nullptr};
-    HWND m_launchCheck{nullptr};
-    HWND m_glowCheck{nullptr};
-    HWND m_swatchStatic{nullptr};
-    HWND m_statusStatic{nullptr};
-    HWND m_btnApply{nullptr};
-    HWND m_btnSave{nullptr};
-    HWND m_btnDefaults{nullptr};
+    // ---- Shared D2D factory (Phase 10.8) ----
+    // Owned here; raw non-owning pointer passed to each page's create().
+    // Pages must not Release() or AddRef() this pointer.
+    Microsoft::WRL::ComPtr<ID2D1Factory> m_d2dFactory;
 
-    // ---- Layout constants ----
-    static constexpr int MARGIN      = 20;
-    static constexpr int CLIENT_W    = 460;
-    static constexpr int CLIENT_H    = 380;
-    static constexpr int CTRL_H      = 22;
-    static constexpr int LABEL_W     = 120;
-    static constexpr int EDIT_W      = 200;
-    static constexpr int SWATCH_W    = 40;
-    static constexpr int BTN_W       = 110;
-    static constexpr int BTN_H       = 28;
+    // ---- Navigation rail ----
+    NavigationManager m_nav;
 
-    // ---- Control IDs ----
-    static constexpr int ID_THEME_EDIT    = 1001;
-    static constexpr int ID_SPEED_SLIDER  = 1002;
-    static constexpr int ID_HOVER_CHECK   = 1003;
-    static constexpr int ID_LAUNCH_CHECK  = 1004;
-    static constexpr int ID_GLOW_CHECK    = 1005;
-    static constexpr int ID_SWATCH        = 1006;
-    static constexpr int ID_STATUS        = 1007;
-    static constexpr int ID_BTN_APPLY     = 1008;
-    static constexpr int ID_BTN_SAVE      = 1009;
-    static constexpr int ID_BTN_DEFAULTS  = 1010;
-    static constexpr int ID_SPEED_LABEL   = 1011;
+    // ---- Page implementations ----
+    DashboardPage    m_dashboardPage;    // Phase 10.3
+    VisualsPage      m_visualsPage;     // Phase 10.6
+    BehaviorPage     m_behaviorPage;    // Phase 10.7
+    AboutPage        m_aboutPage;       // Phase 10.8
+    DesktopItemsPage m_desktopItemsPage; // Phase 10.9
+
+    // ---- Page panel root HWNDs ----
+    static constexpr int PAGE_COUNT = NavigationManager::ITEM_COUNT;
+    std::array<HWND, PAGE_COUNT> m_pages{};
+
+    // ---- Layout constants (Redesign: 1280×800, wider sidebar for Lively style) ----
+    static constexpr int SIDEBAR_W = 240;   // was 220 — matches metrics::SIDEBAR_WIDTH
+    static constexpr int CLIENT_W  = 1280;
+    static constexpr int CLIENT_H  = 800;
+    static constexpr int CONTENT_X = SIDEBAR_W;
+    static constexpr int CONTENT_W = CLIENT_W - SIDEBAR_W;  // 1040
 };
 
 }  // namespace aura::app

@@ -3,28 +3,18 @@
 #include <Windows.h>
 #include <commctrl.h>
 #include <dwmapi.h>
+#include <d2d1.h>
 #include <string>
 
 #include "logging/logger.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "d2d1.lib")
 
-// Guard for DWMWA_SYSTEMBACKDROP_TYPE — present in SDK 22621 but added here
-// defensively in case an older SDK header is picked up by the toolchain.
-#ifndef DWMWA_SYSTEMBACKDROP_TYPE
-#define DWMWA_SYSTEMBACKDROP_TYPE 38
-typedef enum {
-    DWMSBT_AUTO            = 0,
-    DWMSBT_NONE            = 1,
-    DWMSBT_MAINWINDOW      = 2,   // Mica
-    DWMSBT_TRANSIENTWINDOW = 3,   // Acrylic
-    DWMSBT_TABBEDWINDOW    = 4,   // Mica Alt
-} DWM_SYSTEMBACKDROP_TYPE;
-#endif
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
+// SDK 26100 (Windows 11 24H2) defines DWMWA_SYSTEMBACKDROP_TYPE,
+// DWM_SYSTEMBACKDROP_TYPE, and DWMWA_USE_IMMERSIVE_DARK_MODE natively in
+// dwmapi.h.  No manual definitions are needed for this SDK version.
 
 namespace aura::app {
 
@@ -41,7 +31,11 @@ static constexpr wchar_t const* CLASS_NAME = L"AuraConfigWindow";
 // ============================================================================
 
 ConfigWindow::ConfigWindow(AppClient& client, SettingsManager& settings)
-    : m_client(client), m_settings(settings) {}
+    : m_client(client)
+    , m_settings(settings)
+    , m_dashboardPage(client)
+    , m_visualsPage(client, settings)
+    , m_behaviorPage(client, settings) {}
 
 ConfigWindow::~ConfigWindow() {
     if (m_hwnd && IsWindow(m_hwnd)) {
@@ -161,15 +155,21 @@ LRESULT ConfigWindow::handleMessage(
 
     // ---- Creation -----------------------------------------------------------
     case WM_CREATE: {
-        // Apply Mica backdrop (Windows 11 22H2+).
+        // ---- Shared D2D factory (Phase 10.8) — created once, passed to all pages ----
+        if (FAILED(D2D1CreateFactory(
+                D2D1_FACTORY_TYPE_SINGLE_THREADED,
+                m_d2dFactory.ReleaseAndGetAddressOf()))) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "D2D factory creation failed — D2D rendering disabled"
+            );
+        }
+
+        // ---- Mica backdrop (Windows 11 22H2+) ----
         DWM_SYSTEMBACKDROP_TYPE const micaType = DWMSBT_MAINWINDOW;
         DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE,
                               &micaType, sizeof(micaType));
 
-        // Phase 8: Opt into per-monitor DPI awareness at the window level so
-        // WM_DPICHANGED is delivered when the window crosses monitor boundaries.
-        // This is a no-op if the process manifest already declares
-        // PerMonitorV2, but harmless to call either way.
+        // Phase 8: per-monitor DPI awareness for WM_DPICHANGED delivery.
         SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
         // Respect system dark-mode preference.
@@ -189,108 +189,151 @@ LRESULT ConfigWindow::handleMessage(
             GetWindowLongPtrW(hwnd, GWLP_HINSTANCE)
         );
 
-        // ---- Row helpers (y positions) -----
-        int y = 40;
-        auto const nextRow = [&](int gap = 36) { y += gap; };
+        // ---- Register page panel window class (first call only) ----
+        static bool s_panelClassRegistered = false;
+        if (!s_panelClassRegistered) {
+            WNDCLASSEXW wcp     = {};
+            wcp.cbSize          = sizeof(WNDCLASSEXW);
+            wcp.style           = CS_HREDRAW | CS_VREDRAW;
+            wcp.lpfnWndProc     = DefWindowProcW;
+            wcp.hInstance       = hInst;
+            wcp.hbrBackground   = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+            wcp.lpszClassName   = L"AuraPagePanel";
+            RegisterClassExW(&wcp);
+            s_panelClassRegistered = true;
+        }
 
-        // Row 1: Theme name
-        CreateWindowExW(0, L"STATIC", L"Theme name:",
-            WS_CHILD | WS_VISIBLE | SS_RIGHT,
-            MARGIN, y + 2, LABEL_W, CTRL_H, hwnd,
-            nullptr, hInst, nullptr);
-        m_themeEdit = CreateWindowExW(
-            WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            MARGIN + LABEL_W + 8, y, EDIT_W, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_THEME_EDIT)),
-            hInst, nullptr);
-        nextRow();
+        // ---- Create the page panels (hidden; NavigationManager shows them) ----
+        // All panels sit at x=SIDEBAR_W, same size as the content area.
+        static constexpr wchar_t const* PAGE_LABELS[PAGE_COUNT] = {
+            L"Dashboard", L"Visuals", L"Behavior", L"About", L"Desktop Items"
+        };
+        for (int i = 0; i < PAGE_COUNT; ++i) {
+            m_pages[i] = CreateWindowExW(
+                0, L"AuraPagePanel", PAGE_LABELS[i],
+                WS_CHILD | WS_CLIPSIBLINGS,  // hidden initially
+                SIDEBAR_W, 0, CONTENT_W, CLIENT_H,
+                hwnd, nullptr, hInst, nullptr
+            );
+        }
 
-        // Row 2: Accent color swatch
-        CreateWindowExW(0, L"STATIC", L"Accent color:",
-            WS_CHILD | WS_VISIBLE | SS_RIGHT,
-            MARGIN, y + 2, LABEL_W, CTRL_H, hwnd,
-            nullptr, hInst, nullptr);
-        m_swatchStatic = CreateWindowExW(
-            WS_EX_CLIENTEDGE, L"STATIC", L"",
-            WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
-            MARGIN + LABEL_W + 8, y, SWATCH_W, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_SWATCH)),
-            hInst, nullptr);
-        nextRow();
+        // ---- Create the navigation sidebar ----
+        if (!m_nav.create(hwnd, hInst)) {
+            aura::logging::Logger::getInstance().error(
+                "config_window", "NavigationManager::create failed"
+            );
+            return -1;
+        }
 
-        // Row 3: Animation speed trackbar
-        CreateWindowExW(0, L"STATIC", L"Anim speed:",
-            WS_CHILD | WS_VISIBLE | SS_RIGHT,
-            MARGIN, y + 4, LABEL_W, CTRL_H, hwnd,
-            nullptr, hInst, nullptr);
-        m_speedSlider = CreateWindowExW(
-            0, TRACKBAR_CLASSW, L"",
-            WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS | TBS_HORZ | TBS_NOTICKS,
-            MARGIN + LABEL_W + 8, y, 160, CTRL_H + 4, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_SPEED_SLIDER)),
-            hInst, nullptr);
-        SendMessageW(m_speedSlider, TBM_SETRANGE, TRUE, MAKELPARAM(0, 200));
-        SendMessageW(m_speedSlider, TBM_SETTICFREQ, 50, 0);
+        // Register page content HWNDs with the NavigationManager.
+        m_nav.registerPageContent(Page::Dashboard,    m_pages[0]);
+        m_nav.registerPageContent(Page::Visuals,      m_pages[1]);
+        m_nav.registerPageContent(Page::Behavior,     m_pages[2]);
+        m_nav.registerPageContent(Page::About,        m_pages[3]);
+        m_nav.registerPageContent(Page::DesktopItems, m_pages[4]);
 
-        m_speedLabel = CreateWindowExW(0, L"STATIC", L"100%",
-            WS_CHILD | WS_VISIBLE | SS_LEFT,
-            MARGIN + LABEL_W + 8 + 168, y + 4, 50, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_SPEED_LABEL)),
-            hInst, nullptr);
-        nextRow(44);
+        // Shared factory pointer (may be null if D2D init failed — pages handle gracefully).
+        ID2D1Factory* const factory = m_d2dFactory.Get();
 
-        // Row 4-6: Checkboxes
-        m_hoverCheck = CreateWindowExW(0, L"BUTTON", L"Show overlay on hover",
-            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-            MARGIN + LABEL_W + 8, y, 220, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_HOVER_CHECK)),
-            hInst, nullptr);
-        nextRow(30);
+        // ---- Dashboard page (Phase 10.3 / 10.8) ----
+        if (!m_dashboardPage.create(m_pages[0], hInst, factory)) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "DashboardPage::create failed"
+            );
+        }
 
-        m_launchCheck = CreateWindowExW(0, L"BUTTON", L"Show overlay on launch",
-            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-            MARGIN + LABEL_W + 8, y, 220, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_LAUNCH_CHECK)),
-            hInst, nullptr);
-        nextRow(30);
+        // ---- Visuals page (Phase 10.6 / 10.8) ----
+        if (!m_visualsPage.create(m_pages[1], hInst, factory)) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "VisualsPage::create failed"
+            );
+        }
 
-        m_glowCheck = CreateWindowExW(0, L"BUTTON", L"Enable glow effect",
-            WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-            MARGIN + LABEL_W + 8, y, 220, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_GLOW_CHECK)),
-            hInst, nullptr);
-        nextRow(40);
+        // ---- Behavior page (Phase 10.7 / 10.8) ----
+        if (!m_behaviorPage.create(m_pages[2], hInst, factory)) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "BehaviorPage::create failed"
+            );
+        }
 
-        // Row 7: Status bar
-        m_statusStatic = CreateWindowExW(
-            WS_EX_CLIENTEDGE, L"STATIC", L"● Service: not connected",
-            WS_CHILD | WS_VISIBLE | SS_LEFT,
-            MARGIN, y, CLIENT_W - MARGIN * 2, CTRL_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_STATUS)),
-            hInst, nullptr);
-        nextRow(46);
+        // ---- About page (Phase 10.8) ----
+        if (!m_aboutPage.create(m_pages[3], hInst, factory)) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "AboutPage::create failed"
+            );
+        }
 
-        // Row 8: Buttons
-        m_btnApply = CreateWindowExW(0, L"BUTTON", L"Apply",
-            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
-            MARGIN, y, BTN_W, BTN_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_BTN_APPLY)),
-            hInst, nullptr);
-        m_btnSave = CreateWindowExW(0, L"BUTTON", L"Save",
-            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-            MARGIN + BTN_W + 10, y, BTN_W, BTN_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_BTN_SAVE)),
-            hInst, nullptr);
-        m_btnDefaults = CreateWindowExW(0, L"BUTTON", L"Restore Defaults",
-            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-            MARGIN + (BTN_W + 10) * 2, y, BTN_W + 20, BTN_H, hwnd,
-            reinterpret_cast<HMENU>(static_cast<INT_PTR>(ID_BTN_DEFAULTS)),
-            hInst, nullptr);
+        // ---- Desktop Items page (Phase 10.9) ----
+        if (!m_desktopItemsPage.create(m_pages[4], hInst, factory)) {
+            aura::logging::Logger::getInstance().warn(
+                "config_window", "DesktopItemsPage::create failed"
+            );
+        }
 
-        // Populate controls from saved settings.
-        populateControls(m_settings.getConfig().activeTheme);
-        updateStatusBar();
+        // Wire color-changed callback: Visuals color pick → Dashboard preview refresh.
+        m_visualsPage.setOnColorChangedCallback([this]() {
+            m_dashboardPage.onVisible();
+        });
+
+        // Page-changed callback: notify page implementations on navigation.
+        m_nav.setPageChangedCallback([this](Page const newPage) {
+            if (newPage == Page::Dashboard) {
+                m_dashboardPage.onVisible();
+                m_visualsPage.onHidden();
+                m_behaviorPage.onHidden();
+                m_aboutPage.onHidden();
+                m_desktopItemsPage.onHidden();
+            } else if (newPage == Page::Visuals) {
+                m_dashboardPage.onHidden();
+                m_visualsPage.onVisible();
+                m_behaviorPage.onHidden();
+                m_aboutPage.onHidden();
+                m_desktopItemsPage.onHidden();
+            } else if (newPage == Page::Behavior) {
+                m_dashboardPage.onHidden();
+                m_visualsPage.onHidden();
+                m_behaviorPage.onVisible();
+                m_aboutPage.onHidden();
+                m_desktopItemsPage.onHidden();
+            } else if (newPage == Page::About) {
+                m_dashboardPage.onHidden();
+                m_visualsPage.onHidden();
+                m_behaviorPage.onHidden();
+                m_aboutPage.onVisible();
+                m_desktopItemsPage.onHidden();
+            } else if (newPage == Page::DesktopItems) {
+                m_dashboardPage.onHidden();
+                m_visualsPage.onHidden();
+                m_behaviorPage.onHidden();
+                m_aboutPage.onHidden();
+                m_desktopItemsPage.onVisible();
+            } else {
+                m_dashboardPage.onHidden();
+                m_visualsPage.onHidden();
+                m_behaviorPage.onHidden();
+                m_aboutPage.onHidden();
+                m_desktopItemsPage.onHidden();
+            }
+        });
+
+        // ---- Navigate to Dashboard on launch ----
+        m_nav.navigateTo(Page::Dashboard);
+        m_dashboardPage.onVisible();
+        return 0;
+    }
+
+    // ---- Forward resize to NavigationManager --------------------------------
+    case WM_SIZE: {
+        int32_t const newH = HIWORD(lParam);
+        m_nav.onParentResize(newH);
+        // Resize all page panels to match.
+        for (int i = 0; i < PAGE_COUNT; ++i) {
+            if (m_pages[i]) {
+                SetWindowPos(m_pages[i], nullptr,
+                             SIDEBAR_W, 0, CONTENT_W, newH,
+                             SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
         return 0;
     }
 
@@ -310,63 +353,17 @@ LRESULT ConfigWindow::handleMessage(
         return 0;
     }
 
-    // ---- Accent color swatch (owner-draw static) ----------------------------
-    case WM_DRAWITEM: {
-        auto const* dis = reinterpret_cast<DRAWITEMSTRUCT const*>(lParam);
-        if (dis->CtlID == ID_SWATCH) {
-            AuraColor const& ac = m_settings.getConfig().activeTheme.accentColor;
-            HBRUSH const hBrush =
-                CreateSolidBrush(RGB(ac.r, ac.g, ac.b));
-            FillRect(dis->hDC, &dis->rcItem, hBrush);
-            DeleteObject(hBrush);
-        }
-        return TRUE;
-    }
-
-    // ---- Trackbar -----------------------------------------------------------
-    case WM_HSCROLL: {
-        if (reinterpret_cast<HWND>(lParam) == m_speedSlider) {
-            LRESULT const pos =
-                SendMessageW(m_speedSlider, TBM_GETPOS, 0, 0);
-            std::wstring const label = std::to_wstring(pos) + L"%";
-            SetWindowTextW(m_speedLabel, label.c_str());
-        }
-        return 0;
-    }
-
-    // ---- Button commands ----------------------------------------------------
-    case WM_COMMAND: {
-        int const ctrlId = LOWORD(wParam);
-        if (ctrlId == ID_BTN_APPLY)    { onApply(); return 0; }
-        if (ctrlId == ID_BTN_SAVE)     { onSave();  return 0; }
-        if (ctrlId == ID_BTN_DEFAULTS) { onRestoreDefaults(); return 0; }
-        return DefWindowProcW(hwnd, msg, wParam, lParam);
-    }
-
     // ---- Phase 8: DPI mixed-mode stress -----------------------------------
-    // Fired when the window moves to (or is created on) a monitor with a
-    // different DPI scale factor.  We must reposition using the suggested
-    // RECT from lParam; failing to do so causes Mica and D2D swatches to
-    // clip or stretch when crossing 100% ↔ 200% monitor boundaries.
     case WM_DPICHANGED: {
-        UINT const newDpi = HIWORD(wParam);  // horizontal and vertical are always equal
+        UINT const newDpi = HIWORD(wParam);
         RECT const* const pRect = reinterpret_cast<RECT const*>(lParam);
 
-        // Resize and reposition to the OS-suggested geometry — this prevents clipping.
         SetWindowPos(hwnd, nullptr,
-            pRect->left,
-            pRect->top,
-            pRect->right  - pRect->left,
-            pRect->bottom - pRect->top,
+            pRect->left, pRect->top,
+            pRect->right - pRect->left, pRect->bottom - pRect->top,
             SWP_NOZORDER | SWP_NOACTIVATE);
 
-        // Force the D2D swatch to repaint at the new DPI.
-        if (m_swatchStatic) {
-            InvalidateRect(m_swatchStatic, nullptr, TRUE);
-        }
-
-        // Re-apply Mica — DWM resets backdrop type on some driver versions
-        // when the window crosses DPI boundaries.
+        // Re-apply Mica on DPI boundary cross (guards against DWM driver reset).
         DWM_SYSTEMBACKDROP_TYPE const micaType = DWMSBT_MAINWINDOW;
         DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE,
                               &micaType, sizeof(micaType));
@@ -389,100 +386,6 @@ LRESULT ConfigWindow::handleMessage(
     }
 }
 
-// ============================================================================
-// Button handlers
-// ============================================================================
-
-void ConfigWindow::onApply() {
-    ThemeConfig const theme = collectFromControls();
-    m_settings.setTheme(theme);
-
-    if (m_client.isConnected()) {
-        bool const ok = m_client.pushTheme(theme);
-        SetWindowTextW(m_statusStatic,
-            ok ? L"● Service: theme applied" : L"● Service: push failed");
-    } else {
-        SetWindowTextW(m_statusStatic, L"● Service: not connected (saved locally)");
-    }
-}
-
-void ConfigWindow::onSave() {
-    ThemeConfig const theme = collectFromControls();
-    m_settings.setTheme(theme);
-
-    bool const ok = m_settings.save();
-    SetWindowTextW(m_statusStatic,
-        ok ? L"● Config saved to disk" : L"● Save failed — check permissions");
-}
-
-void ConfigWindow::onRestoreDefaults() {
-    ThemeConfig const defaults;
-    populateControls(defaults);
-    m_settings.setTheme(defaults);
-    SetWindowTextW(m_statusStatic, L"● Defaults restored (not yet saved)");
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-void ConfigWindow::updateStatusBar() {
-    if (!m_statusStatic) return;
-    SetWindowTextW(m_statusStatic,
-        m_client.isConnected()
-            ? L"● Service: connected"
-            : L"● Service: not connected");
-}
-
-ThemeConfig ConfigWindow::collectFromControls() const {
-    ThemeConfig theme;
-
-    // Theme name
-    wchar_t buf[256] = {};
-    GetWindowTextW(m_themeEdit, buf, 255);
-    theme.themeName = buf[0] != L'\0' ? buf : L"default";
-
-    // Animation speed
-    theme.animSpeedPct = static_cast<uint32_t>(
-        SendMessageW(m_speedSlider, TBM_GETPOS, 0, 0)
-    );
-
-    // Checkboxes
-    theme.showOnHover  = SendMessageW(m_hoverCheck,  BM_GETCHECK, 0, 0) == BST_CHECKED;
-    theme.showOnLaunch = SendMessageW(m_launchCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    theme.glowEnabled  = SendMessageW(m_glowCheck,   BM_GETCHECK, 0, 0) == BST_CHECKED;
-
-    // Keep the accent color from the current config (no colour picker in Phase 5).
-    theme.accentColor  = m_settings.getConfig().activeTheme.accentColor;
-
-    return theme;
-}
-
-void ConfigWindow::populateControls(ThemeConfig const& theme) {
-    if (m_themeEdit) {
-        SetWindowTextW(m_themeEdit, theme.themeName.c_str());
-    }
-    if (m_speedSlider) {
-        SendMessageW(m_speedSlider, TBM_SETPOS, TRUE,
-                     static_cast<LPARAM>(theme.animSpeedPct));
-        std::wstring const label = std::to_wstring(theme.animSpeedPct) + L"%";
-        SetWindowTextW(m_speedLabel, label.c_str());
-    }
-    if (m_hoverCheck) {
-        SendMessageW(m_hoverCheck,  BM_SETCHECK,
-                     theme.showOnHover  ? BST_CHECKED : BST_UNCHECKED, 0);
-    }
-    if (m_launchCheck) {
-        SendMessageW(m_launchCheck, BM_SETCHECK,
-                     theme.showOnLaunch ? BST_CHECKED : BST_UNCHECKED, 0);
-    }
-    if (m_glowCheck) {
-        SendMessageW(m_glowCheck,   BM_SETCHECK,
-                     theme.glowEnabled  ? BST_CHECKED : BST_UNCHECKED, 0);
-    }
-    if (m_swatchStatic) {
-        InvalidateRect(m_swatchStatic, nullptr, TRUE);
-    }
-}
+// Legacy button/control handlers removed — Phase 10.6 replaced them with VisualsPage.
 
 }  // namespace aura::app

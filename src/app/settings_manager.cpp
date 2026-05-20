@@ -85,9 +85,12 @@ bool SettingsManager::loadFrom(std::wstring const& path) {
         json j = json::parse(file);
 
         AppConfig cfg;
-        cfg.version            = j.value("version", 1);
-        cfg.autoStartService   = j.value("autoStartService", true);
-        cfg.lastServiceVersion = j.value("lastServiceVersion", std::string{});
+        cfg.version              = j.value("version", 1);
+        cfg.autoStartService     = j.value("autoStartService",   true);
+        cfg.lastServiceVersion   = j.value("lastServiceVersion", std::string{});
+        cfg.autoStartApp         = j.value("autoStartApp",       false);
+        cfg.monitorAutoHide      = j.value("monitorAutoHide",    true);
+        cfg.enableMultiMonitor   = j.value("enableMultiMonitor", true);
 
         if (j.contains("activeTheme")) {
             json const& t = j.at("activeTheme");
@@ -157,6 +160,9 @@ bool SettingsManager::saveTo(std::wstring const& path) const {
     j["version"]             = m_config.version;
     j["autoStartService"]    = m_config.autoStartService;
     j["lastServiceVersion"]  = m_config.lastServiceVersion;
+    j["autoStartApp"]        = m_config.autoStartApp;
+    j["monitorAutoHide"]     = m_config.monitorAutoHide;
+    j["enableMultiMonitor"]  = m_config.enableMultiMonitor;
     j["activeTheme"]         = t;
 
     std::ofstream file(path);
