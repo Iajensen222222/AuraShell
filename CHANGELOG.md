@@ -8,9 +8,31 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+**Sprint 6 additions**
+- `ShellIntegration` — message-only HWND handling WM\_TASKBARCREATED (overlay re-anchoring on
+  taskbar restart), system tray icon with context menu, WM\_POWERBROADCAST (battery-aware FPS)
+- `PerformanceLogger::recordFrame()` wired into `AnimationController::animationLoop()` so
+  `getAverageFps()` returns real compositor-synchronised data instead of 0
+- `PERF_STATS = 0x0090` IPC message type + `PerfStatsPayload {cpuPercent, memoryMB, avgFps}`
+- Reference samples: `01_basic_window` (Mica + dark mode), `02_dpi_aware_overlay` (D2D cursor
+  circle over layered window), `03_ipc_client` (console HANDSHAKE → QUERY\_STATE → ACK)
+
+**Sprint 7 additions**
+- `HotkeyManager` — `RegisterHotKey` global shortcuts: Win+Shift+A (overlays), Win+Shift+V
+  (visualizer), Win+Shift+T (theme cycle); failure-tolerant, wired into `ShellIntegration`
+- `IconReplacer` — per-exe custom icon catalog persisted to `icon_overrides.json` via
+  `nlohmann/json`; `setIconOverride`, `clearIconOverride`, `applyAll` (in-memory, no explorer.exe)
+- `DLL injection sample` (`samples/04_taskbar_dummy_inject`) — notepad.exe dummy target proof
+- `AuraShellService.exe` self-registration CLI: `--install`, `--start`, `--stop`, `--uninstall`,
+  `--console` (run IPC server without SCM for development)
+- InnoSetup 6 installer with VC++ 2022 redist check and service SCM wiring
+
+**Pending for next release**
 - Code signing via Microsoft Trusted Signing (pending Azure Identity Validation)
 - Winget and Microsoft Store distribution
 - Custom domain for the landing page
+- `ShellIntegration` wired into `main_app.cpp` (tray icon visible at runtime)
+- `ServiceCore::pushPerformanceStats()` sending live CPU/MEM/FPS to DashboardPage
 
 ---
 

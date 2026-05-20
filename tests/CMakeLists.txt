@@ -36,6 +36,7 @@ add_executable(test_runner
     unit/test_virtual_desktop.cpp     # Sprint 4: VirtualDesktopDetector smoke tests
     unit/test_performance_logger.cpp  # Sprint 5: idle CPU, memory, FPS tracking
     unit/test_icon_replacer.cpp       # Sprint 7: icon override catalog, JSON persistence
+    unit/test_hotkey_manager.cpp      # Sprint 7: global hotkey lifecycle and dispatch
 )
 
 # Link against Catch2 and core library modules
@@ -46,6 +47,7 @@ target_link_libraries(test_runner PRIVATE
     aurashell_audio
     aurashell_ipc
     aurashell_taskbar_engine
+    aurashell_system_integration
     aurashell_service
     aurashell_config_app
 )
@@ -58,6 +60,7 @@ target_include_directories(test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
+    "${CMAKE_SOURCE_DIR}/src/system_integration"
     "${CMAKE_SOURCE_DIR}/src/app"
 )
 

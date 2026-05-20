@@ -23,9 +23,24 @@ aurashell_service  (Windows service / background process)
        │       └─ message_types.h  — 2064-byte fixed-width IPC frames
        │
        ├── aurashell_taskbar_engine
-       │       ├─ TaskbarController  — hover detection, icon overlay dispatch
-       │       ├─ HoverDetector      — per-icon hit-test and scale animation
-       │       └─ IconOverlay        — DirectX 11 overlay composition
+       │       ├─ TaskbarController   — hover detection, icon overlay dispatch
+       │       ├─ HoverDetector       — per-icon hit-test and scale animation
+       │       ├─ IconOverlayManager  — layered D2D overlay windows per icon
+       │       ├─ AcrylicBackdrop     — DWM DWMSBT_TRANSIENTWINDOW companion window
+       │       └─ IconReplacer        — per-exe custom icon catalog (JSON-persisted)
+       │
+       ├── aurashell_visual_enhancements
+       │       └─ AudioVisualizerOverlay — 128-bar D2D frequency display above taskbar
+       │
+       ├── aurashell_context_tools
+       │       ├─ WorkspaceManager    — per-virtual-desktop ThemeConfig map
+       │       └─ ThemeApplier        — HKCU registry accent/dark-mode/transparency
+       │
+       ├── aurashell_system_integration
+       │       ├─ ShellIntegration    — tray icon, WM_TASKBARCREATED, WM_POWERBROADCAST
+       │       └─ HotkeyManager       — Win+Shift+A/V/T global RegisterHotKey bindings
+       │
+       ├── aurashell_config           — ConfigChangeObserver (ReadDirectoryChangesW)
        │
        └── aurashell_config_app
                ├─ ConfigWindow       — main Win32 config host window
