@@ -40,6 +40,9 @@ enum class MessageType : uint32_t {
 
     // Sprint 4: real-time audio band data (Service → App, ~10fps)
     AUDIO_BANDS        = 0x0080,
+
+    // Sprint 6: process performance snapshot (Service → App, ~0.5fps)
+    PERF_STATS         = 0x0090,
 };
 
 // ============================================================================
@@ -118,6 +121,15 @@ struct StatusPayload {
     bool     isElevated;
     uint8_t  _pad[3];
 };
+
+// PERF_STATS — process performance snapshot (pushed every ~2 seconds)
+struct PerfStatsPayload {
+    float   cpuPercent;  // process idle CPU usage 0.0 – 100.0
+    float   memoryMB;    // working-set memory in MB
+    float   avgFps;      // rolling animation FPS (0 when no animations active)
+    uint8_t _pad[4];
+};
+static_assert(sizeof(PerfStatsPayload) <= 2048, "PerfStatsPayload too large");
 
 // PUSH_CONFIG — raw JSON, stored inline in the variable-length payload
 // Callers set payloadSize = strlen(json) and copy into payload[].

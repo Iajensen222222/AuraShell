@@ -1,2 +1,33 @@
-# Placeholder CMakeLists.txt for system_integration
-message(STATUS "system_integration configured (placeholder)")
+add_library(aurashell_system_integration STATIC
+    shell_integration.cpp
+    shell_integration.h
+)
+
+target_include_directories(aurashell_system_integration PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+target_include_directories(aurashell_system_integration PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/core/include"
+    "${CMAKE_SOURCE_DIR}/src/core/logging"
+    "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
+    "${CMAKE_SOURCE_DIR}/src/visual_enhancements"
+)
+
+target_link_libraries(aurashell_system_integration PRIVATE
+    aurashell_taskbar_engine
+    aurashell_visual_enhancements
+    aurashell_logging
+    Shell32
+)
+
+target_compile_features(aurashell_system_integration PUBLIC cxx_std_20)
+
+if(MSVC)
+    target_compile_options(aurashell_system_integration PRIVATE /W4 /permissive-)
+    target_compile_definitions(aurashell_system_integration PRIVATE
+        NOMINMAX UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS
+    )
+endif()
+
+message(STATUS "system_integration configured")

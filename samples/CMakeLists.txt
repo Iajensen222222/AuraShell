@@ -1,0 +1,4 @@
+add_subdirectory(01_basic_window)
+add_subdirectory(02_dpi_aware_overlay)
+add_subdirectory(03_ipc_client)
+add_subdirectory(04_taskbar_dummy_inject)
