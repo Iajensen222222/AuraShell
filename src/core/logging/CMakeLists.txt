@@ -28,6 +28,7 @@ set_target_properties(aurashell_logging PROPERTIES
 # MSVC-specific compiler options
 if(MSVC)
     target_compile_options(aurashell_logging PRIVATE /W4 /WX /permissive-)
+    target_compile_definitions(aurashell_logging PRIVATE NOMINMAX UNICODE _UNICODE)
 endif()
 
 message(STATUS "Logging module configured")
