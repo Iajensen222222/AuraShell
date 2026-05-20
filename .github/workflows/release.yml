@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # needed to create GitHub Releases
+
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── vcpkg ───────────────────────────────────────────────────────────────
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg-ci"
+          & "$env:GITHUB_WORKSPACE\vcpkg-ci\bootstrap-vcpkg.bat" -disableMetrics
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg-ci" >> $env:GITHUB_ENV
+
+      # ── CMake configure ──────────────────────────────────────────────────────
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -B build -S . `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_MANIFEST_DIR="$env:GITHUB_WORKSPACE" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_TESTS=ON `
+            -DBUILD_SERVICE=ON
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      # ── Test ─────────────────────────────────────────────────────────────────
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 120
+
+      # ── Inno Setup ───────────────────────────────────────────────────────────
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          winget install --id JRSoftware.InnoSetup `
+            --source winget `
+            --silent `
+            --accept-package-agreements `
+            --accept-source-agreements
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc installer\AuraShell.iss
+          # Rename output to include version tag for clarity
+          $tag   = "${{ github.ref_name }}"
+          $setup = Get-ChildItem installer\Output\*.exe | Select-Object -First 1
+          $dest  = "installer\Output\AuraShell-$tag-Setup.exe"
+          Rename-Item $setup.FullName $dest
+          echo "INSTALLER_PATH=$dest" >> $env:GITHUB_ENV
+
+      # TODO: wire azure/trusted-signing-action@v0.5.1 here after AZURE_SETUP.md Phase 1
+      # - name: Sign installer
+      #   uses: azure/trusted-signing-action@v0.5.1
+      #   with: ...
+
+      # ── GitHub Release ───────────────────────────────────────────────────────
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $tag  = "${{ github.ref_name }}"
+          $file = "$env:INSTALLER_PATH"
+          gh release create $tag $file `
+            --title "AuraShell $tag" `
+            --notes-file CHANGELOG.md `
+            --prerelease
+
+      # ── Upload artifacts for review ──────────────────────────────────────────
+      - name: Upload installer artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ github.ref_name }}
+          path: installer\Output\*.exe
+          retention-days: 30
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ github.ref_name }}
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/Testing/**/*.log
+          retention-days: 7
