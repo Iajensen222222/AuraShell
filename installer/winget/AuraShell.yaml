@@ -1,0 +1,45 @@
+# AuraShell winget manifest — v0.1.0-alpha
+# Submit to: https://github.com/microsoft/winget-pkgs/tree/master/manifests/i/iajen/AuraShell
+
+PackageIdentifier: iajen.AuraShell
+PackageVersion: 0.1.0-alpha
+PackageLocale: en-US
+Publisher: iajen
+PublisherUrl: https://iajensen222222.github.io/AuraShell-Website/
+PublisherSupportUrl: https://github.com/Iajensen222222/AuraShell/issues
+PrivacyUrl: https://iajensen222222.github.io/AuraShell-Website/privacy-policy
+Author: iajen
+PackageName: AuraShell
+PackageUrl: https://github.com/Iajensen222222/AuraShell
+License: MIT
+LicenseUrl: https://github.com/Iajensen222222/AuraShell/blob/main/LICENSE
+ShortDescription: Audio-reactive glow overlays and per-desktop themes for Windows 11
+Description: |-
+  AuraShell transforms your Windows 11 desktop into a living visual experience.
+  Hover over any taskbar icon and watch a real-time audio-reactive glow bloom around it,
+  driven by your system's live 128-band FFT audio spectrum. Assign a unique color theme
+  to each virtual desktop. DWM acrylic backdrop, 60 fps DirectX overlay, under 1% idle CPU.
+  Six-page WinUI 3 configuration app. Open-source, no telemetry, no subscription.
+Moniker: aurashell
+Tags:
+  - windows11
+  - customization
+  - taskbar
+  - overlay
+  - audio-visualizer
+  - theme
+  - fluent-design
+  - winui
+ReleaseNotesUrl: https://github.com/Iajensen222222/AuraShell/blob/main/CHANGELOG.md
+# NOTE: Update InstallerUrl and InstallerSha256 after the GitHub Release is created.
+# Run: (Get-FileHash .\AuraShell-0.1.0-alpha-Setup.exe -Algorithm SHA256).Hash
+Installers:
+  - Architecture: x64
+    InstallerType: inno
+    InstallerUrl: PLACEHOLDER_UPDATE_AFTER_RELEASE
+    InstallerSha256: PLACEHOLDER_UPDATE_AFTER_RELEASE
+    InstallerSwitches:
+      Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+      SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
+ManifestType: singleton
+ManifestVersion: 1.6.0
