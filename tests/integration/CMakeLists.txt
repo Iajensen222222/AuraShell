@@ -7,6 +7,8 @@ include(Catch)
 
 add_executable(integration_test_runner
     test_full_stack.cpp
+    test_theme_apply.cpp
+    test_audio_workspace.cpp
 )
 
 target_link_libraries(integration_test_runner PRIVATE
@@ -14,6 +16,8 @@ target_link_libraries(integration_test_runner PRIVATE
     aurashell_service
     aurashell_ipc
     aurashell_logging
+    aurashell_audio
+    aurashell_context_tools
     aurashell_taskbar_engine
     aurashell_config_app
 )
@@ -23,9 +27,11 @@ target_include_directories(integration_test_runner PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/platform"
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
+    "${CMAKE_SOURCE_DIR}/src/core/audio"
     "${CMAKE_SOURCE_DIR}/src/service"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
     "${CMAKE_SOURCE_DIR}/src/app"
+    "${CMAKE_SOURCE_DIR}/src/context_tools"
 )
 
 catch_discover_tests(integration_test_runner

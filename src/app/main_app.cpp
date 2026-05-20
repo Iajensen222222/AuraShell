@@ -7,6 +7,8 @@
 #include "config_window.h"
 #include "settings_manager.h"
 #include "logging/logger.h"
+#include "audio_engine.h"
+#include "audio_visualizer.h"
 
 int WINAPI wWinMain(
     HINSTANCE hInst,
@@ -32,14 +34,26 @@ int WINAPI wWinMain(
         );
     }
 
+    // Initialize audio engine and visualizer overlay.
+    auto& ae = aura::audio::AudioEngine::getInstance();
+    ae.initialize();
+
+    auto& viz = aura::visual::AudioVisualizerOverlay::getInstance();
+    viz.initialize(hInst, &ae);
+    viz.show();
+
     aura::app::ConfigWindow window(client, settings);
     if (!window.create(hInst)) {
         aura::logging::Logger::getInstance().error("app", "Failed to create config window");
+        viz.shutdown();
+        ae.shutdown();
         return 1;
     }
 
     int const exitCode = window.runMessageLoop();
 
+    viz.shutdown();
+    ae.shutdown();
     client.disconnect();
     aura::logging::Logger::getInstance().info("app", "AuraConfig exiting");
     return exitCode;
