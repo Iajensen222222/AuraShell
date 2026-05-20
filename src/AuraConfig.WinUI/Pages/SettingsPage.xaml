@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="AuraConfig.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:AuraConfig.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="16">
+
+            <!-- Page header -->
+            <StackPanel Margin="0,0,0,4">
+                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Settings" />
+                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                           Text="Application preferences"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Margin="0,2,0,0" />
+            </StackPanel>
+
+            <!-- APPEARANCE section -->
+            <TextBlock Text="APPEARANCE"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Theme" />
+                    <RadioButton x:Name="ThemeDark"
+                                 Content="Dark"
+                                 GroupName="AppTheme"
+                                 IsChecked="True"
+                                 Checked="ThemeRadio_Checked" />
+                    <RadioButton x:Name="ThemeLight"
+                                 Content="Light"
+                                 GroupName="AppTheme"
+                                 Checked="ThemeRadio_Checked" />
+                    <RadioButton x:Name="ThemeSystem"
+                                 Content="Use system setting"
+                                 GroupName="AppTheme"
+                                 Checked="ThemeRadio_Checked" />
+                </StackPanel>
+            </Border>
+
+            <!-- NOTIFICATIONS section -->
+            <TextBlock Text="NOTIFICATIONS"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Notifications" />
+                    <ToggleSwitch x:Name="NotificationsToggle"
+                                  Header="Show toast notifications"
+                                  IsOn="True"
+                                  Toggled="NotificationsToggle_Toggled" />
+                </StackPanel>
+            </Border>
+
+            <!-- RESET section -->
+            <TextBlock Text="RESET"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Restore Defaults" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Reset all AuraShell settings to their factory defaults. This cannot be undone."
+                               TextWrapping="Wrap" />
+                    <Button Content="Reset to defaults"
+                            Click="ResetDefaults_Click" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

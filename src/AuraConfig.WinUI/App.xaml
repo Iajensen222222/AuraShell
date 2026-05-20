@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="AuraConfig.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AuraConfig">
+    <Application.Resources>
+        <!--
+            All custom resources are defined as plain (non-ThemeDictionary) entries.
+
+            WHY: In unpackaged WinUI 3 2.0.1 apps bootstrapped via Bootstrap.Initialize,
+            explicit ms-appx: URIs (used by XamlControlsResources and ThemeDictionaries
+            MergedDictionaries) fail to resolve. Defining custom ThemeDictionaries at
+            Application scope also shadows WinUI's built-in per-control theme keys
+            (TabViewScrollButtonBackground, InfoBar*, ToggleSwitch*, etc.), crashing any
+            page that uses those controls.
+
+            By using plain resources with NO ThemeDictionaries, WinUI controls use their
+            built-in theme exclusively (no shadowing), and our pages still find these
+            brush keys via {ThemeResource}'s fallback from ThemeDictionary → plain resources.
+
+            Dark-mode values are used (the app's primary theme).
+        -->
+        <ResourceDictionary>
+
+            <!-- ── Custom brushes (dark theme values) ─────────────────────────── -->
+            <SolidColorBrush x:Key="TextFillColorSecondaryBrush"           Color="#C5FFFFFF" />
+            <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"   Color="#0DFFFFFF" />
+            <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"           Color="#19000000" />
+            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush"       Color="#60CDFF"   />
+            <SolidColorBrush x:Key="SystemFillColorCautionBrush"           Color="#FCE100"   />
+            <SolidColorBrush x:Key="SystemFillColorSuccessBrush"           Color="#6CCB5F"   />
+            <SolidColorBrush x:Key="SystemFillColorSuccessBackgroundBrush" Color="#393D1B"   />
+
+            <!-- ── Text styles (WinUI type-ramp values) ───────────────────────── -->
+            <Style x:Key="CaptionTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="12" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Small" />
+            </Style>
+            <Style x:Key="BodyTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="14" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Text" />
+            </Style>
+            <Style x:Key="BodyStrongTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="14" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Text" />
+            </Style>
+            <Style x:Key="SubtitleTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="20" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
+            </Style>
+            <Style x:Key="TitleTextBlockStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="28" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
+            </Style>
+
+            <!-- ── Accent button style ────────────────────────────────────────── -->
+            <Style x:Key="AccentButtonStyle" TargetType="Button">
+                <Setter Property="Background"   Value="#60CDFF" />
+                <Setter Property="Foreground"   Value="#000000" />
+                <Setter Property="CornerRadius" Value="4" />
+            </Style>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

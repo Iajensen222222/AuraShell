@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AuraConfig (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AuraConfig (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

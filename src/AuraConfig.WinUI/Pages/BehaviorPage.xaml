@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="AuraConfig.Pages.BehaviorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="16">
+
+            <!-- Page header -->
+            <StackPanel Margin="0,0,0,4">
+                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Behavior" />
+                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                           Text="System integration and startup settings"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Margin="0,2,0,0" />
+            </StackPanel>
+
+            <!-- SERVICE section -->
+            <TextBlock Text="SERVICE"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="AuraShellService" />
+
+                    <!-- Status row -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Ellipse x:Name="SvcStatusDot"
+                                 Width="10" Height="10"
+                                 Fill="{ThemeResource SystemFillColorCautionBrush}"
+                                 VerticalAlignment="Center" />
+                        <TextBlock x:Name="SvcStatusText"
+                                   Text="Unknown"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Start"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                Click="StartService_Click" />
+                        <Button Content="Stop"
+                                Click="StopService_Click" />
+                        <Button Content="Restart"
+                                Click="RestartService_Click" />
+                    </StackPanel>
+
+                    <!-- InfoBar replaced with simple banner — InfoBar crashes in
+                         unpackaged WinUI 3 2.0.1 during compositor template init -->
+                    <Border x:Name="ServiceInfoBar"
+                            CornerRadius="4"
+                            Padding="12,8"
+                            Visibility="Collapsed">
+                        <TextBlock x:Name="ServiceInfoText" TextWrapping="Wrap"
+                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- STARTUP section -->
+            <TextBlock Text="STARTUP"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Windows Startup" />
+                    <ToggleSwitch x:Name="AutoStartToggle"
+                                  Header="Auto-start with Windows"
+                                  IsOn="False"
+                                  Toggled="AutoStartToggle_Toggled" />
+                    <ToggleSwitch x:Name="ElevatedToggle"
+                                  Header="Run elevated (administrator)"
+                                  IsOn="False"
+                                  Toggled="ElevatedToggle_Toggled" />
+                </StackPanel>
+            </Border>
+
+            <!-- SHELL MONITORING section -->
+            <TextBlock Text="SHELL MONITORING"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Taskbar Integration" />
+                    <ToggleSwitch Header="Track taskbar auto-hide" IsOn="True" />
+                    <ToggleSwitch Header="Enable multi-monitor support" IsOn="True" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

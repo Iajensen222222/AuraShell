@@ -1,0 +1,128 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>AuraConfig</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <!-- Unpackaged build — winapp CLI handles sparse package for Developer Mode -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- Let the SDK auto-generate the Bootstrap call — needed for the Windows App
+         Runtime package graph to be set up correctly when winapp registration alone
+         doesn't include all the WinUI XAML namespace resources. -->
+    <WinUISDKReferences>true</WinUISDKReferences>
+    <SelfContained>false</SelfContained>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Suppress the XAML-generated Main so our Program.cs can call Bootstrap first -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+  </PropertyGroup>
+
+  <!--
+    Force PRI regeneration on every build.
+    The real output PRI is AuraConfig.pri ($(ProjectName).pri), not resources.pri.
+    Deleting it before Build causes _GenerateProjectPriFileCore to re-run.
+  -->
+  <Target Name="DeleteStalePri" BeforeTargets="Build">
+    <Delete Files="$(OutDir)$(ProjectName).pri" ContinueOnError="true" />
+    <Delete Files="$(OutDir)AppX\resources.pri" ContinueOnError="true" />
+  </Target>
+
+  <!--
+    After every build, push fresh XBF files, binary, and PRI into the AppX folder.
+    AppX is the registered sparse-package install location, so ms-appx:// resolves there.
+    Copy AuraConfig.pri → AppX\resources.pri (the name Windows expects in a package).
+  -->
+  <Target Name="SyncAppXContents" AfterTargets="Build">
+    <MakeDir Directories="$(OutDir)AppX;$(OutDir)AppX\Pages;$(OutDir)AppX\Assets" />
+
+    <!-- AppxManifest.xml: required for winapp run / sparse package registration.
+         Copy the project-root Package.appxmanifest renamed to AppxManifest.xml
+         (no MSBuild generation needed since EnableMsixTooling=false). -->
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\Package.appxmanifest"
+          DestinationFiles="$(OutDir)AppX\AppxManifest.xml"
+          SkipUnchangedFiles="true"
+          ContinueOnError="true" />
+
+    <!-- Assets (icons, splash screens) -->
+    <ItemGroup>
+      <_Assets Include="$(OutDir)Assets\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_Assets)" DestinationFolder="$(OutDir)AppX\Assets" SkipUnchangedFiles="true" ContinueOnError="true" />
+
+    <!-- XBF files (XAML binaries) -->
+    <ItemGroup>
+      <_XbfRoot  Include="$(OutDir)*.xbf" />
+      <_XbfPages Include="$(OutDir)Pages\*.xbf" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_XbfRoot)"  DestinationFolder="$(OutDir)AppX"       SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_XbfPages)" DestinationFolder="$(OutDir)AppX\Pages" SkipUnchangedFiles="true" />
+
+    <!-- Copy all runtime DLLs so the .NET host finds them when launched from AppX directly. -->
+    <ItemGroup>
+      <_RuntimeDlls Include="$(OutDir)*.dll" />
+      <_RuntimeDlls Include="$(OutDir)$(AssemblyName).exe" />
+      <_RuntimeDlls Include="$(OutDir)$(AssemblyName).pdb" />
+      <_RuntimeDlls Include="$(OutDir)$(AssemblyName).deps.json" />
+      <_RuntimeDlls Include="$(OutDir)$(AssemblyName).runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_RuntimeDlls)"
+          DestinationFolder="$(OutDir)AppX"
+          SkipUnchangedFiles="true"
+          ContinueOnError="true" />
+
+    <!-- PRI: rename AuraConfig.pri → resources.pri in AppX
+         Note: AuraConfig.pri is only generated during PrepareForRun (i.e., dotnet run),
+         not dotnet build, so this Copy is best-effort. -->
+    <Copy SourceFiles="$(OutDir)$(ProjectName).pri"
+          DestinationFiles="$(OutDir)AppX\resources.pri"
+          SkipUnchangedFiles="false"
+          ContinueOnError="true" />
+  </Target>
+</Project>
