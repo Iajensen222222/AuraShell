@@ -25,6 +25,7 @@ target_include_directories(aurashell_config_app PUBLIC
     "${CMAKE_SOURCE_DIR}/src/core/include"
     "${CMAKE_SOURCE_DIR}/src/core/audio"
     "${CMAKE_SOURCE_DIR}/src/visual_enhancements"
+    "${CMAKE_SOURCE_DIR}/src/system_integration"
 )
 
 target_link_libraries(aurashell_config_app PUBLIC
@@ -32,6 +33,7 @@ target_link_libraries(aurashell_config_app PUBLIC
     aurashell_logging
     aurashell_audio
     aurashell_visual_enhancements
+    aurashell_system_integration
     nlohmann_json::nlohmann_json
     dwmapi.lib              # DwmGetColorizationColor (ui_styles.cpp)
 )

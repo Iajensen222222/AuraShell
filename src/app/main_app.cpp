@@ -9,6 +9,7 @@
 #include "logging/logger.h"
 #include "audio_engine.h"
 #include "audio_visualizer.h"
+#include "shell_integration.h"
 
 int WINAPI wWinMain(
     HINSTANCE hInst,
@@ -44,19 +45,28 @@ int WINAPI wWinMain(
     viz.initialize(hInst, &ae);
     viz.show();
 
+    // Initialize shell integration: tray icon, WM_TASKBARCREATED, WM_POWERBROADCAST.
+    auto& shell = aura::system::ShellIntegration::getInstance();
+    shell.initialize(hInst);
+
     aura::app::ConfigWindow window(client, settings);
     if (!window.create(hInst)) {
         aura::logging::Logger::getInstance().error("app", "Failed to create config window");
+        shell.shutdown();
         viz.shutdown();
         ae.shutdown();
         return 1;
     }
 
-    int const exitCode = window.runMessageLoop();
+    // ShellIntegration::runMessageLoop() is the full GetMessage loop — it handles
+    // WM_TASKBARCREATED (re-anchor overlays on taskbar restart), tray icon events,
+    // WM_POWERBROADCAST, and WM_QUIT from the tray "Exit" menu item.
+    shell.runMessageLoop();
 
+    shell.shutdown();
     viz.shutdown();
     ae.shutdown();
     client.disconnect();
     aura::logging::Logger::getInstance().info("app", "AuraConfig exiting");
-    return exitCode;
+    return 0;
 }
