@@ -96,9 +96,14 @@ TEST_CASE("Live IPC: HANDSHAKE_REQUEST → HANDSHAKE_RESPONSE from child service
 
     // Skip if the service binary isn't present (headless CI, build-only run).
     if (GetFileAttributesW(exePath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        WARN("AuraShellService.exe not found at " +
-             std::string(exePath.begin(), exePath.end()) +
-             " — skipping live IPC test");
+        int const _n = WideCharToMultiByte(CP_UTF8, 0,
+            exePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string _path(static_cast<size_t>(_n > 0 ? _n - 1 : 0), '\0');
+        if (_n > 0)
+            WideCharToMultiByte(CP_UTF8, 0, exePath.c_str(), -1,
+                                &_path[0], _n, nullptr, nullptr);
+        WARN("AuraShellService.exe not found at " + _path +
+             " -- skipping live IPC test");
         return;
     }
 

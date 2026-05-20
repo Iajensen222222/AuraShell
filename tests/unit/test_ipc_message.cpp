@@ -50,7 +50,7 @@ struct Message {
     // Payload serialization
     template<typename T>
     void setPayload(const T& data) {
-        if (sizeof(T) > 2048) return;
+        static_assert(sizeof(T) <= 2048, "Payload too large");
         std::memcpy(payload, &data, sizeof(T));
         payloadSize = sizeof(T);
     }
