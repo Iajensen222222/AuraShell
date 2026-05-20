@@ -8,6 +8,8 @@
 #include <Windows.h>
 #include <dwmapi.h>  // DwmFlush — compositor-synchronised sleep
 
+#include "performance_logger.h"
+
 namespace aura::taskbar {
 
 // ============================================================================
@@ -194,6 +196,9 @@ void AnimationController::animationLoop() {
             // sleep to approximate 60 Hz without burning the CPU.
             Sleep(16);
         }
+
+        // Record the frame timestamp so PerformanceLogger can compute FPS.
+        aura::logging::PerformanceLogger::getInstance().recordFrame();
 
         // --- 3. Compute updated alphas, hold lock briefly -------------------
         int32_t pendingCount = 0;

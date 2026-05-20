@@ -31,6 +31,7 @@ target_include_directories(aurashell_taskbar_engine PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/platform"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
+    "${CMAKE_SOURCE_DIR}/src/core/logging"  # performance_logger.h
 )
 
 # C++20 standard
