@@ -106,9 +106,9 @@ end;
 function InitializeUninstall: Boolean;
 begin
   Result := MsgBox(
-    'This will stop and remove the AuraShell service and delete all program files.' +
-    #13#10 + 'Your settings in %LOCALAPPDATA%\AuraShell will also be removed.' +
-    #13#10#13#10 + 'Continue with uninstall?',
+    'This will stop and remove the AuraShell service and delete all program files.' + Chr(13) + Chr(10) +
+    'Your settings in %LOCALAPPDATA%\AuraShell will also be removed.' + Chr(13) + Chr(10) + Chr(13) + Chr(10) +
+    'Continue with uninstall?',
     mbConfirmation, MB_YESNO
   ) = IDYES;
 end;
