@@ -1,142 +1,114 @@
-; AuraShell.iss — Inno Setup 6 installer script
-; Produces: AuraShell-1.0-Setup.exe
-;
-; Requirements:
-;   Inno Setup 6.x  https://jrsoftware.org/isdl.php
-;   Build binaries placed in ..\out\build\x64-Release\bin\
-;
-; Build:
-;   iscc AuraShell.iss
-;   (or open in Inno Setup Compiler IDE and press Ctrl+F9)
+; AuraShell.iss — InnoSetup 6 installer script
+; Targets: AuraConfig.exe (UI) + AuraShellService.exe (background service)
+; Build output assumed at: <repo>\out\build\x64-Release\bin\
 
-#define AppName      "AuraShell"
-#define AppVersion   "1.0.0"
-#define AppPublisher "AuraShell Development Team"
-#define AppURL       "https://github.com/Iajensen222222/AuraShell"
-#define AppExeName   "AuraConfig.exe"
-#define ServiceExe   "AuraShellService.exe"
-#define BuildBinDir  "..\out\build\x64-Release\bin"
+#define AppName        "AuraShell"
+#define AppVersion     "0.1.0-alpha"
+#define AppPublisher   "iajen"
+#define AppURL         "https://iajensen222222.github.io/AuraShell-Website/"
+#define AppExeName     "AuraConfig.exe"
+#define ServiceExeName "AuraShellService.exe"
+#define BuildBinDir    "..\out\build\x64-Release\bin"
 
 [Setup]
-; Metadata
-AppId               = {{A3F2C7D1-8B4E-4A9F-BC12-6E5D0A1F3C8B}
-AppName             = {#AppName}
-AppVersion          = {#AppVersion}
-AppPublisher        = {#AppPublisher}
-AppPublisherURL     = {#AppURL}
-AppSupportURL       = {#AppURL}
-AppUpdatesURL       = {#AppURL}
-DefaultDirName      = {autopf}\{#AppName}
-DefaultGroupName    = {#AppName}
-AllowNoIcons        = no
-OutputDir           = ..\dist
-OutputBaseFilename  = AuraShell-{#AppVersion}-Setup
-SetupIconFile       = ; (set to an .ico path if available)
-Compression         = lzma2/ultra64
-SolidCompression    = yes
-WizardStyle         = modern
+AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppVerName={#AppName} {#AppVersion}
+AppPublisher={#AppPublisher}
+AppPublisherURL={#AppURL}
+AppSupportURL={#AppURL}
+AppUpdatesURL={#AppURL}
+DefaultDirName={autopf}\{#AppName}
+DefaultGroupName={#AppName}
+AllowNoIcons=yes
+LicenseFile=
+OutputDir=Output
+OutputBaseFilename=AuraShell-{#AppVersion}-Setup
+Compression=lzma2/ultra64
+SolidCompression=yes
+WizardStyle=modern
+PrivilegesRequired=admin
+ArchitecturesInstallIn64BitMode=x64compatible
 
-; Require Windows 11 (build 22000+) — SDK 22621 features needed.
-MinVersion          = 10.0.22000
-
-; Service registration requires elevation.
-PrivilegesRequired  = admin
-PrivilegesRequiredOverridesAllowed = dialog
-
-; Architecture: 64-bit only.
-ArchitecturesInstallIn64BitMode = x64
-ArchitecturesAllowed            = x64
-
-; Uninstall
-UninstallDisplayName  = {#AppName} {#AppVersion}
-UninstallDisplayIcon  = {app}\{#AppExeName}
-CreateUninstallRegKey = yes
+; Show a nice header image if one is available alongside the .iss
+; WizardImageFile=WizardImage.bmp
+; WizardSmallImageFile=WizardSmallImage.bmp
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "startmenu"; Description: "Create {#AppName} Start Menu shortcuts"; GroupDescription: "Additional icons:"
-Name: "autostart";  Description: "Start {#AppName} service automatically with Windows (recommended)"; GroupDescription: "Startup:"; Flags: checked
+Name: "desktopicon";    Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "startupicon";   Description: "Start AuraShell automatically with Windows"; GroupDescription: "Startup"; Flags: unchecked
 
 [Files]
-; Main binaries — must be present before running the installer.
-Source: "{#BuildBinDir}\{#ServiceExe}"; DestDir: "{app}";           Flags: ignoreversion
-Source: "{#BuildBinDir}\{#AppExeName}"; DestDir: "{app}";           Flags: ignoreversion
+; Main UI application
+Source: "{#BuildBinDir}\{#AppExeName}";    DestDir: "{app}"; Flags: ignoreversion
+; Background service
+Source: "{#BuildBinDir}\{#ServiceExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
-; Bundled installer scripts (for future repair / manual uninstall).
-Source: "install.ps1";                  DestDir: "{app}";           Flags: ignoreversion
-Source: "smoke_test.ps1";               DestDir: "{app}";           Flags: ignoreversion
-
-[Dirs]
-; Per-machine install dir (created by Inno Setup automatically).
-
-; Per-user AppData dirs — %LOCALAPPDATA%\AuraShell\{logs,themes}
-; These are created for the installing user; they are also created at runtime
-; on first use for any other user.
-Name: "{localappdata}\AuraShell"
-Name: "{localappdata}\AuraShell\logs"
-Name: "{localappdata}\AuraShell\themes"
+; Visual C++ 2022 Redistributable (optional — include in Output\ to bundle)
+; Source: "vcredist_x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: VCRedistNeeded
 
 [Icons]
-; Start Menu shortcuts
-Name: "{group}\AuraShell Configuration"; Filename: "{app}\{#AppExeName}";  Comment: "Configure AuraShell visual overlays"; Tasks: startmenu
-Name: "{group}\Uninstall {#AppName}";   Filename: "{uninstallexe}";        Comment: "Remove AuraShell from this computer"; Tasks: startmenu
+; Start menu
+Name: "{group}\{#AppName}";              Filename: "{app}\{#AppExeName}"
+Name: "{group}\Uninstall {#AppName}";    Filename: "{uninstallexe}"
+; Desktop icon (only when user selected the task)
+Name: "{autodesktop}\{#AppName}";        Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+
+[Registry]
+; Persist install path for self-updater and diagnostics
+Root: HKLM; Subkey: "SOFTWARE\{#AppName}"; ValueType: string; ValueName: "InstallDir"; ValueData: "{app}"; Flags: uninsdeletekey
+; Auto-start (written only if user selected the startup task)
+Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#AppExeName}"""; Flags: uninsdeletevalue; Tasks: startupicon
+; Cleanup on uninstall
+Root: HKCU; Subkey: "SOFTWARE\{#AppName}"; Flags: dontcreatekey uninsdeletekey
 
 [Run]
-; Register and start the service immediately after installation.
-Filename: "{app}\{#ServiceExe}"; Parameters: "--install"; \
-    Description: "Registering AuraShellService"; \
-    StatusMsg:   "Registering Windows service..."; \
-    Flags: runhidden waituntilterminated
+; Install the service into the SCM
+Filename: "{app}\{#ServiceExeName}"; Parameters: "--install"; StatusMsg: "Installing AuraShell service..."; Flags: runhidden waituntilterminated
+; Start the service immediately after install
+Filename: "{app}\{#ServiceExeName}"; Parameters: "--start";   StatusMsg: "Starting AuraShell service..."; Flags: runhidden waituntilterminated
+; Launch the UI for the user at the end of setup
+Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
 
-Filename: "{app}\{#ServiceExe}"; Parameters: "--start"; \
-    Description: "Starting AuraShellService"; \
-    StatusMsg:   "Starting service..."; \
-    Flags: runhidden waituntilterminated
-
-; Offer to launch AuraConfig after install.
-Filename: "{app}\{#AppExeName}"; \
-    Description: "Launch {#AppName} Configuration"; \
-    Flags: nowait postinstall skipifsilent unchecked
+; Optional: install VC++ redistributable if needed
+; Filename: "{tmp}\vcredist_x64.exe"; Parameters: "/quiet /norestart"; StatusMsg: "Installing Visual C++ 2022 Redistributables..."; Flags: runhidden waituntilterminated; Check: VCRedistNeeded
 
 [UninstallRun]
-; Stop and unregister the service before files are removed.
-Filename: "{app}\{#ServiceExe}"; Parameters: "--stop";      Flags: runhidden waituntilterminated
-Filename: "{app}\{#ServiceExe}"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated
+; Stop the service first, then uninstall it from the SCM
+Filename: "{app}\{#ServiceExeName}"; Parameters: "--stop";      Flags: runhidden waituntilterminated; RunOnceId: "StopService"
+Filename: "{app}\{#ServiceExeName}"; Parameters: "--uninstall"; Flags: runhidden waituntilterminated; RunOnceId: "UninstallService"
+
+[UninstallDelete]
+; Remove the settings folder written by the app
+Type: filesandordirs; Name: "{localappdata}\AuraShell"
 
 [Code]
-// ---------------------------------------------------------------------------
-// Custom pre-install check: verify Windows 11 build 22000+
-// (Inno Setup's MinVersion handles this, but we add a clearer message.)
-// ---------------------------------------------------------------------------
-function InitializeSetup(): Boolean;
+// ── VC++ 2022 Redistributable check ──────────────────────────────────────────
+// Checks for the VS 2022 x64 runtime by querying the registry.
+// Returns true when the runtime is NOT installed (i.e. we need to install it).
+function VCRedistNeeded: Boolean;
 var
-  OSVer: TWindowsVersion;
+  version: string;
 begin
-  GetWindowsVersionEx(OSVer);
-  if (OSVer.Major < 10) or
-     ((OSVer.Major = 10) and (OSVer.Build < 22000)) then
-  begin
-    MsgBox(
-      'AuraShell requires Windows 11 (build 22000 or later).' + #13#10 +
-      'Your system is running an unsupported version of Windows.',
-      mbError, MB_OK
-    );
-    Result := False;
-  end else
-    Result := True;
+  Result := not RegQueryStringValue(
+    HKLM,
+    'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
+    'Version',
+    version
+  );
 end;
 
-// ---------------------------------------------------------------------------
-// Pre-uninstall: warn the user and ask for confirmation.
-// ---------------------------------------------------------------------------
-function InitializeUninstall(): Boolean;
+// ── Custom uninstall confirmation ─────────────────────────────────────────────
+function InitializeUninstall: Boolean;
 begin
   Result := MsgBox(
-    'This will stop and remove AuraShell and AuraShellService.' + #13#10 +
-    'Your saved configuration in %LOCALAPPDATA%\AuraShell\ will be preserved.' + #13#10 + #13#10 +
-    'Continue with uninstallation?',
+    'This will stop and remove the AuraShell service and delete all program files.' +
+    #13#10 + 'Your settings in %LOCALAPPDATA%\AuraShell will also be removed.' +
+    #13#10#13#10 + 'Continue with uninstall?',
     mbConfirmation, MB_YESNO
   ) = IDYES;
 end;
