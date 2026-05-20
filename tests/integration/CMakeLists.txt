@@ -9,6 +9,7 @@ add_executable(integration_test_runner
     test_full_stack.cpp
     test_theme_apply.cpp
     test_audio_workspace.cpp
+    test_ipc_live.cpp
 )
 
 target_link_libraries(integration_test_runner PRIVATE
