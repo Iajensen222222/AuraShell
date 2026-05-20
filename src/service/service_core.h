@@ -61,6 +61,10 @@ public:
     // Returns false when no client is connected or AudioEngine is not initialized.
     bool pushAudioBands();
 
+    // Push live CPU/memory/FPS stats to the connected App (~0.5fps).
+    // Returns false when no client or PerformanceLogger is not initialized.
+    bool pushPerformanceStats();
+
     // ========================================================================
     // State queries (thread-safe)
     // ========================================================================

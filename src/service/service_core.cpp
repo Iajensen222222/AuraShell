@@ -7,6 +7,7 @@
 #include "message_types.h"
 #include "logging/logger.h"
 #include "audio_engine.h"
+#include "performance_logger.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -192,6 +193,25 @@ bool ServiceCore::pushAudioBands() {
     return m_pipeServer.sendMessage(msg, /*timeoutMs=*/50);
 }
 
+bool ServiceCore::pushPerformanceStats() {
+    if (!m_running.load(std::memory_order_relaxed)) return false;
+
+    auto& pl = aura::logging::PerformanceLogger::getInstance();
+    if (!pl.isInitialized()) return false;
+
+    aura::ipc::PerfStatsPayload payload{};
+    payload.cpuPercent = pl.getIdleCpuPercent();
+    payload.memoryMB   = pl.getMemoryMB();
+    payload.avgFps     = pl.getAverageFps();
+
+    aura::ipc::Message msg;
+    msg.messageType    = static_cast<uint32_t>(aura::ipc::MessageType::PERF_STATS);
+    msg.sequenceNumber = 0;
+    msg.setPayload(payload);
+
+    return m_pipeServer.sendMessage(msg, /*timeoutMs=*/100);
+}
+
 // ============================================================================
 // Phase 8: Watchdog & event callback registration
 // ============================================================================
@@ -246,12 +266,20 @@ void ServiceCore::ipcThreadProc() {
         );
 
         bool clientDroppedUnexpectedly = true;
+        ULONGLONG lastPerfPushMs = 0;
 
         // Per-client message loop.
         // kReceiveTimeoutMs must exceed the App's poll interval (5 s) so the
         // connection is not torn down between polls; 30 s leaves comfortable margin.
         constexpr uint32_t kReceiveTimeoutMs = 30000;
         while (m_running.load(std::memory_order_relaxed)) {
+            // Push perf stats every ~2000ms without blocking the receive.
+            ULONGLONG const nowMs = GetTickCount64();
+            if (nowMs - lastPerfPushMs >= 2000) {
+                pushPerformanceStats();
+                lastPerfPushMs = nowMs;
+            }
+
             aura::ipc::Message request;
             if (!m_pipeServer.receiveMessage(request, kReceiveTimeoutMs)) {
                 break;  // client disconnected or timeout
