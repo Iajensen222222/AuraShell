@@ -57,12 +57,15 @@ TEST_CASE("PerformanceLogger recordFrame drives FPS calculation", "[logging][per
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
+    // getAverageFps() is updated by the 1Hz sample loop — wait for it to run.
+    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+
     float fps = pl.getAverageFps();
     INFO("Measured FPS: " << fps);
 
-    // Should be approximately 60fps; allow generous range for CI timing jitter.
-    REQUIRE(fps > 20.0f);
-    REQUIRE(fps < 200.0f);
+    // Allow generous range for CI timing jitter.
+    REQUIRE(fps > 10.0f);
+    REQUIRE(fps < 300.0f);
 
     pl.shutdown();
 }

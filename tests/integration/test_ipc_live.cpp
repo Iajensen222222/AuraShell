@@ -89,7 +89,7 @@ bool waitForPipe(uint32_t timeoutMs) {
 // Live IPC handshake test
 // ============================================================================
 
-TEST_CASE("Live IPC: HANDSHAKE_REQUEST → HANDSHAKE_RESPONSE from child service",
+TEST_CASE("Live IPC: HANDSHAKE_REQUEST -> HANDSHAKE_RESPONSE from child service",
           "[integration][live][ipc]")
 {
     std::wstring const exePath = ServiceExePath();
