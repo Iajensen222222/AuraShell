@@ -20,6 +20,7 @@ public enum AuraMessageType : uint
     StatusReport      = 0x0060,
     Ack               = 0x0070,
     AudioBands        = 0x0080,
+    PerfStats         = 0x0090,
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -59,6 +60,19 @@ public struct HandshakePayload
     public uint ClientPID;
     public uint ClientVersion;
     public uint Capabilities;
+}
+
+/// <summary>
+/// Matches C++ PerfStatsPayload: float cpuPercent + float memoryMB + float avgFps + uint _pad.
+/// Total size: 16 bytes (Pack=1).
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct PerfStatsPayload
+{
+    public float CpuPercent;
+    public float MemoryMB;
+    public float AvgFps;
+    public uint  Pad;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
