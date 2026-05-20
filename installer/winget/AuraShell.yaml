@@ -31,13 +31,11 @@ Tags:
   - fluent-design
   - winui
 ReleaseNotesUrl: https://github.com/Iajensen222222/AuraShell/blob/main/CHANGELOG.md
-# NOTE: Update InstallerUrl and InstallerSha256 after the GitHub Release is created.
-# Run: (Get-FileHash .\AuraShell-0.1.0-alpha-Setup.exe -Algorithm SHA256).Hash
 Installers:
   - Architecture: x64
     InstallerType: inno
-    InstallerUrl: PLACEHOLDER_UPDATE_AFTER_RELEASE
-    InstallerSha256: PLACEHOLDER_UPDATE_AFTER_RELEASE
+    InstallerUrl: https://github.com/Iajensen222222/AuraShell/releases/download/v0.1.0-alpha/AuraShell-0.1.0-alpha-Setup.exe
+    InstallerSha256: 9C6F7511276E8920518EA5993C7A8C52B0F5BC70DAC4B2291462856D2C406019
     InstallerSwitches:
       Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
       SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
