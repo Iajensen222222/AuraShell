@@ -1,8 +1,12 @@
 #include "hotkey_manager.h"
 
+#include <cstdio>
+#include <windows.h>
+
 #include "icon_overlay_manager.h"
 #include "audio_visualizer.h"
 #include "workspace_manager.h"
+#include "theme_preset_loader.h"
 #include "logging/logger.h"
 
 namespace aura::system {
@@ -90,12 +94,27 @@ void HotkeyManager::dispatch(HotkeyAction action) {
     // Execute the built-in effect first, then notify external subscribers.
     switch (action) {
     case HotkeyAction::ToggleOverlays: {
-        auto& mgr = aura::taskbar::IconOverlayManager::getInstance();
-        // AnimationEnabled acts as the master switch for the overlay system.
-        // getRenderStats().frameCount > 0 means overlays are active.
+        // Toggle overlays by enabling/disabling animations and forcing all
+        // active overlays to alpha=0 (off) or restoring hover state (on).
         static bool overlaysOn = true;
         overlaysOn = !overlaysOn;
+        auto& mgr = aura::taskbar::IconOverlayManager::getInstance();
         mgr.setAnimationEnabled(overlaysOn);
+        if (!overlaysOn) {
+            // Force all overlays invisible immediately.
+            uint32_t const n = mgr.getOverlayWindowCount();
+            for (uint32_t i = 0; i < n; ++i) {
+                HWND hw = mgr.getOverlayWindowForIcon(i);
+                if (hw) ShowWindow(hw, SW_HIDE);
+            }
+        } else {
+            // Restore: make windows visible again (alpha-transparent by default).
+            uint32_t const n = mgr.getOverlayWindowCount();
+            for (uint32_t i = 0; i < n; ++i) {
+                HWND hw = mgr.getOverlayWindowForIcon(i);
+                if (hw) ShowWindow(hw, SW_SHOWNOACTIVATE);
+            }
+        }
         aura::logging::Logger::getInstance().info("hotkey",
             overlaysOn ? "Overlays enabled" : "Overlays disabled");
         break;
@@ -109,14 +128,25 @@ void HotkeyManager::dispatch(HotkeyAction action) {
         break;
     }
     case HotkeyAction::CycleTheme: {
-        // WorkspaceManager cycling: apply the default theme then rotate.
-        // Future: maintain an index into a user-defined theme list.
+        // Cycle through loaded presets by advancing a static index.
+        auto& loader = aura::context::ThemePresetLoader::getInstance();
+        auto const& presets = loader.getPresets();
+        if (presets.empty()) break;
+
+        static int themeIdx = 0;
+        themeIdx = (themeIdx + 1) % static_cast<int>(presets.size());
+        auto const& next = presets[static_cast<size_t>(themeIdx)];
+
         auto& wm = aura::context::WorkspaceManager::getInstance();
-        aura::app::ThemeConfig next = wm.getDefaultTheme();
-        // Simple toggle: invert glowEnabled as a visible change signal.
-        next.glowEnabled = !next.glowEnabled;
         wm.setDefaultTheme(next);
-        aura::logging::Logger::getInstance().info("hotkey", "Theme cycled (glowEnabled toggled)");
+
+        int const _n = WideCharToMultiByte(CP_UTF8, 0,
+            next.themeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string _name(static_cast<size_t>(_n > 0 ? _n - 1 : 0), '\0');
+        if (_n > 0)
+            WideCharToMultiByte(CP_UTF8, 0, next.themeName.c_str(), -1,
+                                &_name[0], _n, nullptr, nullptr);
+        aura::logging::Logger::getInstance().info("hotkey", "Theme cycled → " + _name);
         break;
     }
     }
