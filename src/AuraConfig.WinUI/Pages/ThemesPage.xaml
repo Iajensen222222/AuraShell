@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="AuraConfig.Pages.ThemesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:AuraConfig.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ── LEFT: theme list ─────────────────────────────────────────── -->
+        <Border Grid.Column="0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ScrollViewer Grid.Row="0" Padding="8,8,8,0">
+                    <StackPanel x:Name="ThemeListPanel" Spacing="2" />
+                </ScrollViewer>
+
+                <!-- New theme button -->
+                <Button Grid.Row="1"
+                        x:Name="NewThemeBtn"
+                        Click="NewTheme_Click"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Margin="8,4,8,8"
+                        Padding="12,8"
+                        CornerRadius="6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock Text="New theme" FontSize="13" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ── RIGHT: editor panel ─────────────────────────────────────── -->
+        <ScrollViewer Grid.Column="1" Padding="24,16,24,24">
+            <StackPanel Spacing="16">
+
+                <!-- Header -->
+                <StackPanel Margin="0,0,0,4">
+                    <TextBlock FontSize="40" FontWeight="SemiBold"
+                               FontFamily="Segoe UI Variable Display"
+                               Text="Themes" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Text="Create and manage your glow themes"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+
+                <!-- No-selection placeholder -->
+                <StackPanel x:Name="NoSelectionPanel"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Spacing="8"
+                            Margin="0,60,0,0">
+                    <FontIcon Glyph="&#xE790;" FontSize="48"
+                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="Select a theme to edit"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Editor (hidden until a theme is selected) -->
+                <StackPanel x:Name="EditorPanel" Visibility="Collapsed" Spacing="16">
+
+                    <!-- Built-in notice -->
+                    <Border x:Name="BuiltInNoticeBorder"
+                            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                            CornerRadius="8" Padding="14,10" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE946;" FontSize="14"
+                                      Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                            <TextBlock Text="Built-in themes are read-only. Use Duplicate to create an editable copy."
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- NAME card -->
+                    <TextBlock Text="NAME"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               CharacterSpacing="50" FontWeight="SemiBold" />
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="20">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Text="Theme Name" />
+                            <TextBox x:Name="NameInput"
+                                     PlaceholderText="e.g. Midnight Blue"
+                                     TextChanged="NameInput_TextChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- COLOUR card -->
+                    <TextBlock Text="COLOUR"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               CharacterSpacing="50" FontWeight="SemiBold"
+                               Margin="0,8,0,0" />
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="20">
+                        <StackPanel Spacing="16">
+                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Text="Glow Color" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                <!-- Color preview swatch -->
+                                <Border x:Name="ColorSwatch"
+                                        Width="36" Height="36" CornerRadius="6"
+                                        Background="#FF0078D4" />
+                                <TextBox x:Name="ColorHexInput"
+                                         PlaceholderText="#0078D4"
+                                         Width="140"
+                                         KeyDown="ColorHexInput_KeyDown" />
+                                <Button Content="Apply color"
+                                        Click="ApplyColor_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ANIMATION card -->
+                    <TextBlock Text="ANIMATION"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               CharacterSpacing="50" FontWeight="SemiBold"
+                               Margin="0,8,0,0" />
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="20">
+                        <StackPanel Spacing="12">
+                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Text="Glow Animation" />
+                            <Slider x:Name="SpeedSlider"
+                                    Minimum="0" Maximum="200" Value="100"
+                                    Header="Pulse Speed"
+                                    ValueChanged="SpeedSlider_ValueChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- OPTIONS card -->
+                    <TextBlock Text="OPTIONS"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                               CharacterSpacing="50" FontWeight="SemiBold"
+                               Margin="0,8,0,0" />
+
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="12" Padding="20">
+                        <StackPanel Spacing="16">
+                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Text="Overlay Behavior" />
+                            <ToggleSwitch x:Name="HoverToggle"
+                                          Header="Show glow on hover"
+                                          IsOn="True"
+                                          Toggled="HoverToggle_Toggled" />
+                            <ToggleSwitch x:Name="GlowToggle"
+                                          Header="Enable glow effect"
+                                          IsOn="True"
+                                          Toggled="GlowToggle_Toggled" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Action buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                        <Button x:Name="ApplyBtn"
+                                Click="Apply_Click"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE73E;" FontSize="14" />
+                                <TextBlock Text="Apply" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="DuplicateBtn"
+                                Click="Duplicate_Click"
+                                Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8C8;" FontSize="14" />
+                                <TextBlock Text="Duplicate" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="SaveBtn"
+                                Click="Save_Click"
+                                Visibility="Collapsed"
+                                Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                                <TextBlock Text="Save" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="DeleteBtn"
+                                Click="Delete_Click"
+                                Visibility="Collapsed"
+                                Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE74D;" FontSize="14" />
+                                <TextBlock Text="Delete" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Status message -->
+                    <Border x:Name="StatusBanner"
+                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                            CornerRadius="8" Padding="14,10" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE73E;" FontSize="14"
+                                      Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                            <TextBlock x:Name="StatusText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

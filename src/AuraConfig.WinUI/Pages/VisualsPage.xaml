@@ -114,6 +114,18 @@
                                   Toggled="GlowToggle_Toggled" />
                 </StackPanel>
             </Border>
+
+            <!-- Save as theme shortcut -->
+            <Button x:Name="SaveAsThemeBtn"
+                    Click="SaveAsTheme_Click"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0"
+                    Padding="12,8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                    <TextBlock Text="Save as theme…" FontSize="13" />
+                </StackPanel>
+            </Button>
         </StackPanel>
     </ScrollViewer>
 </Page>

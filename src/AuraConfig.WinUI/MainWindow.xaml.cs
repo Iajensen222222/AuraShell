@@ -110,6 +110,7 @@ public sealed partial class MainWindow : Window
         var mainItems = new StackPanel { Spacing = 2, Margin = new Thickness(8, 4, 8, 4) };
         mainItems.Children.Add(MakeNavItem("", "Dashboard",     "dashboard"));
         mainItems.Children.Add(MakeNavItem("", "Visuals",       "visuals"));
+        mainItems.Children.Add(MakeNavItem("", "Themes",        "themes"));
         mainItems.Children.Add(MakeNavItem("", "Behavior",      "behavior"));
         mainItems.Children.Add(MakeNavItem("", "Desktop Items", "desktop"));
         Grid.SetRow(mainItems, 1);
@@ -228,6 +229,7 @@ public sealed partial class MainWindow : Window
         {
             "dashboard" => typeof(DashboardPage),
             "visuals"   => typeof(VisualsPage),
+            "themes"    => typeof(ThemesPage),
             "behavior"  => typeof(BehaviorPage),
             "desktop"   => typeof(DesktopItemsPage),
             "about"     => typeof(AboutPage),

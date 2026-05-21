@@ -135,6 +135,28 @@ public sealed partial class VisualsPage : Page
         await PushThemeAsync();
     }
 
+    // ── Save as theme shortcut ─────────────────────────────────────────────
+
+    private async void SaveAsTheme_Click(object sender, RoutedEventArgs e)
+    {
+        var input = new TextBox { PlaceholderText = "Theme name", Text = _theme.Name };
+        var dlg = new ContentDialog
+        {
+            XamlRoot          = XamlRoot,
+            Title             = "Save as theme",
+            Content           = input,
+            PrimaryButtonText = "Save",
+            CloseButtonText   = "Cancel",
+        };
+
+        if (await dlg.ShowAsync() != ContentDialogResult.Primary) return;
+
+        var name = input.Text.Trim();
+        if (string.IsNullOrEmpty(name)) name = _theme.Name;
+
+        ThemeStore.Instance.CreateFromCurrent(_theme, name);
+    }
+
     // ── IPC helper ─────────────────────────────────────────────────────────
 
     private Task PushThemeAsync() =>
