@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <array>
 #include <vector>
 #include <functional>
 #include <atomic>
@@ -344,6 +345,19 @@ public:
      */
     std::string dumpOverlayState() const;
 
+    // ========================================================================
+    // Audio-Reactive Glow (GAP-2)
+    // ========================================================================
+
+    /**
+     * @brief Feed the latest 128-band FFT data so each icon's glow reacts to
+     * its frequency slice. Left icons = bass (bands 0-10), right icons = treble.
+     *
+     * Safe to call from any thread at ~100 ms intervals.
+     * @param bands  128 normalized magnitudes [0, 1] from AudioEngine.
+     */
+    void setAudioBands(const std::array<float, 128>& bands);
+
 private:
     // ========================================================================
     // Private Lifecycle
@@ -467,6 +481,13 @@ private:
     mutable std::atomic<uint64_t> m_statLastFrameUs{0};   // stored as integer µs
     mutable std::atomic<uint64_t> m_statWorstFrameUs{0};
     mutable std::atomic<uint64_t> m_statTotalUs{0};
+
+    // Audio-reactive glow: per-icon band magnitude [0, 1].
+    // Written by setAudioBands() (any thread, ~100 ms), read by the animation
+    // tick callback on the AnimationController thread.  Relaxed atomics are
+    // sufficient — worst case is one frame of stale data, which is imperceptible.
+    static constexpr uint32_t kMaxAudioSlots = 64;
+    std::array<std::atomic<float>, kMaxAudioSlots> m_audioBandAlpha{};
 };
 
 }  // namespace aura::taskbar

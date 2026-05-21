@@ -127,7 +127,18 @@ void IconOverlayManager::initialize() {
                 state    = ov.visualState;
                 iconRect = ov.lastKnownIcon.iconRect;
             }
-            drawOverlay(hwnd, state, alpha, iconRect);
+
+            // Audio-reactive boost: add band magnitude on top of hover alpha.
+            // Cap so audio never makes an idle (alpha=0) icon fully visible —
+            // it only brightens icons that are already glowing on hover.
+            float effectiveAlpha = alpha;
+            if (idx < kMaxAudioSlots) {
+                float const bandBoost =
+                    m_audioBandAlpha[idx].load(std::memory_order_relaxed) * 0.35f;
+                effectiveAlpha = std::clamp(alpha + bandBoost, 0.0f, 1.0f);
+            }
+
+            drawOverlay(hwnd, state, effectiveAlpha, iconRect);
         });
 
         // Create initial overlay windows — use the freshest icon data available.
@@ -152,6 +163,42 @@ void IconOverlayManager::initialize() {
         m_initialized = false;
     }
 }
+
+// ============================================================================
+// Audio-Reactive Glow
+// ============================================================================
+
+void IconOverlayManager::setAudioBands(const std::array<float, 128>& bands) {
+    // Map each overlay slot → a contiguous slice of the 128 FFT bands.
+    // Slot 0 = leftmost icon → bass (bands 0..N-1).
+    // Slot n-1 = rightmost icon → treble (bands 128-N..127).
+    // The max magnitude in each slice drives that icon's audio boost.
+    uint32_t iconCount = 0;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_overlaysMutex);
+        iconCount = static_cast<uint32_t>(m_overlays.size());
+    }
+    if (iconCount == 0) return;
+
+    uint32_t const slots = (std::min)(iconCount, kMaxAudioSlots);
+    float const bandsPerSlot = 128.0f / static_cast<float>(slots);
+
+    for (uint32_t i = 0; i < slots; ++i) {
+        uint32_t const bandStart = static_cast<uint32_t>(i * bandsPerSlot);
+        uint32_t const bandEnd   = static_cast<uint32_t>((i + 1) * bandsPerSlot);
+        float    maxMag          = 0.0f;
+        for (uint32_t b = bandStart; b < bandEnd && b < 128; ++b) {
+            if (bands[b] > maxMag) maxMag = bands[b];
+        }
+        // Threshold: ignore silence so idle icons don't flicker.
+        m_audioBandAlpha[i].store(maxMag > 0.05f ? maxMag : 0.0f,
+                                  std::memory_order_relaxed);
+    }
+}
+
+// ============================================================================
+// Lifecycle — shutdown
+// ============================================================================
 
 void IconOverlayManager::shutdown() {
     if (!m_initialized) {

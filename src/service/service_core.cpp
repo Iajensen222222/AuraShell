@@ -9,6 +9,7 @@
 #include "audio_engine.h"
 #include "performance_logger.h"
 #include "taskbar_controller.h"
+#include "icon_overlay_manager.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -285,8 +286,14 @@ void ServiceCore::ipcThreadProc() {
             }
 
             // Push audio bands every ~100ms so the WinUI visualizer animates.
+            // Also feed the live bands to IconOverlayManager for per-icon glow.
             if (nowMs - lastAudioPushMs >= 100) {
                 pushAudioBands();
+                auto& engine = aura::audio::AudioEngine::getInstance();
+                if (engine.isInitialized()) {
+                    aura::taskbar::IconOverlayManager::getInstance()
+                        .setAudioBands(engine.getFrequencyBands());
+                }
                 lastAudioPushMs = nowMs;
             }
 
