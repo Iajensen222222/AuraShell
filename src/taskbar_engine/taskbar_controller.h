@@ -93,6 +93,12 @@ public:
     // Returns true if message was handled
     bool handleWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+    // Feature toggles — called by ServiceCore when SET_FEATURES is received.
+    // setAutoHideEnabled: applies / clears ABS_AUTOHIDE via SHAppBarMessage.
+    // setMultiMonitorEnabled: controls whether secondary taskbars are enumerated.
+    void setAutoHideEnabled(bool enable);
+    void setMultiMonitorEnabled(bool enable);
+
 private:
     TaskbarController();
     ~TaskbarController();
@@ -154,6 +160,10 @@ private:
     mutable std::shared_mutex    m_allMonitorStatesMutex;
     std::vector<TaskbarState>    m_allMonitorStates;
     std::atomic<bool>            m_displayChangePending{false};  // set by WM_DISPLAYCHANGE
+
+    // GAP-4: feature flags (written by service IPC thread, read by monitoring thread)
+    std::atomic<bool>            m_autoHideEnabled{true};
+    std::atomic<bool>            m_multiMonitorEnabled{true};
 
     // Last queried state for change detection
     bool m_previouslyVisible{true};

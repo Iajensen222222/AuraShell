@@ -15,6 +15,7 @@ target_link_libraries(aurashell_service PUBLIC
     aurashell_logging
     aurashell_ipc
     aurashell_audio
+    aurashell_taskbar_engine
     advapi32.lib
 )
 
@@ -25,6 +26,7 @@ target_include_directories(aurashell_service PUBLIC
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/core/audio"
+    "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
 )
 
 target_compile_features(aurashell_service PRIVATE cxx_std_20)

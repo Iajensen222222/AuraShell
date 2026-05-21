@@ -21,6 +21,7 @@ public enum AuraMessageType : uint
     Ack               = 0x0070,
     AudioBands        = 0x0080,
     PerfStats         = 0x0090,
+    SetFeatures       = 0x00A0,
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -107,6 +108,19 @@ public struct AudioBandsPayload
     public float Peak;
     [MarshalAs(UnmanagedType.I1)]
     public bool AudioPresent;
+}
+
+/// <summary>
+/// SET_FEATURES — App→Service: configure taskbar monitoring behavior.
+/// Matches C++ FeatureTogglePayload exactly (16 bytes, Pack=1).
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct FeatureTogglePayload
+{
+    public byte AutoHideEnabled;      // 1 = enable auto-hide, 0 = disable
+    public byte MultiMonitorEnabled;  // 1 = enable multi-monitor, 0 = disable
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 14)]
+    public byte[] Pad;                // reserved
 }
 
 // ── High-level models ───────────────────────────────────────────────────────

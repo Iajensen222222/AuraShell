@@ -114,6 +114,18 @@ public sealed class ServiceManager
         return await PushThemeAsync(theme);
     }
 
+    /// <summary>Push taskbar feature toggles to the service.</summary>
+    public async Task<bool> SendFeaturesAsync(bool autoHide, bool multiMonitor)
+    {
+        if (!_client.IsConnected)
+        {
+            var result = await _client.ConnectAsync(timeoutMs: 1500);
+            if (result != AuraShellClient.ConnectResult.Connected)
+                return false;
+        }
+        return await _client.SendFeaturesAsync(autoHide, multiMonitor);
+    }
+
     /// <summary>Push an arbitrary ThemeConfig to the service.</summary>
     public async Task<bool> PushThemeAsync(ThemeConfig theme)
     {

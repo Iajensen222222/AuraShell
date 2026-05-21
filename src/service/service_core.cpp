@@ -8,6 +8,7 @@
 #include "logging/logger.h"
 #include "audio_engine.h"
 #include "performance_logger.h"
+#include "taskbar_controller.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -367,6 +368,25 @@ void ServiceCore::ipcThreadProc() {
                     themeCb(newTheme);
                 }
 
+                response.messageType = static_cast<uint32_t>(aura::ipc::MessageType::ACK);
+                response.payloadSize = 0;
+                m_pipeServer.sendMessage(response, 2000);
+
+            } else if (type == aura::ipc::MessageType::SET_FEATURES) {
+                // Config App → Service: apply taskbar feature toggles.
+                auto const* fp = request.getPayload<aura::ipc::FeatureTogglePayload>();
+                if (fp) {
+                    auto& tc = aura::taskbar::TaskbarController::getInstance();
+                    tc.setAutoHideEnabled(fp->autoHideEnabled != 0);
+                    tc.setMultiMonitorEnabled(fp->multiMonitorEnabled != 0);
+                    aura::logging::Logger::getInstance().info(
+                        "service",
+                        std::string("Features updated — auto-hide: ") +
+                        (fp->autoHideEnabled ? "on" : "off") +
+                        ", multi-monitor: " +
+                        (fp->multiMonitorEnabled ? "on" : "off")
+                    );
+                }
                 response.messageType = static_cast<uint32_t>(aura::ipc::MessageType::ACK);
                 response.payloadSize = 0;
                 m_pipeServer.sendMessage(response, 2000);

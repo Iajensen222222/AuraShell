@@ -43,6 +43,9 @@ enum class MessageType : uint32_t {
 
     // Sprint 6: process performance snapshot (Service → App, ~0.5fps)
     PERF_STATS         = 0x0090,
+
+    // GAP-4: App → Service: set taskbar monitoring feature flags
+    SET_FEATURES       = 0x00A0,
 };
 
 // ============================================================================
@@ -133,6 +136,16 @@ static_assert(sizeof(PerfStatsPayload) <= 2048, "PerfStatsPayload too large");
 
 // PUSH_CONFIG — raw JSON, stored inline in the variable-length payload
 // Callers set payloadSize = strlen(json) and copy into payload[].
+
+// SET_FEATURES — App → Service: configure taskbar monitoring flags.
+// autoHideEnabled:     1 = apply ABS_AUTOHIDE via SHAppBarMessage, 0 = clear it
+// multiMonitorEnabled: 1 = enumerate secondary taskbars, 0 = primary only
+struct FeatureTogglePayload {
+    uint8_t autoHideEnabled;      // 1 = on, 0 = off
+    uint8_t multiMonitorEnabled;  // 1 = on, 0 = off
+    uint8_t _pad[14];             // reserved, must be zero
+};
+static_assert(sizeof(FeatureTogglePayload) == 16, "FeatureTogglePayload must be 16 bytes");
 
 // AUDIO_BANDS — sent by the Service ~10fps when AudioEngine is active.
 // The receiver (config app / WinUI) uses the band data to drive visualizer UI.

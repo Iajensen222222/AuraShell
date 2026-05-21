@@ -32,6 +32,14 @@ public sealed partial class BehaviorPage : Page
         AutoStartToggle.Toggled -= AutoStartToggle_Toggled;
         AutoStartToggle.IsOn = IsAutoStartEnabled();
         AutoStartToggle.Toggled += AutoStartToggle_Toggled;
+
+        // Suppress initial Toggled events while syncing defaults (both default to on).
+        AutoHideToggle.Toggled     -= AutoHideToggle_Toggled;
+        MultiMonitorToggle.Toggled -= MultiMonitorToggle_Toggled;
+        AutoHideToggle.IsOn     = true;
+        MultiMonitorToggle.IsOn = true;
+        AutoHideToggle.Toggled     += AutoHideToggle_Toggled;
+        MultiMonitorToggle.Toggled += MultiMonitorToggle_Toggled;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -118,6 +126,21 @@ public sealed partial class BehaviorPage : Page
                  ElevatedToggle.IsOn
                      ? "Elevated start requested (requires Task Scheduler setup — coming in v1.1)"
                      : "Standard user start selected.");
+    }
+
+    // ── Shell monitoring toggles ───────────────────────────────────────────
+
+    private void AutoHideToggle_Toggled(object sender, RoutedEventArgs e) =>
+        SendFeatures();
+
+    private void MultiMonitorToggle_Toggled(object sender, RoutedEventArgs e) =>
+        SendFeatures();
+
+    private void SendFeatures()
+    {
+        _ = ServiceManager.Instance.SendFeaturesAsync(
+                AutoHideToggle.IsOn,
+                MultiMonitorToggle.IsOn);
     }
 
     // ── Registry helpers ───────────────────────────────────────────────────

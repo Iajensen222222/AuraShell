@@ -104,8 +104,14 @@
                 <StackPanel Spacing="16">
                     <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
                                Text="Taskbar Integration" />
-                    <ToggleSwitch Header="Track taskbar auto-hide" IsOn="True" />
-                    <ToggleSwitch Header="Enable multi-monitor support" IsOn="True" />
+                    <ToggleSwitch x:Name="AutoHideToggle"
+                                  Header="Track taskbar auto-hide"
+                                  IsOn="True"
+                                  Toggled="AutoHideToggle_Toggled" />
+                    <ToggleSwitch x:Name="MultiMonitorToggle"
+                                  Header="Enable multi-monitor support"
+                                  IsOn="True"
+                                  Toggled="MultiMonitorToggle_Toggled" />
                 </StackPanel>
             </Border>
 

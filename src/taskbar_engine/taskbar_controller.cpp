@@ -856,4 +856,42 @@ void TaskbarController::notifyVisibilityChangeCallbacks(bool visible) {
     }
 }
 
+// ============================================================================
+// GAP-4: Feature toggles — called from ServiceCore on SET_FEATURES receipt
+// ============================================================================
+
+void TaskbarController::setAutoHideEnabled(bool enable) {
+    HWND taskbarHwnd;
+    {
+        std::shared_lock<std::shared_mutex> lk(m_stateMutex);
+        taskbarHwnd = m_currentState.taskbarHwnd;
+    }
+
+    if (taskbarHwnd) {
+        APPBARDATA abd = {};
+        abd.cbSize = sizeof(abd);
+        abd.hWnd   = taskbarHwnd;
+        // Preserve ABS_ALWAYSONTOP; only flip ABS_AUTOHIDE.
+        UINT state = static_cast<UINT>(SHAppBarMessage(ABM_GETSTATE, &abd));
+        if (enable) state |=  ABS_AUTOHIDE;
+        else        state &= ~static_cast<UINT>(ABS_AUTOHIDE);
+        abd.lParam = static_cast<LPARAM>(state);
+        SHAppBarMessage(ABM_SETSTATE, &abd);
+    }
+
+    m_autoHideEnabled.store(enable, std::memory_order_relaxed);
+    aura::logging::Logger::getInstance().info(
+        "taskbar", std::string("Auto-hide ") + (enable ? "enabled" : "disabled")
+    );
+}
+
+void TaskbarController::setMultiMonitorEnabled(bool enable) {
+    m_multiMonitorEnabled.store(enable, std::memory_order_relaxed);
+    // Trigger a re-scan so the monitor list reflects the new mode immediately.
+    m_displayChangePending.store(true, std::memory_order_relaxed);
+    aura::logging::Logger::getInstance().info(
+        "taskbar", std::string("Multi-monitor ") + (enable ? "enabled" : "disabled")
+    );
+}
+
 } // namespace aura::taskbar

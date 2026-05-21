@@ -112,6 +112,27 @@ public sealed class AuraShellClient : IDisposable
         catch { return false; }
     }
 
+    public async Task<bool> SendFeaturesAsync(bool autoHide, bool multiMonitor,
+                                               CancellationToken ct = default)
+    {
+        if (!IsConnected) return false;
+        try
+        {
+            var req = AuraMessage.Create(AuraMessageType.SetFeatures, _seq++);
+            var fp  = new FeatureTogglePayload
+            {
+                AutoHideEnabled     = autoHide     ? (byte)1 : (byte)0,
+                MultiMonitorEnabled = multiMonitor ? (byte)1 : (byte)0,
+                Pad                 = new byte[14],
+            };
+            SetPayload(ref req, fp);
+            await SendAsync(req, ct).ConfigureAwait(false);
+            var ack = await ReceiveAsync(ct).ConfigureAwait(false);
+            return ack.MessageType == (uint)AuraMessageType.Ack;
+        }
+        catch { return false; }
+    }
+
     // ── Unsolicited message reading ────────────────────────────────────────
 
     /// <summary>
