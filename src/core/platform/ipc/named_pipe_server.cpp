@@ -400,4 +400,8 @@ uint32_t NamedPipeServer::getConnectedClientPID() const {
     return m_clientPID;
 }
 
+bool NamedPipeServer::isClientConnected() const {
+    return m_clientCurrentlyConnected;
+}
+
 } // namespace aura::ipc

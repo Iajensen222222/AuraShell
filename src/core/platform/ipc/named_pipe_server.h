@@ -83,6 +83,9 @@ public:
     // Get the PID of the connected client (for logging/security)
     uint32_t getConnectedClientPID() const;
 
+    // Returns true if a client is currently connected (pipe not broken).
+    bool isClientConnected() const;
+
 private:
     HANDLE m_pipe;                      // Named pipe handle
     HANDLE m_clientConnected;           // Event: client connection established

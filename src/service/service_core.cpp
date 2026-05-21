@@ -266,23 +266,39 @@ void ServiceCore::ipcThreadProc() {
         );
 
         bool clientDroppedUnexpectedly = true;
-        ULONGLONG lastPerfPushMs = 0;
+        ULONGLONG lastPerfPushMs  = 0;
+        ULONGLONG lastAudioPushMs = 0;
 
         // Per-client message loop.
-        // kReceiveTimeoutMs must exceed the App's poll interval (5 s) so the
-        // connection is not torn down between polls; 30 s leaves comfortable margin.
-        constexpr uint32_t kReceiveTimeoutMs = 30000;
+        // Use a short receive timeout so the audio-band push timer can fire at
+        // ~100ms even when the App sends no messages. A receive timeout is NOT a
+        // disconnect; we only break on a hard failure (pipe broken / client gone).
+        constexpr uint32_t kReceiveTimeoutMs = 100;
         while (m_running.load(std::memory_order_relaxed)) {
-            // Push perf stats every ~2000ms without blocking the receive.
             ULONGLONG const nowMs = GetTickCount64();
+
+            // Push perf stats every ~2000ms.
             if (nowMs - lastPerfPushMs >= 2000) {
                 pushPerformanceStats();
                 lastPerfPushMs = nowMs;
             }
 
+            // Push audio bands every ~100ms so the WinUI visualizer animates.
+            if (nowMs - lastAudioPushMs >= 100) {
+                pushAudioBands();
+                lastAudioPushMs = nowMs;
+            }
+
             aura::ipc::Message request;
-            if (!m_pipeServer.receiveMessage(request, kReceiveTimeoutMs)) {
-                break;  // client disconnected or timeout
+            bool const gotMsg = m_pipeServer.receiveMessage(request, kReceiveTimeoutMs);
+            if (!gotMsg) {
+                // Distinguish timeout (keep looping) from pipe broken (disconnect).
+                // NamedPipeServer::receiveMessage returns false on both; check the
+                // pipe handle state to tell them apart.
+                if (m_pipeServer.isClientConnected()) {
+                    continue;  // timeout — no message yet, loop back for next push tick
+                }
+                break;  // pipe broken — client disconnected
             }
             if (!request.isValid()) continue;
 
