@@ -13,11 +13,13 @@ target_include_directories(aurashell_context_tools PRIVATE
     "${CMAKE_SOURCE_DIR}/src/core/platform"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/app"
+    "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
 )
 
 target_link_libraries(aurashell_context_tools PRIVATE
     aurashell_platform
     aurashell_logging
+    aurashell_taskbar_engine
     nlohmann_json::nlohmann_json
 )
 
