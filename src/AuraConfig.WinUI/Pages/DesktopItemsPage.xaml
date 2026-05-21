@@ -19,32 +19,12 @@
                            Margin="0,2,0,0" />
             </StackPanel>
 
-            <!-- Coming soon info card -->
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="12" Orientation="Horizontal">
-                    <FontIcon Glyph="&#xE946;"
-                              FontSize="24"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center" />
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                   Text="Desktop icon customization coming in v1.1" />
-                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Text="This feature is under development. Drop a shortcut or folder below to preview." />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- DROP ZONE section -->
-            <TextBlock Text="DROP ZONE"
+            <!-- STEP 1: Pick target shortcut -->
+            <TextBlock Text="1 — SELECT TARGET SHORTCUT"
                        Style="{ThemeResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                        CharacterSpacing="50" FontWeight="SemiBold" />
 
-            <!-- File drop zone -->
             <Border x:Name="DropZone"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -53,48 +33,78 @@
                     DragEnter="DropZone_DragEnter"
                     DragLeave="DropZone_DragLeave"
                     Drop="DropZone_Drop"
-                    Height="180">
+                    Height="140">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
                     <FontIcon Glyph="&#xE8EF;"
-                              FontSize="40"
+                              FontSize="36"
                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                               HorizontalAlignment="Center" />
                     <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Drag a .lnk shortcut or folder here"
+                               Text="Drag a .lnk shortcut here"
                                HorizontalAlignment="Center" />
                     <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="or use the button below to browse for a file"
+                               Text="Desktop shortcuts, taskbar pins — any .lnk file"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                HorizontalAlignment="Center" />
                 </StackPanel>
             </Border>
 
-            <!-- Browse button -->
-            <Button Content="Browse for icon…"
-                    Style="{ThemeResource AccentButtonStyle}"
-                    Click="BrowseIcon_Click"
+            <Button Content="Browse shortcut…"
+                    Click="BrowseShortcut_Click"
                     HorizontalAlignment="Left" />
 
-            <!-- Selected item card (hidden until file selected) -->
+            <!-- STEP 2: Pick icon source (hidden until shortcut selected) -->
             <Border x:Name="CurrentItemCard"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1" CornerRadius="12" Padding="20"
                     Visibility="Collapsed">
-                <StackPanel Spacing="12">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Selected Item" />
-                    <TextBlock x:Name="SelectedPathText"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
+                <StackPanel Spacing="16">
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                   CharacterSpacing="50" FontWeight="SemiBold"
+                                   Text="TARGET SHORTCUT" />
+                        <TextBlock x:Name="SelectedPathText"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                   CharacterSpacing="50" FontWeight="SemiBold"
+                                   Text="2 — CHOOSE NEW ICON" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Browse icon…"
+                                    Style="{ThemeResource AccentButtonStyle}"
+                                    Click="BrowseIcon_Click" />
+                            <TextBlock x:Name="IconSourceText"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="No icon selected"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="400" />
+                        </StackPanel>
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Apply"
+                        <Button x:Name="ApplyBtn"
+                                Content="Apply icon"
                                 Style="{ThemeResource AccentButtonStyle}"
+                                IsEnabled="False"
                                 Click="ApplyIcon_Click" />
-                        <Button Content="Restore Default"
+                        <Button Content="Restore default"
                                 Click="RestoreDefault_Click" />
                     </StackPanel>
+
+                    <TextBlock x:Name="ResultText"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Visibility="Collapsed"
+                               TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
