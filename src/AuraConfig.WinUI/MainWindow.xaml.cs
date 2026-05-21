@@ -13,6 +13,7 @@ namespace AuraConfig;
 public sealed partial class MainWindow : Window
 {
     private Frame _navFrame = new Frame();
+    private readonly GlowAnimator _glowAnimator = new();
 
     // Accent orange — matches the original NavigationView selection indicator.
     private static readonly Windows.UI.Color AccentOrange =
@@ -69,7 +70,21 @@ public sealed partial class MainWindow : Window
             Pane              = pane,
             Content           = _navFrame,
         };
-        return splitView;
+        // Wrap SplitView + glow overlay in a root Grid so the animated edge
+        // strips render on top without blocking any mouse/touch input.
+        var root = new Grid();
+        root.Children.Add(splitView);
+        root.Children.Add(_glowAnimator.BuildOverlay());
+
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _glowAnimator.SetWindowHandle(hwnd);
+
+        var glowTimer = DispatcherQueue.CreateTimer();
+        glowTimer.Interval = TimeSpan.FromMilliseconds(33); // ~30 fps
+        glowTimer.Tick += (_, _) => _glowAnimator.Tick();
+        glowTimer.Start();
+
+        return root;
     }
 
     private UIElement BuildPane()
