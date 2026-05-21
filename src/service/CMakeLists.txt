@@ -9,6 +9,7 @@ cmake_minimum_required(VERSION 3.22)
 add_library(aurashell_service STATIC
     pipe_security.cpp
     service_core.cpp
+    "${CMAKE_SOURCE_DIR}/src/core/config/change_observer.cpp"
 )
 
 target_link_libraries(aurashell_service PUBLIC
@@ -26,6 +27,7 @@ target_include_directories(aurashell_service PUBLIC
     "${CMAKE_SOURCE_DIR}/src/core/platform/ipc"
     "${CMAKE_SOURCE_DIR}/src/core/logging"
     "${CMAKE_SOURCE_DIR}/src/core/audio"
+    "${CMAKE_SOURCE_DIR}/src/core/config"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
 )
 

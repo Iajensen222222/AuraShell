@@ -358,6 +358,20 @@ public:
      */
     void setAudioBands(const std::array<float, 128>& bands);
 
+    /**
+     * @brief Animate a virtual-desktop color transition (fade-through-black).
+     *
+     * Phase 1 — fade all overlays to alpha=0 over 150 ms (InOutCubic).
+     * Phase 2 — swap the D2D glow color to newColor.
+     * Phase 3 — fade all overlays back in over 150 ms (InOutCubic).
+     *
+     * Runs the inter-phase sleep on a detached background thread so the
+     * VirtualDesktopDetector poll thread is not blocked.
+     *
+     * @param newColor  Accent color of the newly-active virtual desktop.
+     */
+    void onDesktopSwitch(D2D1_COLOR_F newColor);
+
 private:
     // ========================================================================
     // Private Lifecycle
@@ -488,6 +502,11 @@ private:
     // sufficient — worst case is one frame of stale data, which is imperceptible.
     static constexpr uint32_t kMaxAudioSlots = 64;
     std::array<std::atomic<float>, kMaxAudioSlots> m_audioBandAlpha{};
+
+    // Current glow accent color packed as 0xAARRGGBB (uint8 per channel).
+    // Updated atomically by onDesktopSwitch(); read by drawOverlay().
+    // Default: Windows Blue (#0078D4).
+    std::atomic<uint32_t> m_glowColorARGB{0xFF0078D4};
 };
 
 }  // namespace aura::taskbar

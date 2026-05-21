@@ -103,16 +103,25 @@ public sealed partial class DashboardPage : Page
     {
         if (state.IsConnected)
         {
-            StatusDot.Fill  = new SolidColorBrush(Colors.LightGreen);
-            StatusText.Text = $"● Connected  ·  uptime {state.UptimeFormatted}";
+            StatusDot.Fill     = new SolidColorBrush(Colors.LightGreen);
+            StatusText.Text    = $"● Connected  ·  uptime {state.UptimeFormatted}";
             ThemeNameText.Text = state.CurrentTheme;
+            ReconnectBtn.Visibility = Visibility.Collapsed;
         }
         else
         {
-            StatusDot.Fill  = new SolidColorBrush(Colors.OrangeRed);
-            StatusText.Text = "○ Service not connected";
+            StatusDot.Fill     = new SolidColorBrush(Colors.OrangeRed);
+            StatusText.Text    = "○ Service not connected";
             ThemeNameText.Text = string.Empty;
+            ReconnectBtn.Visibility = Visibility.Visible;
         }
+    }
+
+    private async void ReconnectBtn_Click(object sender, RoutedEventArgs e)
+    {
+        ReconnectBtn.IsEnabled = false;
+        await ServiceManager.Instance.TriggerReconnectAsync();
+        ReconnectBtn.IsEnabled = true;
     }
 
     // ── Preset clicks ──────────────────────────────────────────────────────

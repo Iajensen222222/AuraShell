@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 
 #include "message_types.h"
 #include "logging/logger.h"
@@ -94,6 +95,14 @@ bool ServiceCore::initialize() {
     // Launch the IPC dispatch thread.
     m_ipcThread = std::thread([this] { ipcThreadProc(); });
 
+    // Watch %LOCALAPPDATA%\AuraShell for live edits to config.json.
+    wchar_t appData[MAX_PATH] = {};
+    if (GetEnvironmentVariableW(L"LOCALAPPDATA", appData, MAX_PATH) > 0) {
+        std::wstring configDir = std::wstring(appData) + L"\\AuraShell";
+        m_configObserver.watch(configDir, L"config.json",
+                               [this] { pushConfigFromDisk(); });
+    }
+
     aura::logging::Logger::getInstance().info("service", "ServiceCore started");
     return true;
 }
@@ -104,6 +113,10 @@ void ServiceCore::shutdown() {
     }
 
     aura::logging::Logger::getInstance().info("service", "ServiceCore::shutdown()");
+
+    // Stop the config file watcher before signalling the IPC thread so the
+    // watcher callback can't queue a pushConfig() after pipe shutdown.
+    m_configObserver.stop();
 
     // Signal the IPC thread to exit its wait.
     if (m_stopEvent) {
@@ -212,6 +225,28 @@ bool ServiceCore::pushPerformanceStats() {
     msg.setPayload(payload);
 
     return m_pipeServer.sendMessage(msg, /*timeoutMs=*/100);
+}
+
+// ============================================================================
+// GAP-7: Live config reload — triggered by ConfigChangeObserver
+// ============================================================================
+
+void ServiceCore::pushConfigFromDisk() {
+    wchar_t appData[MAX_PATH] = {};
+    if (GetEnvironmentVariableW(L"LOCALAPPDATA", appData, MAX_PATH) == 0) return;
+
+    std::wstring wpath = std::wstring(appData) + L"\\AuraShell\\config.json";
+    std::ifstream f(wpath);
+    if (!f) return;
+
+    std::string json((std::istreambuf_iterator<char>(f)),
+                      std::istreambuf_iterator<char>());
+    if (json.empty() || json.size() > 2048) return;
+
+    if (pushConfig(json)) {
+        aura::logging::Logger::getInstance().info("service",
+            "config.json reloaded and pushed (" + std::to_string(json.size()) + " bytes)");
+    }
 }
 
 // ============================================================================

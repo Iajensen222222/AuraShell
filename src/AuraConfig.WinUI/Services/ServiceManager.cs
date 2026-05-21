@@ -138,6 +138,12 @@ public sealed class ServiceManager
         return await _client.PushThemeAsync(theme);
     }
 
+    /// <summary>
+    /// Force an immediate reconnection attempt without waiting for the next poll tick.
+    /// Safe to call from any thread — marshals onto DispatcherQueue internally via UpdateState.
+    /// </summary>
+    public Task TriggerReconnectAsync() => PollAsync();
+
     // ── Polling internals ──────────────────────────────────────────────────
 
     private async Task PollAsync()

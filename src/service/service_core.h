@@ -10,6 +10,7 @@
 
 #include "named_pipe_server.h"
 #include "pipe_security.h"
+#include "change_observer.h"
 
 namespace aura::service {
 
@@ -116,10 +117,15 @@ private:
                              DWORD exitCode  = NO_ERROR,
                              DWORD waitHint  = 0) noexcept;
 
+    // Read %LOCALAPPDATA%\AuraShell\config.json and push it to the connected client.
+    // Called by m_configObserver on every debounced file-change notification.
+    void pushConfigFromDisk();
+
     // ---- IPC ----------------------------------------------------------------
-    aura::ipc::NamedPipeServer m_pipeServer;
-    SECURITY_ATTRIBUTES        m_pipeSa    = {};
-    std::vector<uint8_t>       m_pipeSdBuf;
+    aura::ipc::NamedPipeServer        m_pipeServer;
+    SECURITY_ATTRIBUTES               m_pipeSa    = {};
+    std::vector<uint8_t>              m_pipeSdBuf;
+    aura::config::ConfigChangeObserver m_configObserver;
 
     // ---- Threading ----------------------------------------------------------
     std::thread       m_ipcThread;

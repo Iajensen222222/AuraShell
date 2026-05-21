@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <thread>
 #include <d2d1.h>
 #include <d2d1helper.h>
 
@@ -194,6 +195,48 @@ void IconOverlayManager::setAudioBands(const std::array<float, 128>& bands) {
         m_audioBandAlpha[i].store(maxMag > 0.05f ? maxMag : 0.0f,
                                   std::memory_order_relaxed);
     }
+}
+
+void IconOverlayManager::onDesktopSwitch(D2D1_COLOR_F newColor) {
+    if (!m_initialized) return;
+
+    // Pack new color into ARGB uint32 for storage.
+    uint32_t const packed =
+        (0xFFu << 24) |
+        (static_cast<uint32_t>(std::clamp(newColor.r, 0.0f, 1.0f) * 255.0f) << 16) |
+        (static_cast<uint32_t>(std::clamp(newColor.g, 0.0f, 1.0f) * 255.0f) <<  8) |
+        (static_cast<uint32_t>(std::clamp(newColor.b, 0.0f, 1.0f) * 255.0f));
+
+    // Run the two-phase transition on a detached thread so the caller
+    // (VirtualDesktopDetector poll thread) is not blocked.
+    std::thread([this, packed]() {
+        uint32_t const overlayCount = getOverlayWindowCount();
+        if (overlayCount == 0) {
+            m_glowColorARGB.store(packed, std::memory_order_release);
+            return;
+        }
+
+        // Phase 1 — fade all active overlays to black (alpha = 0) over 150 ms.
+        for (uint32_t i = 0; i < overlayCount; ++i) {
+            m_animController.startTransition(i, 0.0f, 150, EasingType::InOutCubic);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(160));
+
+        // Swap accent color (already invisible, so the change is not seen).
+        m_glowColorARGB.store(packed, std::memory_order_release);
+
+        // Phase 2 — fade back in for any overlay that was previously Active.
+        // We only re-animate slots that are in the Active state so idle icons
+        // remain transparent.
+        {
+            std::shared_lock<std::shared_mutex> lock(m_overlaysMutex);
+            for (uint32_t i = 0; i < m_overlays.size(); ++i) {
+                if (m_overlays[i].visualState == OverlayVisualState::Active) {
+                    m_animController.startTransition(i, 1.0f, 150, EasingType::InOutCubic);
+                }
+            }
+        }
+    }).detach();
 }
 
 // ============================================================================
@@ -935,7 +978,17 @@ void IconOverlayManager::drawOverlay(
                 m_pDCRenderTarget->BeginDraw();
                 m_pDCRenderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
 
-                GlowConfig const col = stateColor(state);
+                // For Active/Pressed states, use the theme accent color stored in
+                // m_glowColorARGB (updated on desktop switch). Other states keep their
+                // fixed diagnostic colors (amber=loading, red=error).
+                GlowConfig col = stateColor(state);
+                if (state == OverlayVisualState::Active ||
+                    state == OverlayVisualState::Pressed) {
+                    uint32_t const packed = m_glowColorARGB.load(std::memory_order_relaxed);
+                    col.r = ((packed >> 16) & 0xFF) / 255.0f;
+                    col.g = ((packed >>  8) & 0xFF) / 255.0f;
+                    col.b = ((packed >>  0) & 0xFF) / 255.0f;
+                }
                 drawStateGlow(
                     m_pDCRenderTarget.Get(),
                     static_cast<float>(width),

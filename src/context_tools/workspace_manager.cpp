@@ -4,6 +4,7 @@
 
 #include "virtual_desktop.h"
 #include "theme_applier.h"
+#include "icon_overlay_manager.h"
 #include "logging/logger.h"
 
 namespace aura::context {
@@ -114,6 +115,13 @@ void WorkspaceManager::dispatchTheme(const aura::app::ThemeConfig& theme) {
 
     // Apply to the system.
     ThemeApplier::getInstance().apply(theme);
+
+    // Trigger fade-through-black transition on the overlay glow windows.
+    auto const& ac = theme.accentColor;
+    D2D1_COLOR_F const d2dColor = {
+        ac.r / 255.0f, ac.g / 255.0f, ac.b / 255.0f, 1.0f
+    };
+    aura::taskbar::IconOverlayManager::getInstance().onDesktopSwitch(d2dColor);
 
     // Notify subscribers (config UI, IPC push, etc.).
     std::vector<ThemeChangeCallback> snapshot;
