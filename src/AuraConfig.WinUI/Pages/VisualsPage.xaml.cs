@@ -128,6 +128,9 @@ public sealed partial class VisualsPage : Page
 
     private void BreatheMode_Changed(object sender, SelectionChangedEventArgs e)
     {
+        // SelectionChanged fires during XAML parse before BreatheControls exists.
+        if (BreatheControls is null || BreatheModeBox is null) return;
+
         var tag = (BreatheModeBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "0";
         BreatheControls.Visibility = tag != "0" ? Visibility.Visible : Visibility.Collapsed;
         if (tag == "0") { Animator?.StopBreathing(); return; }
@@ -137,16 +140,23 @@ public sealed partial class VisualsPage : Page
     private void BreatheSpeed_Changed(object sender,
         Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
+        // Slider ValueChanged fires during XAML parse before label exists.
+        if (BreatheSpeedLabel is null || BreatheSpeedSlider is null) return;
+
         BreatheSpeedLabel.Text = $"{BreatheSpeedSlider.Value:F1} s per cycle";
-        ApplyBreatheSettings(BreatheModeBox.SelectedIndex == 2);
+        ApplyBreatheSettings(BreatheModeBox?.SelectedIndex == 2);
     }
 
     private void BreatheBrightness_Changed(object sender,
         Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-        => ApplyBreatheSettings(BreatheModeBox.SelectedIndex == 2);
+    {
+        if (BreatheBrightnessSlider is null) return;
+        ApplyBreatheSettings(BreatheModeBox?.SelectedIndex == 2);
+    }
 
     private void ApplyBreatheSettings(bool waveMode)
     {
+        if (BreatheModeBox is null || BreatheSpeedSlider is null || BreatheBrightnessSlider is null) return;
         if (BreatheModeBox.SelectedIndex == 0) return;
         double speed    = BreatheSpeedSlider.Value;
         float  maxBoost = (float)BreatheBrightnessSlider.Value / 100f;

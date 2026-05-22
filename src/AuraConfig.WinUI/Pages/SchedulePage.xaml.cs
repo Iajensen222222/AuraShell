@@ -170,12 +170,14 @@ public sealed partial class SchedulePage : Page
 
     private void SchedulerEnabled_Toggled(object sender, RoutedEventArgs e)
     {
+        if (SchedulerEnabled is null || NextChangeText is null) return;
         ScheduleService.Instance.Enabled = SchedulerEnabled.IsOn;
         UpdateNextChange();
     }
 
     private void UpdateNextChange()
     {
+        if (SchedulerEnabled is null || NextChangeText is null) return;
         NextChangeText.Text = SchedulerEnabled.IsOn
             ? ScheduleService.Instance.NextChangeDescription()
             : "Scheduler disabled";

@@ -84,6 +84,7 @@ public sealed partial class SettingsPage : Page
 
     private async void BadgeGlow_Toggled(object sender, RoutedEventArgs e)
     {
+        if (BadgeGlowToggle is null || BadgeControls is null || BadgeAccessNotice is null) return;
         BadgeControls.Visibility = BadgeGlowToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
         BadgeAccessNotice.Visibility = Visibility.Collapsed;
 
