@@ -418,6 +418,18 @@ void ServiceCore::ipcThreadProc() {
                     );
                 }
 
+                // Apply per-monitor glow overrides (GAP-5).
+                {
+                    aura::app::MonitorConfig configs[aura::app::kMaxMonitors] = {};
+                    for (int i = 0; i < aura::app::kMaxMonitors; ++i) {
+                        auto const& me = tp->perMonitor[i];
+                        configs[i].color   = { me.r, me.g, me.b, me.a };
+                        configs[i].enabled = me.enabled ? 1 : 0;
+                    }
+                    aura::taskbar::IconOverlayManager::getInstance()
+                        .setMonitorConfigs(configs, aura::app::kMaxMonitors);
+                }
+
                 // Apply audio visualizer settings.
                 auto& av = aura::visual::AudioVisualizerOverlay::getInstance();
                 if (av.isInitialized()) {

@@ -88,9 +88,20 @@ public struct QueryStateResponse
 }
 
 /// <summary>
-/// Matches C++ ThemePayload exactly (536 bytes, Pack=1).
-/// Extended with accent color + visualizer settings so the service can apply
-/// live overlay changes without a separate lookup.
+/// Per-monitor glow override (8 bytes, Pack=1). Matches C++ MonitorEntry exactly.
+/// R/G/B/A all zero = inherit the global ThemePayload accent color.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct MonitorEntry
+{
+    public byte R, G, B, A;           // glow color override (0 = inherit global)
+    public byte Enabled;              // 1 = monitor overlay on, 0 = off
+    public byte Pad0, Pad1, Pad2;     // reserved
+}
+
+/// <summary>
+/// Matches C++ ThemePayload exactly (568 bytes, Pack=1).
+/// Extended with accent color, visualizer settings, and per-monitor overrides.
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
 public struct ThemePayload
@@ -109,6 +120,8 @@ public struct ThemePayload
     public byte   Pad;
     public uint   VisualizerHeightPx;  // 40-200
     public float  VisualizerBrightness;// 0.0-2.0
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public MonitorEntry[] PerMonitor;  // 4 × 8 = 32 bytes; index 0 = primary
 }
 
 /// <summary>
@@ -151,6 +164,13 @@ public class ThemeConfig
     public bool             VisualizerEnabled    { get; set; } = true;
     public int              VisualizerHeightPx   { get; set; } = 80;
     public double           VisualizerBrightness { get; set; } = 1.0;
+    public MonitorEntry[]   PerMonitor           { get; set; } =
+    [
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+    ];
 
     public ThemeConfig() { }
 

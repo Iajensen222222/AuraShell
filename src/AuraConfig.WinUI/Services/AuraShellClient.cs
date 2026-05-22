@@ -113,6 +113,7 @@ public sealed class AuraShellClient : IDisposable
                 Pad                  = 0,
                 VisualizerHeightPx   = (uint)theme.VisualizerHeightPx,
                 VisualizerBrightness = (float)theme.VisualizerBrightness,
+                PerMonitor           = theme.PerMonitor ?? new MonitorEntry[4],
             };
             SetPayload(ref req, tp);
             await SendAsync(req, ct).ConfigureAwait(false);

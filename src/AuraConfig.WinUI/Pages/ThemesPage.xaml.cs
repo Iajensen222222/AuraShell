@@ -1,6 +1,7 @@
 using AuraConfig.Models;
 using AuraConfig.Services;
 using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,6 +14,7 @@ public sealed partial class ThemesPage : Page
 {
     private AuraTheme? _selected;
     private bool _suppressHandlers;
+    private int  _monitorCount = 1;
 
     public ThemesPage()
     {
@@ -151,10 +153,35 @@ public sealed partial class ThemesPage : Page
         VisualizerBrightnessSlider.Value   = theme.VisualizerBrightness * 100.0;
         VisualizerBrightnessSlider.IsEnabled = !theme.IsBuiltIn;
 
+        // Per-monitor glow — detect monitor count, show/hide rows, populate fields.
+        _monitorCount = Math.Clamp(DisplayArea.FindAll().Count, 1, 4);
+        MonitorRow0.Visibility = Visibility.Visible;
+        MonitorRow1.Visibility = _monitorCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        MonitorRow2.Visibility = _monitorCount >= 3 ? Visibility.Visible : Visibility.Collapsed;
+        MonitorRow3.Visibility = _monitorCount >= 4 ? Visibility.Visible : Visibility.Collapsed;
+
+        bool editable = !theme.IsBuiltIn;
+        var mc = theme.MonitorConfigs;
+        PopulateMonitorRow(mc[0], Mon0Toggle, Mon0HexInput, editable);
+        PopulateMonitorRow(mc[1], Mon1Toggle, Mon1HexInput, editable);
+        PopulateMonitorRow(mc[2], Mon2Toggle, Mon2HexInput, editable);
+        PopulateMonitorRow(mc[3], Mon3Toggle, Mon3HexInput, editable);
+
         UpdateColorSwatch(theme.Color);
         StatusBanner.Visibility = Visibility.Collapsed;
 
         _suppressHandlers = false;
+    }
+
+    private static void PopulateMonitorRow(
+        MonitorEntry entry, ToggleSwitch toggle, TextBox hexBox, bool editable)
+    {
+        toggle.IsOn       = entry.Enabled != 0;
+        toggle.IsEnabled  = editable;
+        hexBox.Text       = (entry.R | entry.G | entry.B) == 0
+            ? string.Empty
+            : $"#{entry.R:X2}{entry.G:X2}{entry.B:X2}";
+        hexBox.IsReadOnly = !editable;
     }
 
     private void UpdateColorSwatch(Color c)
@@ -235,6 +262,55 @@ public sealed partial class ThemesPage : Page
         if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
         _selected.VisualizerBrightness = e.NewValue / 100.0;
     }
+
+    // ── Per-monitor handlers ───────────────────────────────────────────────
+
+    private void SetMonitorEnabled(int idx, bool enabled)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        var cfg = _selected.MonitorConfigs[idx];
+        cfg.Enabled = enabled ? (byte)1 : (byte)0;
+        _selected.MonitorConfigs[idx] = cfg;
+    }
+
+    private void ApplyMonitorHex(int idx, string text)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        var raw = text.Trim().TrimStart('#');
+        var cfg = _selected.MonitorConfigs[idx];
+        if (raw.Length == 6)
+        {
+            try
+            {
+                cfg.R = Convert.ToByte(raw[0..2], 16);
+                cfg.G = Convert.ToByte(raw[2..4], 16);
+                cfg.B = Convert.ToByte(raw[4..6], 16);
+                cfg.A = 255;
+            }
+            catch { return; }
+        }
+        else if (raw.Length == 0)
+        {
+            cfg.R = cfg.G = cfg.B = cfg.A = 0; // inherit global
+        }
+        else { return; }
+        _selected.MonitorConfigs[idx] = cfg;
+    }
+
+    private void Mon0Toggle_Toggled(object s, RoutedEventArgs e) => SetMonitorEnabled(0, Mon0Toggle.IsOn);
+    private void Mon1Toggle_Toggled(object s, RoutedEventArgs e) => SetMonitorEnabled(1, Mon1Toggle.IsOn);
+    private void Mon2Toggle_Toggled(object s, RoutedEventArgs e) => SetMonitorEnabled(2, Mon2Toggle.IsOn);
+    private void Mon3Toggle_Toggled(object s, RoutedEventArgs e) => SetMonitorEnabled(3, Mon3Toggle.IsOn);
+
+    private void Mon0Hex_KeyDown(object s, KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) ApplyMonitorHex(0, Mon0HexInput.Text); }
+    private void Mon1Hex_KeyDown(object s, KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) ApplyMonitorHex(1, Mon1HexInput.Text); }
+    private void Mon2Hex_KeyDown(object s, KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) ApplyMonitorHex(2, Mon2HexInput.Text); }
+    private void Mon3Hex_KeyDown(object s, KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) ApplyMonitorHex(3, Mon3HexInput.Text); }
+
+    private void Mon0Apply_Click(object s, RoutedEventArgs e) => ApplyMonitorHex(0, Mon0HexInput.Text);
+    private void Mon1Apply_Click(object s, RoutedEventArgs e) => ApplyMonitorHex(1, Mon1HexInput.Text);
+    private void Mon2Apply_Click(object s, RoutedEventArgs e) => ApplyMonitorHex(2, Mon2HexInput.Text);
+    private void Mon3Apply_Click(object s, RoutedEventArgs e) => ApplyMonitorHex(3, Mon3HexInput.Text);
 
     // ── Action buttons ─────────────────────────────────────────────────────
 

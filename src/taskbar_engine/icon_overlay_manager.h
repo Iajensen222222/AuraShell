@@ -16,6 +16,7 @@
 #include "taskbar_controller.h"
 #include "hover_detector.h"
 #include "acrylic_backdrop.h"
+#include "../app/theme_model.h"
 
 namespace aura::taskbar {
 
@@ -376,6 +377,20 @@ public:
     // Called by ServiceCore::ipcThreadProc when PUSH_THEME is received.
     void setGlowColor(uint8_t r, uint8_t g, uint8_t b);
 
+    // ========================================================================
+    // Per-Monitor Glow (GAP-5)
+    // ========================================================================
+
+    /**
+     * @brief Apply per-monitor color overrides and enable/disable flags.
+     *
+     * configs[0] = primary monitor, configs[1] = secondary, etc.
+     * An entry with color.r==g==b==0 inherits the global accent color.
+     * count must be <= kMaxMonitors.  Safe to call from any thread.
+     * Refreshes the internal HMONITOR mapping from TaskbarController.
+     */
+    void setMonitorConfigs(const aura::app::MonitorConfig* configs, int count);
+
 private:
     // ========================================================================
     // Private Lifecycle
@@ -440,8 +455,10 @@ private:
      * @brief Direct2D glow render into a ULW-compatible DIB, then blit via UpdateLayeredWindow.
      * Called without m_overlaysMutex held. Serialised internally by m_renderMutex.
      * alpha: animated opacity in [0,1] — scales each glow ring's alpha channel.
+     * colorARGB: pre-computed effective color (global or per-monitor override), 0xAARRGGBB.
      */
-    void drawOverlay(HWND hwnd, OverlayVisualState state, float alpha, const RECT& iconRect) noexcept;
+    void drawOverlay(HWND hwnd, OverlayVisualState state, float alpha,
+                     const RECT& iconRect, uint32_t colorARGB) noexcept;
 
     // ========================================================================
     // Member Variables
@@ -508,9 +525,15 @@ private:
     std::array<std::atomic<float>, kMaxAudioSlots> m_audioBandAlpha{};
 
     // Current glow accent color packed as 0xAARRGGBB (uint8 per channel).
-    // Updated atomically by onDesktopSwitch(); read by drawOverlay().
+    // Updated atomically by onDesktopSwitch(); read by the animation callback.
     // Default: Windows Blue (#0078D4).
     std::atomic<uint32_t> m_glowColorARGB{0xFF0078D4};
+
+    // Per-monitor glow configs (GAP-5).
+    // Protected by m_monitorConfigsMutex; written by setMonitorConfigs().
+    mutable std::mutex m_monitorConfigsMutex;
+    aura::app::MonitorConfig m_monitorConfigs[aura::app::kMaxMonitors];
+    HMONITOR m_monitorHMonitors[aura::app::kMaxMonitors] = {};
 };
 
 }  // namespace aura::taskbar

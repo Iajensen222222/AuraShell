@@ -101,6 +101,15 @@ struct HandshakePayload {
     uint32_t capabilities;      // Feature flags bitmask
 };
 
+// Per-monitor glow override — 8 bytes each (GAP-5).
+// r/g/b/a all-zero means inherit the global ThemePayload accent color.
+struct MonitorEntry {
+    uint8_t r, g, b, a;  // glow color override
+    uint8_t enabled;      // 1 = monitor overlay on, 0 = off
+    uint8_t _pad[3];      // must be zero
+};
+static_assert(sizeof(MonitorEntry) == 8, "MonitorEntry must be 8 bytes");
+
 // THEME_CHANGE / PUSH_THEME
 // Extended layout carries the full theme inline so the service can apply
 // the accent color and visualizer settings without a round-trip lookup.
@@ -118,8 +127,9 @@ struct ThemePayload {
     uint8_t  _pad;                 // explicit alignment padding
     uint32_t visualizerHeightPx;   // bar strip height (40-200)
     float    visualizerBrightness; // 0.0-2.0 (1.0 = normal)
+    MonitorEntry perMonitor[4];    // per-monitor color + enabled; index 0 = primary
 };
-static_assert(sizeof(ThemePayload) == 536, "ThemePayload size mismatch — update C# struct too");
+static_assert(sizeof(ThemePayload) == 568, "ThemePayload size mismatch — update C# struct too");
 
 // QUERY_STATE (request has no payload; response uses this)
 struct QueryStateResponse {

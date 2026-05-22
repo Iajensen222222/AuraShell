@@ -12,6 +12,14 @@ struct AuraColor {
     uint8_t a{0xFF};
 };
 
+struct MonitorConfig {
+    AuraColor color   = {};  // all-zero = inherit ThemeConfig.accentColor
+    uint8_t   enabled = 1;   // 1 = overlay on for this monitor
+    uint8_t   _pad[3] = {};
+};
+
+static constexpr int kMaxMonitors = 4;
+
 struct ThemeConfig {
     std::wstring themeName      = L"default";
     AuraColor    accentColor    = {};
@@ -19,6 +27,7 @@ struct ThemeConfig {
     bool         showOnHover    = true;
     bool         showOnLaunch   = true;
     bool         glowEnabled    = true;
+    MonitorConfig perMonitor[kMaxMonitors] = {};
 };
 
 struct AudioVisualizerConfig {

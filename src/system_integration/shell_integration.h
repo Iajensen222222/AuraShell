@@ -60,6 +60,7 @@ private:
     HINSTANCE m_hInstance{};
     bool      m_initialized{false};
     bool      m_overlaysEnabled{true};
+    bool      m_monitorEnabled[4]{true, true, true, true};  // per-monitor on/off (GAP-5)
 
     // Power state — updated on every WM_POWERBROADCAST
     std::atomic<bool> m_onBattery{false};

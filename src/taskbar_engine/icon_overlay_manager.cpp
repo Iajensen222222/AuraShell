@@ -119,6 +119,7 @@ void IconOverlayManager::initialize() {
             HWND hwnd = nullptr;
             OverlayVisualState state = OverlayVisualState::Inactive;
             RECT iconRect = {};
+            HMONITOR hMon = nullptr;
             {
                 std::shared_lock<std::shared_mutex> lock(m_overlaysMutex);
                 if (idx >= m_overlays.size()) return;
@@ -127,6 +128,26 @@ void IconOverlayManager::initialize() {
                 hwnd     = ov.hwnd;
                 state    = ov.visualState;
                 iconRect = ov.lastKnownIcon.iconRect;
+                hMon     = ov.lastKnownIcon.hMonitor;
+            }
+
+            // Per-monitor enabled check and color override (GAP-5).
+            uint32_t colorARGB = m_glowColorARGB.load(std::memory_order_relaxed);
+            {
+                std::lock_guard<std::mutex> lk(m_monitorConfigsMutex);
+                for (int i = 0; i < aura::app::kMaxMonitors; ++i) {
+                    if (m_monitorHMonitors[i] != hMon || m_monitorHMonitors[i] == nullptr)
+                        continue;
+                    auto const& mc = m_monitorConfigs[i];
+                    if (!mc.enabled) return;  // overlay disabled for this monitor
+                    if (mc.color.r || mc.color.g || mc.color.b) {
+                        colorARGB = (0xFFu << 24) |
+                                    (uint32_t(mc.color.r) << 16) |
+                                    (uint32_t(mc.color.g) <<  8) |
+                                     uint32_t(mc.color.b);
+                    }
+                    break;
+                }
             }
 
             // Audio-reactive boost: add band magnitude on top of hover alpha.
@@ -139,7 +160,7 @@ void IconOverlayManager::initialize() {
                 effectiveAlpha = std::clamp(alpha + bandBoost, 0.0f, 1.0f);
             }
 
-            drawOverlay(hwnd, state, effectiveAlpha, iconRect);
+            drawOverlay(hwnd, state, effectiveAlpha, iconRect, colorARGB);
         });
 
         // Create initial overlay windows — use the freshest icon data available.
@@ -203,6 +224,26 @@ void IconOverlayManager::setGlowColor(uint8_t r, uint8_t g, uint8_t b) {
                             (static_cast<uint32_t>(g) <<  8) |
                              static_cast<uint32_t>(b);
     m_glowColorARGB.store(packed, std::memory_order_release);
+}
+
+void IconOverlayManager::setMonitorConfigs(const aura::app::MonitorConfig* configs, int count) {
+    std::lock_guard<std::mutex> lk(m_monitorConfigsMutex);
+    for (int i = 0; i < aura::app::kMaxMonitors; ++i) {
+        m_monitorConfigs[i] = (configs && i < count)
+                              ? configs[i]
+                              : aura::app::MonitorConfig{};
+    }
+    // Refresh HMONITOR → index mapping from TaskbarController.
+    if (m_taskbarController) {
+        auto const states = m_taskbarController->getAllMonitorStates();
+        for (int i = 0; i < aura::app::kMaxMonitors; ++i) {
+            m_monitorHMonitors[i] = (i < static_cast<int>(states.size()))
+                                    ? states[i].hMonitor
+                                    : nullptr;
+        }
+    }
+    aura::logging::Logger::getInstance().info("overlay",
+        "Monitor configs updated: " + std::to_string(count) + " monitor(s)");
 }
 
 void IconOverlayManager::onDesktopSwitch(D2D1_COLOR_F newColor) {
@@ -909,7 +950,8 @@ void IconOverlayManager::drawOverlay(
     HWND const hwnd,
     OverlayVisualState const state,
     float const alpha,
-    RECT const& iconRect
+    RECT const& iconRect,
+    uint32_t const colorARGB
 ) noexcept {
     if (!hwnd || !IsWindow(hwnd)) return;
 
@@ -986,16 +1028,15 @@ void IconOverlayManager::drawOverlay(
                 m_pDCRenderTarget->BeginDraw();
                 m_pDCRenderTarget->Clear(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.0f));
 
-                // For Active/Pressed states, use the theme accent color stored in
-                // m_glowColorARGB (updated on desktop switch). Other states keep their
-                // fixed diagnostic colors (amber=loading, red=error).
+                // For Active/Pressed states, use the pre-computed colorARGB (which
+                // already reflects per-monitor overrides or the global accent).
+                // Other states keep their fixed diagnostic colors (amber=loading, red=error).
                 GlowConfig col = stateColor(state);
                 if (state == OverlayVisualState::Active ||
                     state == OverlayVisualState::Pressed) {
-                    uint32_t const packed = m_glowColorARGB.load(std::memory_order_relaxed);
-                    col.r = ((packed >> 16) & 0xFF) / 255.0f;
-                    col.g = ((packed >>  8) & 0xFF) / 255.0f;
-                    col.b = ((packed >>  0) & 0xFF) / 255.0f;
+                    col.r = ((colorARGB >> 16) & 0xFF) / 255.0f;
+                    col.g = ((colorARGB >>  8) & 0xFF) / 255.0f;
+                    col.b = ((colorARGB >>  0) & 0xFF) / 255.0f;
                 }
                 drawStateGlow(
                     m_pDCRenderTarget.Get(),

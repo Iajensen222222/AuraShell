@@ -20,6 +20,13 @@ public class AuraTheme
     public bool   VisualizerEnabled    { get; set; } = true;
     public int    VisualizerHeightPx   { get; set; } = 80;
     public double VisualizerBrightness { get; set; } = 1.0;
+    public MonitorEntry[] MonitorConfigs { get; set; } =
+    [
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+        new() { Enabled = 1 },
+    ];
 
     [JsonIgnore]
     public bool IsBuiltIn { get; init; }
@@ -38,6 +45,7 @@ public class AuraTheme
         VisualizerEnabled    = VisualizerEnabled,
         VisualizerHeightPx   = VisualizerHeightPx,
         VisualizerBrightness = VisualizerBrightness,
+        PerMonitor           = (MonitorEntry[])MonitorConfigs.Clone(),
     };
 
     public AuraTheme Clone() => new()
@@ -46,6 +54,7 @@ public class AuraTheme
         AnimSpeedPct = AnimSpeedPct, ShowOnHover = ShowOnHover, GlowEnabled = GlowEnabled,
         VisualizerEnabled = VisualizerEnabled, VisualizerHeightPx = VisualizerHeightPx,
         VisualizerBrightness = VisualizerBrightness,
+        MonitorConfigs = (MonitorEntry[])MonitorConfigs.Clone(),
         IsBuiltIn = false,
     };
 
@@ -62,6 +71,11 @@ public class AuraTheme
         R = cfg.AccentColor.R, G = cfg.AccentColor.G, B = cfg.AccentColor.B,
         AnimSpeedPct = cfg.AnimSpeedPct, ShowOnHover = cfg.ShowOnHover,
         GlowEnabled = cfg.GlowEnabled,
+        VisualizerEnabled = cfg.VisualizerEnabled, VisualizerHeightPx = cfg.VisualizerHeightPx,
+        VisualizerBrightness = cfg.VisualizerBrightness,
+        MonitorConfigs = cfg.PerMonitor is { Length: 4 }
+            ? (MonitorEntry[])cfg.PerMonitor.Clone()
+            : [new() { Enabled = 1 }, new() { Enabled = 1 }, new() { Enabled = 1 }, new() { Enabled = 1 }],
         IsBuiltIn = false,
     };
 }
