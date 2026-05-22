@@ -9,7 +9,7 @@ namespace AuraConfig.Services;
 /// match the active theme accent. Supports audio-reactive brightness pulses,
 /// idle breathing animation, per-app color overrides, and notification badge colors.
 /// </summary>
-internal sealed class GlowAnimator
+public sealed class GlowAnimator
 {
     // ── DWM / Win32 P/Invoke ───────────────────────────────────────────────
 
@@ -45,9 +45,6 @@ internal sealed class GlowAnimator
     // Notification badge colors — cleared independently of _appColors
     private readonly Dictionary<string, (byte r, byte g, byte b)> _badgeColors = new();
 
-    // EnumWindows delegate kept alive to prevent GC
-    private readonly EnumWindowsProc _enumProc;
-
     // Breathing animation
     private System.Threading.Timer? _breatheTimer;
     private double  _breathePhase;
@@ -55,13 +52,6 @@ internal sealed class GlowAnimator
     private float   _breatheMaxBoost;
     private bool    _breatheWaveMode;
     private int     _breatheWindowCount;  // snapshotted for wave offset calculation
-
-    // ── Constructor ────────────────────────────────────────────────────────
-
-    public GlowAnimator()
-    {
-        _enumProc = EnumWindowsCallback;
-    }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -242,8 +232,6 @@ internal sealed class GlowAnimator
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
         }
     }
-
-    private bool EnumWindowsCallback(IntPtr hwnd, IntPtr lParam) => true; // placeholder — not used
 
     private (byte r, byte g, byte b) GetEffectiveColor(IntPtr hwnd, byte globalR, byte globalG, byte globalB)
     {
