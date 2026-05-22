@@ -197,6 +197,14 @@ void IconOverlayManager::setAudioBands(const std::array<float, 128>& bands) {
     }
 }
 
+void IconOverlayManager::setGlowColor(uint8_t r, uint8_t g, uint8_t b) {
+    uint32_t const packed = (0xFFu << 24) |
+                            (static_cast<uint32_t>(r) << 16) |
+                            (static_cast<uint32_t>(g) <<  8) |
+                             static_cast<uint32_t>(b);
+    m_glowColorARGB.store(packed, std::memory_order_release);
+}
+
 void IconOverlayManager::onDesktopSwitch(D2D1_COLOR_F newColor) {
     if (!m_initialized) return;
 

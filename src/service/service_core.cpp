@@ -11,6 +11,7 @@
 #include "performance_logger.h"
 #include "taskbar_controller.h"
 #include "icon_overlay_manager.h"
+#include "audio_visualizer.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -408,6 +409,25 @@ void ServiceCore::ipcThreadProc() {
 
                 if (themeCb) {
                     themeCb(newTheme);
+                }
+
+                // Apply accent color to live overlays if a non-zero color was sent.
+                if (tp->accentR | tp->accentG | tp->accentB) {
+                    aura::taskbar::IconOverlayManager::getInstance().setGlowColor(
+                        tp->accentR, tp->accentG, tp->accentB
+                    );
+                }
+
+                // Apply audio visualizer settings.
+                auto& av = aura::visual::AudioVisualizerOverlay::getInstance();
+                if (av.isInitialized()) {
+                    if (tp->visualizerBrightness > 0.0f)
+                        av.setBrightness(tp->visualizerBrightness);
+                    if (tp->visualizerHeightPx >= 40 && tp->visualizerHeightPx <= 200)
+                        av.setHeight(tp->visualizerHeightPx);
+                    bool const wantVisible = (tp->visualizerEnabled != 0);
+                    if (wantVisible && !av.isVisible())       av.show();
+                    else if (!wantVisible && av.isVisible())  av.hide();
                 }
 
                 response.messageType = static_cast<uint32_t>(aura::ipc::MessageType::ACK);

@@ -17,6 +17,7 @@ target_link_libraries(aurashell_service PUBLIC
     aurashell_ipc
     aurashell_audio
     aurashell_taskbar_engine
+    aurashell_visual_enhancements
     advapi32.lib
 )
 
@@ -29,6 +30,7 @@ target_include_directories(aurashell_service PUBLIC
     "${CMAKE_SOURCE_DIR}/src/core/audio"
     "${CMAKE_SOURCE_DIR}/src/core/config"
     "${CMAKE_SOURCE_DIR}/src/taskbar_engine"
+    "${CMAKE_SOURCE_DIR}/src/visual_enhancements"
 )
 
 target_compile_features(aurashell_service PRIVATE cxx_std_20)

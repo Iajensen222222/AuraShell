@@ -100,9 +100,19 @@ public sealed class AuraShellClient : IDisposable
             var req = AuraMessage.Create(AuraMessageType.PushTheme, _seq++);
             var tp  = new ThemePayload
             {
-                ThemeName        = theme.Name,
-                ColorCount       = 0,
-                AnimationSpeedPct = (uint)theme.AnimSpeedPct
+                ThemeName            = theme.Name,
+                ColorCount           = 0,
+                AnimationSpeedPct    = (uint)theme.AnimSpeedPct,
+                AccentR              = theme.AccentColor.R,
+                AccentG              = theme.AccentColor.G,
+                AccentB              = theme.AccentColor.B,
+                AccentA              = theme.AccentColor.A,
+                GlowEnabled          = theme.GlowEnabled      ? (byte)1 : (byte)0,
+                ShowOnHover          = theme.ShowOnHover       ? (byte)1 : (byte)0,
+                VisualizerEnabled    = theme.VisualizerEnabled ? (byte)1 : (byte)0,
+                Pad                  = 0,
+                VisualizerHeightPx   = (uint)theme.VisualizerHeightPx,
+                VisualizerBrightness = (float)theme.VisualizerBrightness,
             };
             SetPayload(ref req, tp);
             await SendAsync(req, ct).ConfigureAwait(false);

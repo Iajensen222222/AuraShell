@@ -87,13 +87,28 @@ public struct QueryStateResponse
     public bool   IsElevated;
 }
 
+/// <summary>
+/// Matches C++ ThemePayload exactly (536 bytes, Pack=1).
+/// Extended with accent color + visualizer settings so the service can apply
+/// live overlay changes without a separate lookup.
+/// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
 public struct ThemePayload
 {
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-    public string ThemeName;
-    public uint   ColorCount;
-    public uint   AnimationSpeedPct;
+    public string ThemeName;           // 512 bytes
+    public uint   ColorCount;          // compat (unused)
+    public uint   AnimationSpeedPct;   // 0-200
+    public byte   AccentR;
+    public byte   AccentG;
+    public byte   AccentB;
+    public byte   AccentA;             // 255 = fully opaque
+    public byte   GlowEnabled;         // 1 = overlays on
+    public byte   ShowOnHover;         // 1 = fade in on cursor enter
+    public byte   VisualizerEnabled;   // 1 = audio bar shown
+    public byte   Pad;
+    public uint   VisualizerHeightPx;  // 40-200
+    public float  VisualizerBrightness;// 0.0-2.0
 }
 
 /// <summary>
@@ -127,12 +142,15 @@ public struct FeatureTogglePayload
 
 public class ThemeConfig
 {
-    public string           Name         { get; set; } = "default";
-    public Windows.UI.Color AccentColor  { get; set; }
-    public int              AnimSpeedPct { get; set; } = 100;
-    public bool             ShowOnHover  { get; set; } = true;
-    public bool             ShowOnLaunch { get; set; } = true;
-    public bool             GlowEnabled  { get; set; } = true;
+    public string           Name                 { get; set; } = "default";
+    public Windows.UI.Color AccentColor          { get; set; }
+    public int              AnimSpeedPct         { get; set; } = 100;
+    public bool             ShowOnHover          { get; set; } = true;
+    public bool             ShowOnLaunch         { get; set; } = true;
+    public bool             GlowEnabled          { get; set; } = true;
+    public bool             VisualizerEnabled    { get; set; } = true;
+    public int              VisualizerHeightPx   { get; set; } = 80;
+    public double           VisualizerBrightness { get; set; } = 1.0;
 
     public ThemeConfig() { }
 

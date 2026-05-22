@@ -14,9 +14,12 @@ public class AuraTheme
     public byte   R            { get; set; } = 0;
     public byte   G            { get; set; } = 120;
     public byte   B            { get; set; } = 212;
-    public int    AnimSpeedPct { get; set; } = 100;
-    public bool   ShowOnHover  { get; set; } = true;
-    public bool   GlowEnabled  { get; set; } = true;
+    public int    AnimSpeedPct         { get; set; } = 100;
+    public bool   ShowOnHover          { get; set; } = true;
+    public bool   GlowEnabled          { get; set; } = true;
+    public bool   VisualizerEnabled    { get; set; } = true;
+    public int    VisualizerHeightPx   { get; set; } = 80;
+    public double VisualizerBrightness { get; set; } = 1.0;
 
     [JsonIgnore]
     public bool IsBuiltIn { get; init; }
@@ -30,14 +33,19 @@ public class AuraTheme
 
     public ThemeConfig ToThemeConfig() => new(Name, Color, AnimSpeedPct)
     {
-        ShowOnHover = ShowOnHover,
-        GlowEnabled = GlowEnabled,
+        ShowOnHover          = ShowOnHover,
+        GlowEnabled          = GlowEnabled,
+        VisualizerEnabled    = VisualizerEnabled,
+        VisualizerHeightPx   = VisualizerHeightPx,
+        VisualizerBrightness = VisualizerBrightness,
     };
 
     public AuraTheme Clone() => new()
     {
         Name = Name, R = R, G = G, B = B,
         AnimSpeedPct = AnimSpeedPct, ShowOnHover = ShowOnHover, GlowEnabled = GlowEnabled,
+        VisualizerEnabled = VisualizerEnabled, VisualizerHeightPx = VisualizerHeightPx,
+        VisualizerBrightness = VisualizerBrightness,
         IsBuiltIn = false,
     };
 

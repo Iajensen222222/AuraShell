@@ -102,11 +102,24 @@ struct HandshakePayload {
 };
 
 // THEME_CHANGE / PUSH_THEME
+// Extended layout carries the full theme inline so the service can apply
+// the accent color and visualizer settings without a round-trip lookup.
 struct ThemePayload {
-    wchar_t  themeName[256];    // Null-terminated theme identifier
-    uint32_t colorCount;        // Number of palette entries
-    uint32_t animationSpeedPct; // Animation speed multiplier (100 = 1×)
+    wchar_t  themeName[256];       // 512 bytes — null-terminated display name
+    uint32_t colorCount;           // palette entry count (compat, currently unused)
+    uint32_t animationSpeedPct;    // 0-200 (100 = 1×)
+    uint8_t  accentR;              // glow accent color — red channel
+    uint8_t  accentG;              // green channel
+    uint8_t  accentB;              // blue channel
+    uint8_t  accentA;              // alpha (255 = fully opaque)
+    uint8_t  glowEnabled;          // 1 = overlay windows visible
+    uint8_t  showOnHover;          // 1 = fade in on cursor enter
+    uint8_t  visualizerEnabled;    // 1 = audio visualizer bar shown
+    uint8_t  _pad;                 // explicit alignment padding
+    uint32_t visualizerHeightPx;   // bar strip height (40-200)
+    float    visualizerBrightness; // 0.0-2.0 (1.0 = normal)
 };
+static_assert(sizeof(ThemePayload) == 536, "ThemePayload size mismatch — update C# struct too");
 
 // QUERY_STATE (request has no payload; response uses this)
 struct QueryStateResponse {

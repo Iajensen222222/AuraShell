@@ -144,6 +144,13 @@ public sealed partial class ThemesPage : Page
         GlowToggle.IsOn        = theme.GlowEnabled;
         GlowToggle.IsEnabled   = !theme.IsBuiltIn;
 
+        VisualizerToggle.IsOn              = theme.VisualizerEnabled;
+        VisualizerToggle.IsEnabled         = !theme.IsBuiltIn;
+        VisualizerHeightSlider.Value       = theme.VisualizerHeightPx;
+        VisualizerHeightSlider.IsEnabled   = !theme.IsBuiltIn;
+        VisualizerBrightnessSlider.Value   = theme.VisualizerBrightness * 100.0;
+        VisualizerBrightnessSlider.IsEnabled = !theme.IsBuiltIn;
+
         UpdateColorSwatch(theme.Color);
         StatusBanner.Visibility = Visibility.Collapsed;
 
@@ -207,6 +214,26 @@ public sealed partial class ThemesPage : Page
     {
         if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
         _selected.GlowEnabled = GlowToggle.IsOn;
+    }
+
+    private void VisualizerToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        _selected.VisualizerEnabled = VisualizerToggle.IsOn;
+    }
+
+    private void VisualizerHeightSlider_ValueChanged(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        _selected.VisualizerHeightPx = (int)e.NewValue;
+    }
+
+    private void VisualizerBrightnessSlider_ValueChanged(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        _selected.VisualizerBrightness = e.NewValue / 100.0;
     }
 
     // ── Action buttons ─────────────────────────────────────────────────────

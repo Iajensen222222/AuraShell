@@ -372,6 +372,10 @@ public:
      */
     void onDesktopSwitch(D2D1_COLOR_F newColor);
 
+    // Set the glow accent color immediately without an animation transition.
+    // Called by ServiceCore::ipcThreadProc when PUSH_THEME is received.
+    void setGlowColor(uint8_t r, uint8_t g, uint8_t b);
+
 private:
     // ========================================================================
     // Private Lifecycle
