@@ -173,12 +173,10 @@ void ShellIntegration::buildMonitorSubMenu(HMENU parent) {
         AppendMenuW(parent, MF_STRING | MF_GRAYED, 0, L"(no monitors detected)");
         return;
     }
-    for (uint32_t i = 0; i < static_cast<uint32_t>(states.size()); ++i) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(states.size()) && i < 4u; ++i) {
         wchar_t label[64];
         swprintf_s(label, i == 0 ? L"Monitor %u — Primary" : L"Monitor %u", i + 1u);
-        // Check mark reflects whether overlays are globally enabled for now;
-        // per-monitor independent control is deferred to GAP-5.
-        UINT flags = MF_STRING | (m_overlaysEnabled ? MF_CHECKED : 0u);
+        UINT flags = MF_STRING | (m_monitorEnabled[i] ? MF_CHECKED : 0u);
         AppendMenuW(parent, flags, IDM_MONITOR_BASE + i, label);
     }
 }
