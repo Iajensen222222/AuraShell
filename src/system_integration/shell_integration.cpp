@@ -11,6 +11,7 @@
 #include "workspace_manager.h"
 #include "taskbar_controller.h"
 #include "logging/logger.h"
+#include "../app/theme_model.h"
 
 #pragma comment(lib, "shell32.lib")
 
@@ -288,11 +289,17 @@ LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             return 0;
         }
 
-        // Monitor sub-menu range: toggle primary overlay (per-monitor in GAP-5).
+        // Monitor sub-menu range: toggle the clicked monitor's overlay on/off (GAP-5).
         if (id >= IDM_MONITOR_BASE && id < IDM_MONITOR_BASE + 16u) {
-            m_overlaysEnabled = !m_overlaysEnabled;
-            aura::taskbar::IconOverlayManager::getInstance()
-                .setAnimationEnabled(m_overlaysEnabled);
+            uint32_t const monIdx = id - IDM_MONITOR_BASE;
+            if (monIdx < 4u) {
+                m_monitorEnabled[monIdx] = !m_monitorEnabled[monIdx];
+                aura::app::MonitorConfig configs[aura::app::kMaxMonitors] = {};
+                for (int i = 0; i < aura::app::kMaxMonitors; ++i)
+                    configs[i].enabled = m_monitorEnabled[i] ? 1u : 0u;
+                aura::taskbar::IconOverlayManager::getInstance()
+                    .setMonitorConfigs(configs, aura::app::kMaxMonitors);
+            }
             return 0;
         }
 

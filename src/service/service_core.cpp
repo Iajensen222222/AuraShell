@@ -12,6 +12,7 @@
 #include "taskbar_controller.h"
 #include "icon_overlay_manager.h"
 #include "audio_visualizer.h"
+#include "../app/theme_model.h"
 
 #pragma comment(lib, "advapi32.lib")
 
