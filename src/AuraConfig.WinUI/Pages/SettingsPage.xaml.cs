@@ -85,6 +85,7 @@ public sealed partial class SettingsPage : Page
     private async void BadgeGlow_Toggled(object sender, RoutedEventArgs e)
     {
         if (BadgeGlowToggle is null || BadgeControls is null || BadgeAccessNotice is null) return;
+        Logger.Info("SettingsPage", $"BadgeGlow → {BadgeGlowToggle.IsOn}");
         BadgeControls.Visibility = BadgeGlowToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
         BadgeAccessNotice.Visibility = Visibility.Collapsed;
 
@@ -98,6 +99,7 @@ public sealed partial class SettingsPage : Page
         var ok = await ServiceManager.Instance.StartNotificationMonitorAsync();
         if (!ok)
         {
+            Logger.Warn("SettingsPage", "Notification access denied — user needs to grant via Settings");
             BadgeAccessNotice.Text =
                 "Notification access denied. Allow it under Settings → Privacy & security → Notifications.";
             BadgeAccessNotice.Visibility = Visibility.Visible;

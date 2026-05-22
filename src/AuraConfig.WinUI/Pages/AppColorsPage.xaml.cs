@@ -35,8 +35,10 @@ public sealed partial class AppColorsPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logger.Info("AppColorsPage", "Loaded");
         BuildPresetSwatches();
         LoadEntries();
+        Logger.Debug("AppColorsPage", $"{_entries.Count} entries restored");
         RebuildList();
         ApplyAllToAnimator();
     }
@@ -248,9 +250,10 @@ public sealed partial class AppColorsPage : Page
             Animator?.SetAppColor(_selectedExe, r, g, b);
             SaveEntries();
             RebuildList();
+            Logger.Info("AppColorsPage", $"Saved override {_selectedExe} → #{hex.ToUpperInvariant()}");
             ShowStatus($"✓  {_selectedExe} → #{hex.ToUpperInvariant()}");
         }
-        catch { }
+        catch (Exception ex) { Logger.Error("AppColorsPage", "Save override failed", ex); }
     }
 
     // ── Drop zone ──────────────────────────────────────────────────────────

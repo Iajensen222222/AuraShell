@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using AuraConfig.Services;
 using Microsoft.UI;
@@ -25,6 +26,7 @@ public sealed partial class BehaviorPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logger.Info("BehaviorPage", "Loaded");
         ServiceManager.Instance.StateChanged += OnServiceStateChanged;
         UpdateStatusIndicator(ServiceManager.Instance.CurrentState.IsConnected);
 
@@ -167,14 +169,23 @@ public sealed partial class BehaviorPage : Page
 
     // ── Shell monitoring toggles ───────────────────────────────────────────
 
-    private void AutoHideToggle_Toggled(object sender, RoutedEventArgs e) =>
+    private void AutoHideToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (AutoHideToggle is null || MultiMonitorToggle is null) return; // fires during XAML parse
+        Logger.Debug("BehaviorPage", $"AutoHide → {AutoHideToggle.IsOn}");
         SendFeatures();
+    }
 
-    private void MultiMonitorToggle_Toggled(object sender, RoutedEventArgs e) =>
+    private void MultiMonitorToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (AutoHideToggle is null || MultiMonitorToggle is null) return;
+        Logger.Debug("BehaviorPage", $"MultiMonitor → {MultiMonitorToggle.IsOn}");
         SendFeatures();
+    }
 
     private void SendFeatures()
     {
+        if (AutoHideToggle is null || MultiMonitorToggle is null) return;
         _ = ServiceManager.Instance.SendFeaturesAsync(
                 AutoHideToggle.IsOn,
                 MultiMonitorToggle.IsOn);

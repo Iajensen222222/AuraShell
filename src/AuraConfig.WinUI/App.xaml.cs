@@ -1,3 +1,4 @@
+using AuraConfig.Services;
 using Microsoft.UI.Xaml;
 
 namespace AuraConfig;
@@ -11,27 +12,36 @@ public partial class App : Application
 
     public App()
     {
+        Logger.Info("App", "Process starting");
+
+        // Existing crash dumper — keeps the original winui_crash.log intact for
+        // automation that already greps it.
         this.UnhandledException += (s, e) =>
         {
-            var logPath = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "AuraShell", "winui_crash.log");
             try
             {
-                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(logPath)!);
-                System.IO.File.AppendAllText(logPath,
-                    $"[{DateTime.Now:HH:mm:ss.fff}] UnhandledException: {e.Exception}\n");
+                Logger.Error("App", "UnhandledException", e.Exception);
+
+                var crashPath = System.IO.Path.Combine(
+                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
+                    "AuraShell", "winui_crash.log");
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(crashPath)!);
+                System.IO.File.AppendAllText(crashPath,
+                    $"[{System.DateTime.Now:HH:mm:ss.fff}] UnhandledException: {e.Exception}\n");
             }
             catch { }
             e.Handled = false;
         };
 
         InitializeComponent();
+        Logger.Debug("App", "InitializeComponent done");
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        Logger.Info("App", "OnLaunched");
         _mainWindow = new MainWindow();
         _mainWindow.Activate();
+        Logger.Info("App", "MainWindow activated");
     }
 }

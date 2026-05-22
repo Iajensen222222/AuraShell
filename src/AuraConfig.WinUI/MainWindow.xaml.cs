@@ -230,6 +230,7 @@ public sealed partial class MainWindow : Window
         if (sender is not Button btn || btn.Tag is not string tag) return;
 
         _currentTag = tag;
+        Logger.Info("Nav", $"Click → {tag}");
 
         if (_paneMainItems   is not null) SelectNavItem(_paneMainItems,   tag);
         if (_paneFooterItems is not null) SelectNavItem(_paneFooterItems, tag);
@@ -248,7 +249,15 @@ public sealed partial class MainWindow : Window
             _           => null
         };
 
-        if (pageType is not null) _navFrame.Navigate(pageType);
+        if (pageType is not null)
+        {
+            try { _navFrame.Navigate(pageType); }
+            catch (Exception ex)
+            {
+                Logger.Error("Nav", $"Navigate({pageType.Name}) failed", ex);
+                throw;
+            }
+        }
     }
 
     // ── Audio-reactive border pulse ────────────────────────────────────────

@@ -22,12 +22,14 @@ public sealed partial class SchedulePage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logger.Info("SchedulePage", "Loaded");
         // Initialize the singleton with our dispatcher (no-op if already done).
         ScheduleService.Instance.Initialize(DispatcherQueue);
 
         // Pull current rules from the service into our editable list.
         _rules.Clear();
         foreach (var r in ScheduleService.Instance.Rules) _rules.Add(CloneRule(r));
+        Logger.Debug("SchedulePage", $"{_rules.Count} rules restored");
 
         SchedulerEnabled.Toggled -= SchedulerEnabled_Toggled;
         SchedulerEnabled.IsOn    = ScheduleService.Instance.Enabled;
@@ -165,6 +167,7 @@ public sealed partial class SchedulePage : Page
     {
         ScheduleService.Instance.SetRules(_rules.Select(CloneRule).ToList());
         UpdateNextChange();
+        Logger.Info("SchedulePage", $"Saved {_rules.Count} rule(s). {ScheduleService.Instance.NextChangeDescription()}");
         ShowStatus("✓  Schedule saved");
     }
 

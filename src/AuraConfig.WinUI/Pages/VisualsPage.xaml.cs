@@ -27,6 +27,7 @@ public sealed partial class VisualsPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logger.Info("VisualsPage", "Loaded");
         BuildVisualizerBars();
         ServiceManager.Instance.AudioBandsReceived += OnAudioBandsReceived;
         ServiceManager.Instance.StartAudioStream();
@@ -132,6 +133,7 @@ public sealed partial class VisualsPage : Page
         if (BreatheControls is null || BreatheModeBox is null) return;
 
         var tag = (BreatheModeBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "0";
+        Logger.Info("VisualsPage", $"Breathe mode → {tag} (0=off, 1=sync, 2=wave)");
         BreatheControls.Visibility = tag != "0" ? Visibility.Visible : Visibility.Collapsed;
         if (tag == "0") { Animator?.StopBreathing(); return; }
         ApplyBreatheSettings(tag == "2");
