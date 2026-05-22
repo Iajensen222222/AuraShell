@@ -119,9 +119,31 @@ public sealed partial class DashboardPage : Page
 
     private async void ReconnectBtn_Click(object sender, RoutedEventArgs e)
     {
+        Logger.Info("DashboardPage", "Reconnect clicked");
         ReconnectBtn.IsEnabled = false;
-        await ServiceManager.Instance.TriggerReconnectAsync();
+        ReconnectBtn.Content   = "Connecting…";
+        StatusText.Text        = "◌ Attempting to connect…";
+        StatusDot.Fill         = new SolidColorBrush(Color.FromArgb(0xFF, 0xFC, 0xE1, 0x00)); // amber
+
+        try
+        {
+            await ServiceManager.Instance.TriggerReconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("DashboardPage", "Reconnect failed", ex);
+        }
+
+        // UpdateStatusBar fires through StateChanged, but in case nothing changed
+        // (still disconnected), surface a hint instead of a silent revert.
+        if (!ServiceManager.Instance.CurrentState.IsConnected)
+        {
+            Logger.Warn("DashboardPage", "Reconnect attempt finished — still disconnected");
+            StatusText.Text = "○ Service unreachable — is AuraShellService running?";
+        }
+
         ReconnectBtn.IsEnabled = true;
+        ReconnectBtn.Content   = "Reconnect";
     }
 
     // ── Preset clicks ──────────────────────────────────────────────────────

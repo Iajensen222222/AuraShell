@@ -239,6 +239,7 @@ public sealed class ServiceManager
     private async Task PollAsync()
     {
         ServiceState newState;
+        bool wasConnected = CurrentState.IsConnected;
 
         try
         {
@@ -247,20 +248,27 @@ public sealed class ServiceManager
                 var result = await _client.ConnectAsync(timeoutMs: 1500);
                 if (result != AuraShellClient.ConnectResult.Connected)
                 {
+                    if (wasConnected)
+                        Logger.Warn("ServiceManager", $"Connect → {result}");
                     newState = ServiceState.Disconnected;
                     UpdateState(newState);
                     return;
                 }
+                Logger.Info("ServiceManager", "Connected to AuraShellService");
             }
 
             var state = await _client.QueryStateAsync();
             newState = state ?? ServiceState.Disconnected;
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.Warn("ServiceManager", $"Poll exception: {ex.GetType().Name}: {ex.Message}");
             _client.Disconnect();
             newState = ServiceState.Disconnected;
         }
+
+        if (wasConnected && !newState.IsConnected)
+            Logger.Warn("ServiceManager", "Service connection dropped");
 
         UpdateState(newState);
     }

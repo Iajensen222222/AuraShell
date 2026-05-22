@@ -91,29 +91,60 @@ public sealed partial class BehaviorPage : Page
                 "AuraShellService.exe"),
             @"c:\Users\iajen\App Ideas\Desktop Icon Changer\AuraShell\out\build\x64-Debug\bin\AuraShellService.exe",
             @"c:\Users\iajen\App Ideas\Desktop Icon Changer\AuraShell\out\build\x64-Release\bin\Release\AuraShellService.exe",
+            @"c:\Users\iajen\App Ideas\Desktop Icon Changer\AuraShell\out\build\x64-RelWithTests\bin\Release\AuraShellService.exe",
         ];
+
+        Logger.Info("BehaviorPage", "LaunchServiceDirect: searching candidates");
 
         foreach (var path in candidates)
         {
-            if (!System.IO.File.Exists(path)) continue;
+            if (!System.IO.File.Exists(path))
+            {
+                Logger.Debug("BehaviorPage", $"  miss: {path}");
+                continue;
+            }
             try
             {
-                Process.Start(new ProcessStartInfo
+                // Pass --console so the service runs in-process (foreground), opens the
+                // named pipe immediately, and stays alive. Default (no args) tries SCM
+                // dispatch and exits with ERROR_FAILED_SERVICE_CONTROLLER_CONNECT.
+                // No 'runas' verb — --console mode needs no admin rights to listen on
+                // the per-user pipe.
+                var psi = new ProcessStartInfo
                 {
                     FileName        = path,
-                    UseShellExecute = true,
-                    Verb            = "runas",
+                    Arguments       = "--console",
+                    UseShellExecute = false,
+                    CreateNoWindow  = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                };
+                var proc = Process.Start(psi);
+                Logger.Info("BehaviorPage",
+                    $"Launched {System.IO.Path.GetFileName(path)} --console (PID={proc?.Id})");
+
+                // Kick the polling loop so the dashboard status bar flips green
+                // as soon as the service finishes binding the pipe.
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    await System.Threading.Tasks.Task.Delay(500);
+                    await ServiceManager.Instance.TriggerReconnectAsync();
                 });
-                ShowInfo("Informational", $"Launched: {System.IO.Path.GetFileName(path)}. The service connection should appear within a few seconds.");
+
+                ShowInfo("Informational",
+                    $"Launched: {System.IO.Path.GetFileName(path)} (--console). " +
+                    "The service connection should appear within a few seconds.");
                 return;
             }
             catch (Exception ex)
             {
+                Logger.Error("BehaviorPage", $"Process.Start failed for {path}", ex);
                 ShowInfo("Warning", $"Could not launch service: {ex.Message}");
                 return;
             }
         }
 
+        Logger.Warn("BehaviorPage", "No AuraShellService.exe found in any candidate path");
         ShowInfo("Warning",
             "AuraShellService.exe not found. Build the C++ project first (CMake → x64-Debug).");
     }
