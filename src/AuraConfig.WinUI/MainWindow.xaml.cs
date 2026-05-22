@@ -118,6 +118,7 @@ public sealed partial class MainWindow : Window
         mainItems.Children.Add(MakeNavItem("", "Dashboard",     "dashboard"));
         mainItems.Children.Add(MakeNavItem("", "Visuals",       "visuals"));
         mainItems.Children.Add(MakeNavItem("", "Themes",        "themes"));
+        mainItems.Children.Add(MakeNavItem("", "App Colors",    "appcolors"));
         mainItems.Children.Add(MakeNavItem("", "Behavior",      "behavior"));
         mainItems.Children.Add(MakeNavItem("", "Desktop Items", "desktop"));
         Grid.SetRow(mainItems, 1);
@@ -125,6 +126,7 @@ public sealed partial class MainWindow : Window
 
         // ── Footer nav items ───────────────────────────────────────────────
         var footer = new StackPanel { Spacing = 2, Margin = new Thickness(8, 4, 8, 12) };
+        footer.Children.Add(MakeNavItem("", "Schedule", "schedule"));
         footer.Children.Add(MakeNavItem("", "About",    "about"));
         footer.Children.Add(MakeNavItem("", "Settings", "settings"));
         Grid.SetRow(footer, 2);
@@ -237,8 +239,10 @@ public sealed partial class MainWindow : Window
             "dashboard" => typeof(DashboardPage),
             "visuals"   => typeof(VisualsPage),
             "themes"    => typeof(ThemesPage),
+            "appcolors" => typeof(AppColorsPage),
             "behavior"  => typeof(BehaviorPage),
             "desktop"   => typeof(DesktopItemsPage),
+            "schedule"  => typeof(SchedulePage),
             "about"     => typeof(AboutPage),
             "settings"  => typeof(SettingsPage),
             _           => null

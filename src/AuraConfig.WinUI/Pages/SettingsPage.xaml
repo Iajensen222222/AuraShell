@@ -67,6 +67,46 @@
                 </StackPanel>
             </Border>
 
+            <!-- NOTIFICATION BADGE section -->
+            <TextBlock Text="NOTIFICATION BADGE"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Pending Notification Glow" />
+                    <ToggleSwitch x:Name="BadgeGlowToggle"
+                                  Header="Glow border on apps with notifications"
+                                  IsOn="False"
+                                  Toggled="BadgeGlow_Toggled" />
+                    <StackPanel x:Name="BadgeControls" Visibility="Collapsed" Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border x:Name="BadgeColorSwatch"
+                                    Width="28" Height="28" CornerRadius="4"
+                                    Background="#FFFFA500" VerticalAlignment="Center" />
+                            <TextBox x:Name="BadgeHexInput"
+                                     PlaceholderText="#FFA500"
+                                     Text="#FFA500"
+                                     Width="120" />
+                            <Button Content="Apply" Click="BadgeColor_Apply" />
+                        </StackPanel>
+                        <TextBlock Text="Default amber #FFA500 — overrides the per-app or theme border color while a notification is pending."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="BadgeAccessNotice"
+                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Visibility="Collapsed"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- RESET section -->
             <TextBlock Text="RESET"
                        Style="{ThemeResource CaptionTextBlockStyle}"

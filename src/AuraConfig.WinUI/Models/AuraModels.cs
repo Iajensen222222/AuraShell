@@ -239,6 +239,39 @@ public class GlowPreset
         $"#{R:X2}{G:X2}{B:X2}";
 }
 
+/// <summary>
+/// Per-exe glow color override. Persisted to app-colors.json and applied via
+/// GlowAnimator.SetAppColor at runtime — any visible top-level window whose
+/// process image name matches ExeName gets this color instead of the theme.
+/// </summary>
+public class AppColorEntry
+{
+    public string ExeName { get; set; } = "";
+    public byte   R       { get; set; }
+    public byte   G       { get; set; }
+    public byte   B       { get; set; }
+
+    public Windows.UI.Color Color =>
+        Windows.UI.Color.FromArgb(255, R, G, B);
+
+    public string HexColor =>
+        $"#{R:X2}{G:X2}{B:X2}";
+}
+
+/// <summary>
+/// One scheduled theme switch. Days[0]=Mon..Days[6]=Sun. ScheduleService
+/// applies ThemeName at StartH:StartM each enabled weekday.
+/// </summary>
+public class ScheduleRule
+{
+    public bool[] Days       { get; set; } = new bool[7]; // [0]=Mon..[6]=Sun
+    public int    StartH     { get; set; } = 9;
+    public int    StartM     { get; set; } = 0;
+    public int    EndH       { get; set; } = 17;
+    public int    EndM       { get; set; } = 0;
+    public string ThemeName  { get; set; } = "";
+}
+
 public static class GlowPresets
 {
     public static readonly GlowPreset[] All =

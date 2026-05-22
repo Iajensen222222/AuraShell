@@ -67,6 +67,48 @@
                 </StackPanel>
             </Border>
 
+            <!-- IDLE BREATHING card -->
+            <TextBlock Text="IDLE BREATHING"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Border Breathing Animation" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Text="Make every window border pulse gently in the background."
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                    <ComboBox x:Name="BreatheModeBox"
+                              Header="Mode"
+                              MinWidth="320"
+                              SelectionChanged="BreatheMode_Changed">
+                        <ComboBoxItem Content="Disabled" Tag="0" IsSelected="True" />
+                        <ComboBoxItem Content="Synchronized — all borders pulse together" Tag="1" />
+                        <ComboBoxItem Content="Wave — pulse rolls left to right" Tag="2" />
+                    </ComboBox>
+                    <StackPanel x:Name="BreatheControls" Visibility="Collapsed" Spacing="8">
+                        <Slider x:Name="BreatheSpeedSlider"
+                                Header="Speed"
+                                Minimum="0.5" Maximum="5.0" StepFrequency="0.1" Value="2.5"
+                                ValueChanged="BreatheSpeed_Changed" />
+                        <TextBlock x:Name="BreatheSpeedLabel"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="2.5 s per cycle" />
+                        <Slider x:Name="BreatheBrightnessSlider"
+                                Header="Max brightness boost"
+                                Minimum="0" Maximum="100" StepFrequency="5" Value="40"
+                                ValueChanged="BreatheBrightness_Changed" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- AUDIO VISUALIZER card -->
             <TextBlock Text="AUDIO VISUALIZER"
                        Style="{ThemeResource CaptionTextBlockStyle}"

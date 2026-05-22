@@ -121,6 +121,38 @@ public sealed partial class VisualsPage : Page
         await PushThemeAsync();
     }
 
+    // ── Idle breathing ─────────────────────────────────────────────────────
+
+    private GlowAnimator? Animator =>
+        (Application.Current as App)?.MainWindow?.GlowAnimator;
+
+    private void BreatheMode_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        var tag = (BreatheModeBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "0";
+        BreatheControls.Visibility = tag != "0" ? Visibility.Visible : Visibility.Collapsed;
+        if (tag == "0") { Animator?.StopBreathing(); return; }
+        ApplyBreatheSettings(tag == "2");
+    }
+
+    private void BreatheSpeed_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        BreatheSpeedLabel.Text = $"{BreatheSpeedSlider.Value:F1} s per cycle";
+        ApplyBreatheSettings(BreatheModeBox.SelectedIndex == 2);
+    }
+
+    private void BreatheBrightness_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        => ApplyBreatheSettings(BreatheModeBox.SelectedIndex == 2);
+
+    private void ApplyBreatheSettings(bool waveMode)
+    {
+        if (BreatheModeBox.SelectedIndex == 0) return;
+        double speed    = BreatheSpeedSlider.Value;
+        float  maxBoost = (float)BreatheBrightnessSlider.Value / 100f;
+        Animator?.StartBreathing(speed, maxBoost, waveMode);
+    }
+
     // ── Options ────────────────────────────────────────────────────────────
 
     private async void HoverToggle_Toggled(object sender, RoutedEventArgs e)

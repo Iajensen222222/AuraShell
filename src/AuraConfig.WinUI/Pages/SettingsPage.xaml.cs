@@ -1,6 +1,7 @@
 using AuraConfig.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace AuraConfig.Pages;
 
@@ -75,6 +76,47 @@ public sealed partial class SettingsPage : Page
     private void NotificationsToggle_Toggled(object sender, RoutedEventArgs e)
     {
         AppSettings.Set(KeyNotifications, NotificationsToggle.IsOn ? "true" : "false");
+    }
+
+    // ── Notification badge ─────────────────────────────────────────────────
+
+    private Windows.UI.Color _badgeColor = Windows.UI.Color.FromArgb(255, 0xFF, 0xA5, 0x00);
+
+    private async void BadgeGlow_Toggled(object sender, RoutedEventArgs e)
+    {
+        BadgeControls.Visibility = BadgeGlowToggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        BadgeAccessNotice.Visibility = Visibility.Collapsed;
+
+        if (!BadgeGlowToggle.IsOn)
+        {
+            ServiceManager.Instance.StopNotificationMonitor();
+            return;
+        }
+
+        ServiceManager.Instance.UpdateBadgeColor(_badgeColor);
+        var ok = await ServiceManager.Instance.StartNotificationMonitorAsync();
+        if (!ok)
+        {
+            BadgeAccessNotice.Text =
+                "Notification access denied. Allow it under Settings → Privacy & security → Notifications.";
+            BadgeAccessNotice.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void BadgeColor_Apply(object sender, RoutedEventArgs e)
+    {
+        var hex = BadgeHexInput.Text.Trim().TrimStart('#');
+        if (hex.Length != 6) return;
+        try
+        {
+            byte r = Convert.ToByte(hex[0..2], 16);
+            byte g = Convert.ToByte(hex[2..4], 16);
+            byte b = Convert.ToByte(hex[4..6], 16);
+            _badgeColor = Windows.UI.Color.FromArgb(255, r, g, b);
+            BadgeColorSwatch.Background = new SolidColorBrush(_badgeColor);
+            ServiceManager.Instance.UpdateBadgeColor(_badgeColor);
+        }
+        catch { }
     }
 
     // ── Reset ──────────────────────────────────────────────────────────────

@@ -150,6 +150,90 @@ public sealed class ServiceManager
     /// </summary>
     public Task TriggerReconnectAsync() => PollAsync();
 
+    // ── Notification badge monitor ─────────────────────────────────────────
+
+    private System.Threading.CancellationTokenSource? _notifCts;
+    private Windows.UI.Color _badgeColor = Windows.UI.Color.FromArgb(255, 0xFF, 0xA5, 0x00);
+
+    /// <summary>Update the color used for all notification badge glows.</summary>
+    public void UpdateBadgeColor(Windows.UI.Color color) => _badgeColor = color;
+
+    /// <summary>
+    /// Start polling UserNotificationListener for toast notifications and
+    /// applying the badge color to apps with pending notifications. Returns
+    /// true if access was granted, false if the user denied notification access.
+    /// </summary>
+    public async Task<bool> StartNotificationMonitorAsync()
+    {
+        StopNotificationMonitor();
+        try
+        {
+            var listener = Windows.UI.Notifications.Management.UserNotificationListener.Current;
+            var access   = await listener.RequestAccessAsync();
+            if (access != Windows.UI.Notifications.Management.UserNotificationListenerAccessStatus.Allowed)
+                return false;
+
+            _notifCts = new System.Threading.CancellationTokenSource();
+            _ = RunNotificationLoopAsync(listener, _notifCts.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public void StopNotificationMonitor()
+    {
+        _notifCts?.Cancel();
+        _notifCts?.Dispose();
+        _notifCts = null;
+
+        // Clear any currently-set badge colors so apps return to their normal color.
+        var animator = (Application.Current as App)?.MainWindow?.GlowAnimator;
+        if (animator is null) return;
+        foreach (var name in _lastNotifApps)
+            animator.ClearBadgeColor(name);
+        _lastNotifApps.Clear();
+    }
+
+    private readonly HashSet<string> _lastNotifApps = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task RunNotificationLoopAsync(
+        Windows.UI.Notifications.Management.UserNotificationListener listener,
+        System.Threading.CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var notifs = await listener.GetNotificationsAsync(
+                    Windows.UI.Notifications.NotificationKinds.Toast);
+
+                var curr = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var n in notifs)
+                {
+                    var name = n.AppInfo?.DisplayInfo?.DisplayName;
+                    if (!string.IsNullOrEmpty(name)) curr.Add(name);
+                }
+
+                var animator = (Application.Current as App)?.MainWindow?.GlowAnimator;
+                if (animator != null)
+                {
+                    foreach (var app in curr) if (!_lastNotifApps.Contains(app))
+                        animator.SetBadgeColor(app, _badgeColor);
+                    foreach (var app in _lastNotifApps) if (!curr.Contains(app))
+                        animator.ClearBadgeColor(app);
+                }
+                _lastNotifApps.Clear();
+                foreach (var a in curr) _lastNotifApps.Add(a);
+            }
+            catch { }
+
+            try { await Task.Delay(5000, ct); } catch { return; }
+        }
+    }
+
     // ── Polling internals ──────────────────────────────────────────────────
 
     private async Task PollAsync()
