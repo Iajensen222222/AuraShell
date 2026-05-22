@@ -79,6 +79,43 @@ public sealed partial class BehaviorPage : Page
         ShowInfo("Informational", "Restart command sent to AuraShellService…");
     }
 
+    private void LaunchServiceDirect_Click(object sender, RoutedEventArgs e)
+    {
+        // Search order: beside the app exe, then known debug/release build locations
+        string[] candidates =
+        [
+            System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "",
+                "AuraShellService.exe"),
+            @"c:\Users\iajen\App Ideas\Desktop Icon Changer\AuraShell\out\build\x64-Debug\bin\AuraShellService.exe",
+            @"c:\Users\iajen\App Ideas\Desktop Icon Changer\AuraShell\out\build\x64-Release\bin\Release\AuraShellService.exe",
+        ];
+
+        foreach (var path in candidates)
+        {
+            if (!System.IO.File.Exists(path)) continue;
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName        = path,
+                    UseShellExecute = true,
+                    Verb            = "runas",
+                });
+                ShowInfo("Informational", $"Launched: {System.IO.Path.GetFileName(path)}. The service connection should appear within a few seconds.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                ShowInfo("Warning", $"Could not launch service: {ex.Message}");
+                return;
+            }
+        }
+
+        ShowInfo("Warning",
+            "AuraShellService.exe not found. Build the C++ project first (CMake → x64-Debug).");
+    }
+
     private static void RunSc(string verb)
     {
         try

@@ -1,5 +1,6 @@
 using AuraConfig.Models;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 
 namespace AuraConfig.Services;
 
@@ -129,6 +130,11 @@ public sealed class ServiceManager
     /// <summary>Push an arbitrary ThemeConfig to the service.</summary>
     public async Task<bool> PushThemeAsync(ThemeConfig theme)
     {
+        // Update window border color immediately regardless of service connection state.
+        if (Application.Current is App app)
+            app.MainWindow?.ApplyBorderColor(
+                theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
+
         if (!_client.IsConnected)
         {
             var result = await _client.ConnectAsync(timeoutMs: 1500);

@@ -3,10 +3,10 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
 using AuraConfig.Pages;
 using AuraConfig.Services;
 using Windows.Graphics;
+using AuraConfig.Models;
 
 namespace AuraConfig;
 
@@ -14,6 +14,17 @@ public sealed partial class MainWindow : Window
 {
     private Frame _navFrame = new Frame();
     private readonly GlowAnimator _glowAnimator = new();
+
+    /// <summary>Exposed so pages (VisualsPage, AppColorsPage) can call SetColor/SetAppColor etc.</summary>
+    public GlowAnimator GlowAnimator => _glowAnimator;
+
+    // Audio-reactive border: enabled when service is connected and streaming audio
+    private bool _audioReactiveBorder = false;
+    public bool AudioReactiveBorderEnabled
+    {
+        get => _audioReactiveBorder;
+        set => _audioReactiveBorder = value;
+    }
 
     // Accent orange — matches the original NavigationView selection indicator.
     private static readonly Windows.UI.Color AccentOrange =
@@ -26,6 +37,12 @@ public sealed partial class MainWindow : Window
         _navFrame.Navigate(typeof(DashboardPage));
         SetWindowSizeAndCenter(1100, 780);
         ServiceManager.Instance.StartPolling(DispatcherQueue);
+
+        // Wire audio band data → animated window border pulse
+        ServiceManager.Instance.AudioBandsReceived += OnAudioBandsReceived;
+
+        // Apply default blue border immediately so the window looks right from the start
+        _glowAnimator.SetColor(0x00, 0x78, 0xD4);
 
         // Set taskbar / titlebar icon
         try
@@ -70,21 +87,10 @@ public sealed partial class MainWindow : Window
             Pane              = pane,
             Content           = _navFrame,
         };
-        // Wrap SplitView + glow overlay in a root Grid so the animated edge
-        // strips render on top without blocking any mouse/touch input.
-        var root = new Grid();
-        root.Children.Add(splitView);
-        root.Children.Add(_glowAnimator.BuildOverlay());
-
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _glowAnimator.SetWindowHandle(hwnd);
 
-        var glowTimer = DispatcherQueue.CreateTimer();
-        glowTimer.Interval = TimeSpan.FromMilliseconds(33); // ~30 fps
-        glowTimer.Tick += (_, _) => _glowAnimator.Tick();
-        glowTimer.Start();
-
-        return root;
+        return splitView;
     }
 
     private UIElement BuildPane()
@@ -239,4 +245,22 @@ public sealed partial class MainWindow : Window
 
         if (pageType is not null) _navFrame.Navigate(pageType);
     }
+
+    // ── Audio-reactive border pulse ────────────────────────────────────────
+
+    private void OnAudioBandsReceived(object? sender, AudioBandsPayload payload)
+    {
+        // Only pulse when the feature is enabled; avoid thrashing DWM at 10fps otherwise
+        if (!_audioReactiveBorder) return;
+        _glowAnimator.Pulse(payload.Peak);
+    }
+
+    // ── Theme apply → border color ─────────────────────────────────────────
+
+    /// <summary>
+    /// Called by any page that applies a theme to immediately update all window
+    /// borders without waiting for a service round-trip.
+    /// </summary>
+    public void ApplyBorderColor(byte r, byte g, byte b)
+        => _glowAnimator.SetColor(r, g, b);
 }

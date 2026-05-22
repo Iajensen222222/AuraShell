@@ -4,8 +4,10 @@ namespace AuraConfig;
 
 public partial class App : Application
 {
-    private Window? _window;
-    public Window? MainWindow => _window;
+    private MainWindow? _mainWindow;
+    public MainWindow? MainWindow => _mainWindow;
+    // Legacy alias for code that only needs Window APIs
+    public Window? Window => _mainWindow;
 
     public App()
     {
@@ -29,7 +31,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
-        _window.Activate();
+        _mainWindow = new MainWindow();
+        _mainWindow.Activate();
     }
 }

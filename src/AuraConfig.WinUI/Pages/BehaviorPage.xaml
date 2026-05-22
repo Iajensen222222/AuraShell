@@ -46,13 +46,23 @@
 
                     <!-- Buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Start"
+                        <Button Content="Start (sc.exe)"
                                 Style="{ThemeResource AccentButtonStyle}"
                                 Click="StartService_Click" />
                         <Button Content="Stop"
                                 Click="StopService_Click" />
                         <Button Content="Restart"
                                 Click="RestartService_Click" />
+                    </StackPanel>
+
+                    <!-- Direct launch — works even when the service isn't installed -->
+                    <StackPanel Spacing="4">
+                        <Button Content="Launch service directly (dev mode)"
+                                Click="LaunchServiceDirect_Click" />
+                        <TextBlock Text="Runs AuraShellService.exe without requiring Windows Service registration. Use this if Start above fails."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
 
                     <!-- InfoBar replaced with simple banner — InfoBar crashes in
