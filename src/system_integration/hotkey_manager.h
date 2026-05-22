@@ -43,13 +43,15 @@ public:
     // Override a specific hotkey's modifiers+VK (call before initialize()).
     void setBinding(HotkeyAction action, UINT modifiers, UINT vk);
 
+    // Trigger a built-in effect directly (without a registered hotkey).
+    // Used by ShellIntegration tray menu to share the same code path as WM_HOTKEY.
+    void dispatch(HotkeyAction action);
+
 private:
     HotkeyManager() = default;
     ~HotkeyManager() { shutdown(); }
     HotkeyManager(const HotkeyManager&) = delete;
     HotkeyManager& operator=(const HotkeyManager&) = delete;
-
-    void dispatch(HotkeyAction action);
 
     struct Binding {
         HotkeyAction action;

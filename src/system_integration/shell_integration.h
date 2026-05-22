@@ -47,6 +47,9 @@ private:
     void createTrayIcon();
     void destroyTrayIcon();
     void showContextMenu();
+    void buildThemesSubMenu(HMENU parent);
+    void buildMonitorSubMenu(HMENU parent);
+    void onThemeSelected(uint32_t idx);
     void onTaskbarCreated();
     void onPowerStatusChange();
 
@@ -65,14 +68,21 @@ private:
     // Registered message IDs
     UINT m_wmTaskbarCreated{0};
 
+    // Tracks which preset was last applied from the tray menu (for check mark).
+    uint32_t m_currentThemeIdx{0};
+
     // Tray icon ID and callback message
     static constexpr UINT TRAY_ICON_ID  = 1;
     static constexpr UINT WM_TRAY       = WM_APP + 1;
 
-    // Context menu item IDs
+    // Context menu item IDs — simple commands
     static constexpr UINT IDM_OPEN      = 1001;
     static constexpr UINT IDM_TOGGLE    = 1002;
     static constexpr UINT IDM_EXIT      = 1003;
+    static constexpr UINT IDM_NEXT_THEME = 1004;
+    // Sub-menu ranges (up to 256 themes, up to 16 monitors)
+    static constexpr UINT IDM_THEME_BASE   = 2000;
+    static constexpr UINT IDM_MONITOR_BASE = 3000;
 
     static constexpr wchar_t kClass[]   = L"AuraShell_Shell";
 };

@@ -7,6 +7,9 @@
 #include "icon_overlay_manager.h"
 #include "audio_visualizer.h"
 #include "hotkey_manager.h"
+#include "theme_preset_loader.h"
+#include "workspace_manager.h"
+#include "taskbar_controller.h"
 #include "logging/logger.h"
 
 #pragma comment(lib, "shell32.lib")
@@ -114,22 +117,86 @@ void ShellIntegration::showContextMenu() {
     HMENU hMenu = CreatePopupMenu();
     if (!hMenu) return;
 
-    wchar_t toggleLabel[64];
-    wcscpy_s(toggleLabel, m_overlaysEnabled ? L"Disable Overlays" : L"Enable Overlays");
+    AppendMenuW(hMenu, MF_STRING, IDM_OPEN, L"Open AuraShell Config");
+    AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
 
-    AppendMenuW(hMenu, MF_STRING, IDM_OPEN,   L"Open AuraShell Config");
+    // "Themes ▶" — built from the current ThemePresetLoader catalog.
+    HMENU hThemes = CreatePopupMenu();
+    if (hThemes) {
+        buildThemesSubMenu(hThemes);
+        AppendMenuW(hMenu, MF_POPUP,
+                    reinterpret_cast<UINT_PTR>(hThemes), L"Themes");
+    }
+    AppendMenuW(hMenu, MF_STRING, IDM_NEXT_THEME, L"Next theme\tWin+Shift+T");
+    AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+
+    // "Monitor overlays ▶" — one item per detected monitor.
+    HMENU hMonitors = CreatePopupMenu();
+    if (hMonitors) {
+        buildMonitorSubMenu(hMonitors);
+        AppendMenuW(hMenu, MF_POPUP,
+                    reinterpret_cast<UINT_PTR>(hMonitors), L"Monitor overlays");
+        AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+    }
+
+    wchar_t toggleLabel[48];
+    wcscpy_s(toggleLabel, m_overlaysEnabled ? L"Disable overlays" : L"Enable overlays");
     AppendMenuW(hMenu, MF_STRING, IDM_TOGGLE, toggleLabel);
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(hMenu, MF_STRING, IDM_EXIT,   L"Exit AuraShell");
 
-    // Required for TrackPopupMenu to dismiss when clicking outside.
     SetForegroundWindow(m_hwnd);
-
     POINT pt;
     GetCursorPos(&pt);
     TrackPopupMenu(hMenu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
                    pt.x, pt.y, 0, m_hwnd, nullptr);
     DestroyMenu(hMenu);
+}
+
+void ShellIntegration::buildThemesSubMenu(HMENU parent) {
+    auto const& presets = aura::context::ThemePresetLoader::getInstance().getPresets();
+    if (presets.empty()) {
+        AppendMenuW(parent, MF_STRING | MF_GRAYED, 0, L"(no themes loaded)");
+        return;
+    }
+    for (uint32_t i = 0; i < static_cast<uint32_t>(presets.size()); ++i) {
+        UINT flags = MF_STRING | (i == m_currentThemeIdx ? MF_CHECKED : 0u);
+        AppendMenuW(parent, flags, IDM_THEME_BASE + i,
+                    presets[i].themeName.c_str());
+    }
+}
+
+void ShellIntegration::buildMonitorSubMenu(HMENU parent) {
+    auto const states =
+        aura::taskbar::TaskbarController::getInstance().getAllMonitorStates();
+    if (states.empty()) {
+        AppendMenuW(parent, MF_STRING | MF_GRAYED, 0, L"(no monitors detected)");
+        return;
+    }
+    for (uint32_t i = 0; i < static_cast<uint32_t>(states.size()); ++i) {
+        wchar_t label[64];
+        swprintf_s(label, i == 0 ? L"Monitor %u — Primary" : L"Monitor %u", i + 1u);
+        // Check mark reflects whether overlays are globally enabled for now;
+        // per-monitor independent control is deferred to GAP-5.
+        UINT flags = MF_STRING | (m_overlaysEnabled ? MF_CHECKED : 0u);
+        AppendMenuW(parent, flags, IDM_MONITOR_BASE + i, label);
+    }
+}
+
+void ShellIntegration::onThemeSelected(uint32_t idx) {
+    auto const& presets = aura::context::ThemePresetLoader::getInstance().getPresets();
+    if (idx >= static_cast<uint32_t>(presets.size())) return;
+
+    m_currentThemeIdx = idx;
+    aura::context::WorkspaceManager::getInstance().setDefaultTheme(presets[idx]);
+
+    int const n = WideCharToMultiByte(CP_UTF8, 0,
+        presets[idx].themeName.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string name(static_cast<size_t>(n > 0 ? n - 1 : 0), '\0');
+    if (n > 0)
+        WideCharToMultiByte(CP_UTF8, 0, presets[idx].themeName.c_str(), -1,
+                            &name[0], n, nullptr, nullptr);
+    aura::logging::Logger::getInstance().info("shell", "Tray: theme → " + name);
 }
 
 // ============================================================================
@@ -214,12 +281,27 @@ LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
         return 0;
 
-    case WM_COMMAND:
-        switch (LOWORD(wp)) {
+    case WM_COMMAND: {
+        UINT const id = LOWORD(wp);
+
+        // Theme sub-menu range: IDM_THEME_BASE + preset index.
+        if (id >= IDM_THEME_BASE && id < IDM_THEME_BASE + 256u) {
+            onThemeSelected(id - IDM_THEME_BASE);
+            return 0;
+        }
+
+        // Monitor sub-menu range: toggle primary overlay (per-monitor in GAP-5).
+        if (id >= IDM_MONITOR_BASE && id < IDM_MONITOR_BASE + 16u) {
+            m_overlaysEnabled = !m_overlaysEnabled;
+            aura::taskbar::IconOverlayManager::getInstance()
+                .setAnimationEnabled(m_overlaysEnabled);
+            return 0;
+        }
+
+        switch (id) {
         case IDM_OPEN: {
             wchar_t selfPath[MAX_PATH] = {};
             GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
-            // Replace service exe name with AuraConfig.exe in the same directory.
             std::wstring path(selfPath);
             auto slash = path.rfind(L'\\');
             if (slash != std::wstring::npos)
@@ -227,6 +309,11 @@ LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOW);
             break;
         }
+        case IDM_NEXT_THEME:
+            // Delegate to HotkeyManager so both tray and Win+Shift+T share
+            // the same cycling index and WorkspaceManager call.
+            HotkeyManager::getInstance().dispatch(HotkeyAction::CycleTheme);
+            break;
         case IDM_TOGGLE:
             m_overlaysEnabled = !m_overlaysEnabled;
             aura::taskbar::IconOverlayManager::getInstance()
@@ -236,8 +323,11 @@ LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             destroyTrayIcon();
             PostQuitMessage(0);
             break;
+        default:
+            break;
         }
         return 0;
+    }
 
     case WM_DESTROY:
         m_hwnd = nullptr;
