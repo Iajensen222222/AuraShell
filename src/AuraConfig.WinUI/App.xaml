@@ -24,13 +24,16 @@
         <ResourceDictionary>
 
             <!-- ── Custom brushes (dark theme values) ─────────────────────────── -->
-            <SolidColorBrush x:Key="TextFillColorSecondaryBrush"           Color="#C5FFFFFF" />
-            <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"   Color="#0DFFFFFF" />
-            <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"           Color="#19000000" />
-            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush"       Color="#60CDFF"   />
-            <SolidColorBrush x:Key="SystemFillColorCautionBrush"           Color="#FCE100"   />
-            <SolidColorBrush x:Key="SystemFillColorSuccessBrush"           Color="#6CCB5F"   />
-            <SolidColorBrush x:Key="SystemFillColorSuccessBackgroundBrush" Color="#393D1B"   />
+            <SolidColorBrush x:Key="TextFillColorSecondaryBrush"              Color="#C5FFFFFF" />
+            <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"    Color="#0DFFFFFF" />
+            <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"            Color="#19000000" />
+            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush"        Color="#60CDFF"   />
+            <SolidColorBrush x:Key="SystemFillColorCautionBrush"            Color="#FCE100"   />
+            <SolidColorBrush x:Key="SystemFillColorSuccessBrush"            Color="#6CCB5F"   />
+            <SolidColorBrush x:Key="SystemFillColorSuccessBackgroundBrush"  Color="#393D1B"   />
+            <!-- ThemesPage requires these two keys missing from WinUI 3 unpackaged resources -->
+            <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"         Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="SystemFillColorCautionBackgroundBrush"  Color="#30FCE100" />
 
             <!-- ── Text styles (WinUI type-ramp values) ───────────────────────── -->
             <Style x:Key="CaptionTextBlockStyle" TargetType="TextBlock">
