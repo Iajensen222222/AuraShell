@@ -296,7 +296,7 @@ LRESULT ShellIntegration::wndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 m_monitorEnabled[monIdx] = !m_monitorEnabled[monIdx];
                 aura::app::MonitorConfig configs[aura::app::kMaxMonitors] = {};
                 for (int i = 0; i < aura::app::kMaxMonitors; ++i)
-                    configs[i].enabled = m_monitorEnabled[i] ? 1u : 0u;
+                    configs[i].enabled = static_cast<uint8_t>(m_monitorEnabled[i] ? 1u : 0u);
                 aura::taskbar::IconOverlayManager::getInstance()
                     .setMonitorConfigs(configs, aura::app::kMaxMonitors);
             }

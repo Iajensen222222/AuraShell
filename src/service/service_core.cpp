@@ -424,8 +424,11 @@ void ServiceCore::ipcThreadProc() {
                     aura::app::MonitorConfig configs[aura::app::kMaxMonitors] = {};
                     for (int i = 0; i < aura::app::kMaxMonitors; ++i) {
                         auto const& me = tp->perMonitor[i];
-                        configs[i].color   = { me.r, me.g, me.b, me.a };
-                        configs[i].enabled = me.enabled ? 1 : 0;
+                        configs[i].color.r = me.r;
+                        configs[i].color.g = me.g;
+                        configs[i].color.b = me.b;
+                        configs[i].color.a = me.a;
+                        configs[i].enabled = static_cast<uint8_t>(me.enabled ? 1u : 0u);
                     }
                     aura::taskbar::IconOverlayManager::getInstance()
                         .setMonitorConfigs(configs, aura::app::kMaxMonitors);
