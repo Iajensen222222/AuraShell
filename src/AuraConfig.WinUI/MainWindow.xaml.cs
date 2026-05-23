@@ -15,6 +15,8 @@ public sealed partial class MainWindow : Window
 {
     private Frame _navFrame = new Frame();
     private readonly GlowAnimator _glowAnimator = new();
+    private readonly TrayIconService _tray = new();
+    private bool _quitting = false;
 
     /// <summary>Exposed so pages (VisualsPage, AppColorsPage) can call SetColor/SetAppColor etc.</summary>
     public GlowAnimator GlowAnimator => _glowAnimator;
@@ -65,6 +67,31 @@ public sealed partial class MainWindow : Window
                 AppWindow.SetIcon(iconPath);
         }
         catch { }
+
+        // Tray icon + minimize-to-tray on close so the GlowAnimator's repaint
+        // loop keeps the borders applied even when the user clicks the X.
+        // Quit only via tray context menu's 'Quit' item.
+        _tray.Initialize("AuraShell — click to restore window");
+        _tray.ShowRequested += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            AppWindow.Show();
+            this.Activate();
+        });
+        _tray.QuitRequested += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            Logger.Info("MainWindow", "Quit requested from tray");
+            _quitting = true;
+            _tray.Dispose();
+            this.Close();
+        });
+
+        AppWindow.Closing += (s, args) =>
+        {
+            if (_quitting) return;          // user picked Quit from tray menu
+            args.Cancel = true;
+            Logger.Info("MainWindow", "Close intercepted → hiding to tray");
+            AppWindow.Hide();
+        };
     }
 
     // ── Window geometry ────────────────────────────────────────────────────

@@ -53,6 +53,14 @@ public sealed class GlowAnimator
     private bool    _breatheWaveMode;
     private int     _breatheWindowCount;  // snapshotted for wave offset calculation
 
+    // Repaint timer — re-applies the current theme color to all visible windows
+    // every RepaintIntervalMs. Two reasons:
+    //   1. New windows that opened since the last paint get tinted.
+    //   2. DWM resets DWMWA_BORDER_COLOR on activation changes per MS docs; we
+    //      have to re-apply ourselves to keep the tint sticky.
+    private System.Threading.Timer? _repaintTimer;
+    private const int RepaintIntervalMs = 1500;
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     /// <summary>Call once with the WinUI app's own HWND after the window is created.</summary>
@@ -72,12 +80,46 @@ public sealed class GlowAnimator
 
     /// <summary>
     /// Sets all visible app window borders to the given theme accent color.
-    /// Call whenever the active theme changes.
+    /// Call whenever the active theme changes. Also starts the repaint timer
+    /// (idempotent — subsequent calls just update the color, the timer keeps
+    /// ticking).
     /// </summary>
     public void SetColor(byte r, byte g, byte b)
     {
         _themeColor = (r, g, b);
         SetAllWindowBorders(r, g, b);
+        EnsureRepaintTimerStarted();
+    }
+
+    /// <summary>
+    /// Starts (or leaves running) the periodic repaint that re-tints all visible
+    /// windows. Required because DWM clears DWMWA_BORDER_COLOR on activation
+    /// changes and because new windows opened later need to be picked up.
+    /// </summary>
+    private void EnsureRepaintTimerStarted()
+    {
+        if (_repaintTimer is not null) return;
+        _repaintTimer = new System.Threading.Timer(
+            _ => RepaintTick(),
+            null,
+            TimeSpan.FromMilliseconds(RepaintIntervalMs),
+            TimeSpan.FromMilliseconds(RepaintIntervalMs));
+    }
+
+    private void RepaintTick()
+    {
+        try
+        {
+            // Skip the repaint while breathing is active — that timer is already
+            // touching every window each frame and a second concurrent enum
+            // would just churn DWM. (Breathing's tick reads _themeColor so a
+            // theme change still takes effect on the next breathe tick.)
+            if (_breatheTimer is not null) return;
+
+            var (r, g, b) = _themeColor;
+            SetAllWindowBorders(r, g, b);
+        }
+        catch { /* never let the timer thread crash the app */ }
     }
 
     /// <summary>
