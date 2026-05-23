@@ -18,6 +18,46 @@ public sealed class ServiceManager
 
     public event EventHandler<ServiceState>? StateChanged;
 
+    /// <summary>
+    /// The last theme that was applied via PushThemeAsync (or ApplyPresetAsync).
+    /// Survives page navigation in-memory and persists across app restarts via
+    /// AppSettings. Pages read this in OnLoaded to restore their selection/color
+    /// state instead of falling back to defaults.
+    /// </summary>
+    public ThemeConfig? LastAppliedTheme { get; private set; }
+
+    private const string KeyLastTheme = "LastAppliedTheme.Json";
+
+    private void LoadLastTheme()
+    {
+        try
+        {
+            var json = AppSettings.Get(KeyLastTheme);
+            if (string.IsNullOrEmpty(json)) return;
+            var loaded = System.Text.Json.JsonSerializer.Deserialize<ThemeConfig>(json);
+            // Discard a default-shaped record (e.g. from accidentally pushing an
+            // uninitialised ThemeConfig); zero alpha means no real color was ever
+            // applied, and a black border would be visually broken.
+            if (loaded is not null &&
+                loaded.AccentColor.A != 0 &&
+                (loaded.AccentColor.R | loaded.AccentColor.G | loaded.AccentColor.B) != 0)
+            {
+                LastAppliedTheme = loaded;
+            }
+        }
+        catch { LastAppliedTheme = null; }
+    }
+
+    private void SaveLastTheme(ThemeConfig theme)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(theme);
+            AppSettings.Set(KeyLastTheme, json);
+        }
+        catch { }
+    }
+
     // ── Audio streaming ────────────────────────────────────────────────────
 
     /// <summary>Fired on the calling thread when a new AUDIO_BANDS frame arrives.</summary>
@@ -33,7 +73,14 @@ public sealed class ServiceManager
     private DispatcherQueueTimer? _pollTimer;
     private bool _polling;
 
-    private ServiceManager() { }
+    private ServiceManager()
+    {
+        LoadLastTheme();
+        Logger.Debug("ServiceManager",
+            LastAppliedTheme is null
+                ? "No previous theme on disk"
+                : $"Restored last theme: {LastAppliedTheme.Name} #{LastAppliedTheme.AccentColor.R:X2}{LastAppliedTheme.AccentColor.G:X2}{LastAppliedTheme.AccentColor.B:X2}");
+    }
 
     // ── Public API ─────────────────────────────────────────────────────────
 
@@ -135,13 +182,30 @@ public sealed class ServiceManager
             app.MainWindow?.ApplyBorderColor(
                 theme.AccentColor.R, theme.AccentColor.G, theme.AccentColor.B);
 
+        // Persist so the next page load restores this selection/color
+        // instead of falling back to defaults. Skip if AccentColor is the
+        // zero-default (would render as a black border).
+        if (theme.AccentColor.A != 0 &&
+            (theme.AccentColor.R | theme.AccentColor.G | theme.AccentColor.B) != 0)
+        {
+            LastAppliedTheme = theme;
+            SaveLastTheme(theme);
+        }
+
         if (!_client.IsConnected)
         {
             var result = await _client.ConnectAsync(timeoutMs: 1500);
             if (result != AuraShellClient.ConnectResult.Connected)
+            {
+                Logger.Debug("ServiceManager",
+                    $"PushTheme '{theme.Name}' — service unreachable, border still updated locally");
                 return false;
+            }
         }
-        return await _client.PushThemeAsync(theme);
+        var ok = await _client.PushThemeAsync(theme);
+        Logger.Info("ServiceManager",
+            $"PushTheme '{theme.Name}' #{theme.AccentColor.R:X2}{theme.AccentColor.G:X2}{theme.AccentColor.B:X2} → {(ok ? "ACK" : "FAIL")}");
+        return ok;
     }
 
     /// <summary>

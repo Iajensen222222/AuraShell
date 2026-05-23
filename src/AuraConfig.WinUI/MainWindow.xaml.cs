@@ -42,8 +42,20 @@ public sealed partial class MainWindow : Window
         // Wire audio band data → animated window border pulse
         ServiceManager.Instance.AudioBandsReceived += OnAudioBandsReceived;
 
-        // Apply default blue border immediately so the window looks right from the start
-        _glowAnimator.SetColor(0x00, 0x78, 0xD4);
+        // Restore last-applied color if available, else default blue. Either way,
+        // the call happens after BuildShell so SetWindowHandle has already wired
+        // up the app's own HWND.
+        var lastTheme = ServiceManager.Instance.LastAppliedTheme;
+        if (lastTheme is not null)
+        {
+            var c = lastTheme.AccentColor;
+            Logger.Info("MainWindow", $"Restoring border from saved theme '{lastTheme.Name}' #{c.R:X2}{c.G:X2}{c.B:X2}");
+            _glowAnimator.SetColor(c.R, c.G, c.B);
+        }
+        else
+        {
+            _glowAnimator.SetColor(0x00, 0x78, 0xD4);
+        }
 
         // Set taskbar / titlebar icon
         try

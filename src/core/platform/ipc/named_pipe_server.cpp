@@ -251,17 +251,21 @@ bool NamedPipeServer::receiveMessage(Message& outMsg, uint32_t timeoutMs) {
                 // Get overlap result
                 if (!GetOverlappedResult(m_pipe, &ov, &bytesRead, FALSE)) {
                     DWORD resultErr = GetLastError();
-                    if (resultErr == ERROR_PIPE_NOT_CONNECTED) {
+                    if (resultErr == ERROR_PIPE_NOT_CONNECTED ||
+                        resultErr == ERROR_BROKEN_PIPE ||
+                        resultErr == ERROR_NO_DATA) {
                         m_clientCurrentlyConnected = false;
-                        spdlog::info("Client disconnected");
+                        spdlog::info("Client disconnected during read (0x{:08X})", resultErr);
                     } else {
                         spdlog::error("GetOverlappedResult failed: 0x{:08X}", resultErr);
                     }
                     return false;
                 }
-            } else if (err == ERROR_PIPE_NOT_CONNECTED) {
+            } else if (err == ERROR_PIPE_NOT_CONNECTED ||
+                       err == ERROR_BROKEN_PIPE ||
+                       err == ERROR_NO_DATA) {
                 m_clientCurrentlyConnected = false;
-                spdlog::info("Client disconnected during read");
+                spdlog::info("Client disconnected during read (0x{:08X})", err);
                 return false;
             } else {
                 spdlog::error("ReadFile failed: 0x{:08X}", err);
@@ -348,17 +352,21 @@ bool NamedPipeServer::sendMessage(const Message& msg, uint32_t timeoutMs) {
                 // Get overlap result
                 if (!GetOverlappedResult(m_pipe, &ov, &bytesWritten, FALSE)) {
                     DWORD resultErr = GetLastError();
-                    if (resultErr == ERROR_PIPE_NOT_CONNECTED) {
+                    if (resultErr == ERROR_PIPE_NOT_CONNECTED ||
+                        resultErr == ERROR_BROKEN_PIPE ||
+                        resultErr == ERROR_NO_DATA) {
                         m_clientCurrentlyConnected = false;
-                        spdlog::info("Client disconnected");
+                        spdlog::info("Client disconnected during write (0x{:08X})", resultErr);
                     } else {
                         spdlog::error("GetOverlappedResult failed: 0x{:08X}", resultErr);
                     }
                     return false;
                 }
-            } else if (err == ERROR_PIPE_NOT_CONNECTED) {
+            } else if (err == ERROR_PIPE_NOT_CONNECTED ||
+                       err == ERROR_BROKEN_PIPE ||
+                       err == ERROR_NO_DATA) {
                 m_clientCurrentlyConnected = false;
-                spdlog::info("Client disconnected during write");
+                spdlog::info("Client disconnected during write (0x{:08X})", err);
                 return false;
             } else {
                 spdlog::error("WriteFile failed: 0x{:08X}", err);
@@ -384,7 +392,15 @@ bool NamedPipeServer::sendMessage(const Message& msg, uint32_t timeoutMs) {
 
 void NamedPipeServer::disconnectClient() {
     try {
-        if (m_pipe != INVALID_HANDLE_VALUE && m_clientCurrentlyConnected) {
+        // ALWAYS call DisconnectNamedPipe if we have a valid pipe handle, even if
+        // m_clientCurrentlyConnected has already been cleared by an error in
+        // send/receiveMessage. The kernel needs DisconnectNamedPipe to release the
+        // pipe instance back to the "listening" state before the next
+        // ConnectNamedPipe() can accept a new client. Gating on the flag here
+        // caused a deadlock: an ungraceful client close set the flag false, this
+        // method was a no-op, and waitForClient() then failed forever because the
+        // kernel still thought we were connected to the dead client.
+        if (m_pipe != INVALID_HANDLE_VALUE) {
             FlushFileBuffers(m_pipe);
             DisconnectNamedPipe(m_pipe);
             m_clientCurrentlyConnected = false;
@@ -401,6 +417,29 @@ uint32_t NamedPipeServer::getConnectedClientPID() const {
 }
 
 bool NamedPipeServer::isClientConnected() const {
+    if (!m_clientCurrentlyConnected || m_pipe == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    // Actively probe the pipe — PeekNamedPipe returns FALSE with ERROR_BROKEN_PIPE
+    // (and friends) when the client has closed its end ungracefully (e.g. app
+    // process exited without sending an ACK).  Without this probe the cached
+    // flag would stay true forever and the IPC loop would never break out of
+    // its inner receive loop, leaving waitForClient() unable to accept the
+    // next connection.
+    DWORD bytesAvail = 0;
+    if (!PeekNamedPipe(m_pipe, nullptr, 0, nullptr, &bytesAvail, nullptr)) {
+        DWORD const err = GetLastError();
+        if (err == ERROR_BROKEN_PIPE ||
+            err == ERROR_PIPE_NOT_CONNECTED ||
+            err == ERROR_NO_DATA) {
+            // Stale connection — drop our cached flag so the IPC loop bails out
+            // and disconnectClient() runs.
+            const_cast<NamedPipeServer*>(this)->m_clientCurrentlyConnected = false;
+            return false;
+        }
+        // Some other transient error — assume still connected.
+    }
     return m_clientCurrentlyConnected;
 }
 

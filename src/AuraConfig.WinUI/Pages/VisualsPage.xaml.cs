@@ -31,6 +31,22 @@ public sealed partial class VisualsPage : Page
         BuildVisualizerBars();
         ServiceManager.Instance.AudioBandsReceived += OnAudioBandsReceived;
         ServiceManager.Instance.StartAudioStream();
+
+        // Restore last-applied theme into the local working copy + hex input
+        // so navigating back to Visuals shows the user's pick, not a default.
+        var last = ServiceManager.Instance.LastAppliedTheme;
+        if (last is not null)
+        {
+            _theme.Name              = last.Name;
+            _theme.AccentColor       = last.AccentColor;
+            _theme.AnimSpeedPct      = last.AnimSpeedPct;
+            _theme.ShowOnHover       = last.ShowOnHover;
+            _theme.GlowEnabled       = last.GlowEnabled;
+            HexInput.Text = $"#{last.AccentColor.R:X2}{last.AccentColor.G:X2}{last.AccentColor.B:X2}";
+            SpeedSlider.Value = last.AnimSpeedPct;
+            HoverToggle.IsOn  = last.ShowOnHover;
+            GlowToggle.IsOn   = last.GlowEnabled;
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

@@ -69,12 +69,23 @@ public sealed partial class DashboardPage : Page
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logger.Info("DashboardPage", "Loaded");
         ServiceManager.Instance.StateChanged      += OnServiceStateChanged;
         ServiceManager.Instance.PerfStatsReceived += OnPerfStatsReceived;
         UpdateStatusBar(ServiceManager.Instance.CurrentState);
 
-        if (Presets.Count > 0)
-            PresetsGrid.SelectedIndex = 0;
+        // Restore the selection to the last-applied preset if there is one,
+        // so navigating away and back doesn't snap us back to the first card.
+        var lastName = ServiceManager.Instance.LastAppliedTheme?.Name;
+        int idx = 0;
+        if (!string.IsNullOrEmpty(lastName))
+        {
+            for (int i = 0; i < Presets.Count; i++)
+            {
+                if (Presets[i].Name == lastName) { idx = i; break; }
+            }
+        }
+        if (Presets.Count > 0) PresetsGrid.SelectedIndex = idx;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
