@@ -59,6 +59,12 @@ public sealed partial class MainWindow : Window
             _glowAnimator.SetColor(0x00, 0x78, 0xD4);
         }
 
+        // Register the foreground hook from the UI thread so EVENT_SYSTEM_FOREGROUND
+        // events arrive on a thread with a message pump. Has to happen after
+        // SetColor() so the GetEffectiveColor() fallback inside the callback
+        // sees the right _themeColor.
+        _glowAnimator.StartForegroundHook();
+
         // Set taskbar / titlebar icon
         try
         {
