@@ -35,6 +35,7 @@ public sealed class GlowAnimator
         WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
     [DllImport("user32.dll")] private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
     private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    private const uint EVENT_OBJECT_SHOW       = 0x8002;
     private const uint WINEVENT_OUTOFCONTEXT   = 0x0000;
     private const int  OBJID_WINDOW            = 0;
     [DllImport("kernel32.dll")] private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
@@ -75,18 +76,29 @@ public sealed class GlowAnimator
     private System.Threading.Timer? _repaintTimer;
     private const int RepaintIntervalMs = 1500;
 
-    // Foreground hook + per-foreground-window fade animation. When the user
-    // switches windows we immediately stomp the new foreground's border to
-    // black (masks DWM's default-red flash) then interpolate to the target
-    // color over FadeFrames * FadeIntervalMs ≈ 300 ms.
+    // Foreground hook + multi-window concurrent fade. Three triggers fire fades:
+    //   - EVENT_SYSTEM_FOREGROUND on the NEW foreground (fade-in from black)
+    //   - EVENT_SYSTEM_FOREGROUND on the PREVIOUS foreground (Windows resets it
+    //     to inactive default on focus loss; we need to fade it back too)
+    //   - EVENT_OBJECT_SHOW for newly-shown top-level windows (fade-in instead
+    //     of snap when the repaint catches them up to 1500ms later)
     private IntPtr _foregroundHook;
-    private WinEventDelegate? _hookCallback;
-    private System.Threading.Timer? _fadeTimer;
-    private IntPtr _fadeTargetHwnd;
-    private (byte r, byte g, byte b) _fadeFinalColor;
-    private int _fadeFrameIdx;
+    private IntPtr _objectShowHook;
+    private WinEventDelegate? _foregroundCallback;
+    private WinEventDelegate? _objectShowCallback;
+    private IntPtr _previousForeground;
     private const int FadeFrames     = 12;   // ~12 × 25ms = 300ms total
     private const int FadeIntervalMs = 25;
+
+    private sealed class FadeAnimation
+    {
+        public IntPtr Hwnd;
+        public byte   TargetR, TargetG, TargetB;
+        public int    Frame;       // 0 = black, FadeFrames = target reached
+    }
+    private readonly List<FadeAnimation> _activeFades = new();
+    private readonly object _fadesLock = new();
+    private System.Threading.Timer? _fadeTimer;
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -150,28 +162,63 @@ public sealed class GlowAnimator
     }
 
     /// <summary>
-    /// Subscribes to EVENT_SYSTEM_FOREGROUND so we can react instantly to focus
-    /// changes (instead of waiting up to RepaintIntervalMs for the next tick).
-    /// MUST be called from a thread that processes Win32 messages — the UI
-    /// thread is the right choice — because WINEVENT_OUTOFCONTEXT delivers the
-    /// callback via the registering thread's message queue.
+    /// Subscribes to EVENT_SYSTEM_FOREGROUND (focus changes) and EVENT_OBJECT_SHOW
+    /// (new windows) so we can fade them in instantly instead of waiting up to
+    /// RepaintIntervalMs for the next tick.  MUST be called from a thread that
+    /// processes Win32 messages — the UI thread is the right choice — because
+    /// WINEVENT_OUTOFCONTEXT delivers the callback via the registering thread's
+    /// message queue.
     /// </summary>
     public void StartForegroundHook()
     {
-        if (_foregroundHook != IntPtr.Zero) return;
-        _hookCallback = OnForegroundChanged;   // keep delegate alive for the lifetime of the hook
-        _foregroundHook = SetWinEventHook(
-            EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
-            IntPtr.Zero, _hookCallback,
-            0, 0, WINEVENT_OUTOFCONTEXT);
+        if (_foregroundHook == IntPtr.Zero)
+        {
+            _foregroundCallback = OnForegroundChanged;   // keep delegate alive
+            _foregroundHook = SetWinEventHook(
+                EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
+                IntPtr.Zero, _foregroundCallback,
+                0, 0, WINEVENT_OUTOFCONTEXT);
+        }
+        if (_objectShowHook == IntPtr.Zero)
+        {
+            _objectShowCallback = OnObjectShown;
+            _objectShowHook = SetWinEventHook(
+                EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW,
+                IntPtr.Zero, _objectShowCallback,
+                0, 0, WINEVENT_OUTOFCONTEXT);
+        }
     }
 
     private void OnForegroundChanged(IntPtr h, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint thread, uint time)
     {
-        // EVENT_SYSTEM_FOREGROUND also fires for child controls (combo dropdowns,
-        // menus etc.) with idObject != OBJID_WINDOW — those aren't real top-level
-        // activations, ignore them.
+        if (idObject != OBJID_WINDOW || hwnd == IntPtr.Zero) return;
+        if (!IsEligibleWindow(hwnd)) return;
+
+        // Fade the PREVIOUS foreground too — when the user clicks away, DWM
+        // resets that window's border to its inactive default (often red on
+        // accented Win11 themes). Without re-fading it here, the user sees the
+        // default flash and waits up to 1500ms for the repaint to snap it back.
+        if (_previousForeground != IntPtr.Zero &&
+            _previousForeground != hwnd &&
+            IsEligibleWindow(_previousForeground))
+        {
+            var (pr, pg, pb) = GetEffectiveColor(
+                _previousForeground, _themeColor.r, _themeColor.g, _themeColor.b);
+            StartFade(_previousForeground, pr, pg, pb);
+        }
+
+        var (r, g, b) = GetEffectiveColor(hwnd, _themeColor.r, _themeColor.g, _themeColor.b);
+        StartFade(hwnd, r, g, b);
+        _previousForeground = hwnd;
+    }
+
+    private void OnObjectShown(IntPtr h, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint thread, uint time)
+    {
+        // EVENT_OBJECT_SHOW fires for EVERY shown UI object including menus,
+        // tooltips, combo dropdowns, balloon notifications. Filter to top-level
+        // application windows only.
         if (idObject != OBJID_WINDOW || hwnd == IntPtr.Zero) return;
         if (!IsEligibleWindow(hwnd)) return;
 
@@ -181,55 +228,78 @@ public sealed class GlowAnimator
 
     private void StartFade(IntPtr hwnd, byte r, byte g, byte b)
     {
-        // Cancel any in-flight fade — if the user switches windows rapidly we
-        // just adopt the latest target.
-        _fadeTimer?.Dispose();
-        _fadeTargetHwnd = hwnd;
-        _fadeFinalColor = (r, g, b);
-        _fadeFrameIdx   = 0;
+        // Add or replace the fade entry for this hwnd. Multiple windows can
+        // fade concurrently — one driving timer steps all of them.
+        lock (_fadesLock)
+        {
+            _activeFades.RemoveAll(f => f.Hwnd == hwnd);
+            _activeFades.Add(new FadeAnimation
+            {
+                Hwnd = hwnd, TargetR = r, TargetG = g, TargetB = b, Frame = 0,
+            });
 
-        // Frame 0: black — set immediately so DWM's default-red activation
-        // color is overwritten before the user can perceive it.
+            if (_fadeTimer is null)
+            {
+                _fadeTimer = new System.Threading.Timer(
+                    _ => FadeTick(),
+                    null,
+                    TimeSpan.FromMilliseconds(FadeIntervalMs),
+                    TimeSpan.FromMilliseconds(FadeIntervalMs));
+            }
+        }
+
+        // Frame 0: black, applied synchronously so the default chrome flash is
+        // masked before the user can perceive it.
         int black = PackColorRef(0, 0, 0);
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref black, sizeof(int));
-
-        _fadeTimer = new System.Threading.Timer(
-            _ => FadeTick(),
-            null,
-            TimeSpan.FromMilliseconds(FadeIntervalMs),
-            TimeSpan.FromMilliseconds(FadeIntervalMs));
     }
 
     private void FadeTick()
     {
         try
         {
-            _fadeFrameIdx++;
-            if (_fadeFrameIdx >= FadeFrames)
+            FadeAnimation[] snapshot;
+            lock (_fadesLock) { snapshot = _activeFades.ToArray(); }
+
+            foreach (var fade in snapshot)
             {
-                // Final frame: snap to exact target then stop the timer.
-                int final = PackColorRef(_fadeFinalColor.r, _fadeFinalColor.g, _fadeFinalColor.b);
-                DwmSetWindowAttribute(_fadeTargetHwnd, DWMWA_BORDER_COLOR, ref final, sizeof(int));
-                _fadeTimer?.Dispose();
-                _fadeTimer = null;
-                return;
+                fade.Frame++;
+                if (fade.Frame >= FadeFrames)
+                {
+                    int final = PackColorRef(fade.TargetR, fade.TargetG, fade.TargetB);
+                    DwmSetWindowAttribute(fade.Hwnd, DWMWA_BORDER_COLOR, ref final, sizeof(int));
+                    continue;
+                }
+
+                // Ease-out cubic interpolation from (0,0,0) toward target.
+                float t = (float)fade.Frame / FadeFrames;
+                float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+                byte r = (byte)Math.Min(255, fade.TargetR * eased);
+                byte g = (byte)Math.Min(255, fade.TargetG * eased);
+                byte b = (byte)Math.Min(255, fade.TargetB * eased);
+                int colorRef = PackColorRef(r, g, b);
+                DwmSetWindowAttribute(fade.Hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
             }
 
-            // Ease-out cubic interpolation from (0,0,0) to target — slower at
-            // the end gives a soft 'settling' feel.
-            float t = (float)_fadeFrameIdx / FadeFrames;
-            float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
-
-            byte r = (byte)Math.Min(255, _fadeFinalColor.r * eased);
-            byte g = (byte)Math.Min(255, _fadeFinalColor.g * eased);
-            byte b = (byte)Math.Min(255, _fadeFinalColor.b * eased);
-            int colorRef = PackColorRef(r, g, b);
-            DwmSetWindowAttribute(_fadeTargetHwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+            // Drop completed fades and stop the timer if nothing left to drive.
+            lock (_fadesLock)
+            {
+                _activeFades.RemoveAll(f => f.Frame >= FadeFrames);
+                if (_activeFades.Count == 0)
+                {
+                    _fadeTimer?.Dispose();
+                    _fadeTimer = null;
+                }
+            }
         }
         catch
         {
-            _fadeTimer?.Dispose();
-            _fadeTimer = null;
+            lock (_fadesLock)
+            {
+                _fadeTimer?.Dispose();
+                _fadeTimer = null;
+                _activeFades.Clear();
+            }
         }
     }
 

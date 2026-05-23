@@ -10,9 +10,22 @@ public partial class App : Application
     // Legacy alias for code that only needs Window APIs
     public Window? Window => _mainWindow;
 
+    // Single-instance guard — keeps multiple AuraConfig processes from racing
+    // each other to set DwmSetWindowAttribute, which produced the
+    // 'rainbow' flicker the user reported.
+    private static System.Threading.Mutex? _singleInstance;
+
     public App()
     {
         Logger.Info("App", "Process starting");
+
+        bool createdNew;
+        _singleInstance = new System.Threading.Mutex(true, "AuraConfig_SingleInstance", out createdNew);
+        if (!createdNew)
+        {
+            Logger.Warn("App", "Another AuraConfig instance is already running — exiting");
+            System.Environment.Exit(0);
+        }
 
         // Existing crash dumper — keeps the original winui_crash.log intact for
         // automation that already greps it.
