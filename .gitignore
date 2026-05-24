@@ -80,6 +80,23 @@ settings.local.json
 *.etl
 *.etl.gz
 
+# Claude agent plan and implementation documentation (kept local only)
+PHASE*.md
+PLAN.md
+*_PLAN.md
+*_IMPLEMENTATION*.md
+*_COMPLETE.md
+HANDOFF_*.md
+TDD_*.md
+VALIDATION_*.md
+DASHBOARD.md
+IPC_*.md
+LOGGER_*.md
+STEP*.md
+docs/SPRINT_*.md
+docs/AZURE_SETUP.md
+.github/agents/
+
 # clang/LLVM tools
 compile_commands.json
 

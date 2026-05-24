@@ -630,6 +630,16 @@ Every plan file must include:
 5. **Build Status** — Whether the code compiles and tests pass
 6. **Next Steps** — What the next phase or agent session should pick up
 
+### Git Policy: Plan Files Are Local Only
+
+**Rule**: Plan markdown files must **never** be pushed to GitHub. They are local artifacts for agent coordination only.
+
+- All files matching the patterns in `.gitignore` under "Claude agent plan and implementation documentation" are excluded from the repository.
+- Do **not** run `git add` on plan files, do not force-add them, and do not use `git add -A` or `git add .` without verifying that plan files are excluded.
+- If you need to share context with a future agent, write to the local plan file — the next agent will find it on disk. GitHub is not the channel for this.
+
+---
+
 ### Agent Handoff Requirement
 
 When ending a session mid-implementation, the plan markdown file **must** be updated to include a "Resumption Notes" section describing exactly where work stopped and what the next agent should do first. This ensures zero onboarding time for the next session.
