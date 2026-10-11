@@ -79,6 +79,8 @@ public sealed partial class MainWindow : Window
                 : ((byte)0x00, (byte)0x78, (byte)0xD4);
             _desktopIconGlow.SetColor(dr, dg, db);
         }
+        // Saved Desktop FX settings (color, glow style, click burst…) override the defaults.
+        DesktopFxSettings.ApplyTo(_desktopIconGlow);
         _desktopIconGlow.Start();
 
         // Set taskbar / titlebar icon

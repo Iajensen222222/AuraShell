@@ -14,7 +14,7 @@
             <StackPanel Margin="0,0,0,4">
                 <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Desktop FX" />
                 <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="Customize the hover glow effect on desktop icons"
+                           Text="Customize hover glow and click effects on the desktop"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Margin="0,2,0,0" />
             </StackPanel>
@@ -70,6 +70,85 @@
                             </Button>
                         </StackPanel>
                     </StackPanel>
+
+                    <!-- Glow style -->
+                    <ComboBox x:Name="GlowStyleBox"
+                              Header="Glow style"
+                              MinWidth="320"
+                              IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                              SelectionChanged="GlowStyleBox_Changed">
+                        <ComboBoxItem Content="Solid — the chosen color" Tag="Solid" IsSelected="True" />
+                        <ComboBoxItem Content="Color cycle — slowly shifts through the rainbow" Tag="ColorCycle" />
+                        <ComboBoxItem Content="Pulse — gently brightens and dims" Tag="Pulse" />
+                    </ComboBox>
+                    <StackPanel x:Name="CycleControls" Visibility="Collapsed" Spacing="4">
+                        <Slider x:Name="CycleSecondsSlider"
+                                Header="Cycle length (seconds)"
+                                Minimum="1" Maximum="20" StepFrequency="1" Value="6"
+                                IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="CycleSecondsSlider_Changed" />
+                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Text="Time for one full color cycle or one pulse."
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- CLICK EFFECT section header -->
+            <TextBlock Text="CLICK EFFECT"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Click Burst" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Text="A short burst plays at the mouse tip when you press the left button. It uses the glow color, including color cycling."
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+
+                    <ToggleSwitch x:Name="ClickToggle"
+                                  Header="Enable click burst"
+                                  IsOn="True"
+                                  Toggled="ClickToggle_Toggled" />
+
+                    <ComboBox x:Name="ClickStyleBox"
+                              Header="Burst style"
+                              MinWidth="320"
+                              IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                              SelectionChanged="ClickStyleBox_Changed">
+                        <ComboBoxItem Content="Ring — an expanding ripple" Tag="Ring" />
+                        <ComboBoxItem Content="Sparks — dots flying outward" Tag="Sparks" />
+                        <ComboBoxItem Content="Ring and sparks" Tag="RingAndSparks" IsSelected="True" />
+                    </ComboBox>
+
+                    <Slider x:Name="ClickSizeSlider"
+                            Header="Burst size (px)"
+                            Minimum="20" Maximum="120" StepFrequency="4" Value="48"
+                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                            ValueChanged="ClickSizeSlider_Changed" />
+
+                    <Slider x:Name="ClickDurationSlider"
+                            Header="Burst length (ms)"
+                            Minimum="200" Maximum="1200" StepFrequency="50" Value="450"
+                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                            ValueChanged="ClickDurationSlider_Changed" />
+
+                    <ToggleSwitch x:Name="ClickDesktopOnlyToggle"
+                                  Header="Only when clicking the desktop"
+                                  OnContent="Desktop only" OffContent="Everywhere"
+                                  IsOn="True"
+                                  IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                                  Toggled="ClickDesktopOnlyToggle_Toggled" />
+
+                    <Button Content="Preview burst"
+                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                            Click="PreviewBurst_Click" />
                 </StackPanel>
             </Border>
 

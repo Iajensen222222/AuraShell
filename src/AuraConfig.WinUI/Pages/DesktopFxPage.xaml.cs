@@ -25,42 +25,59 @@ public sealed partial class DesktopFxPage : Page
     {
         // Restore UI controls from AppSettings — handlers are suppressed (_loaded=false)
         // so these assignments don't overwrite the saved values or trigger side effects.
-        if (AppSettings.Get("DesktopGlowEnabled") is string en)
-            GlowToggle.IsOn = en != "0";
+        GlowToggle.IsOn = DesktopFxSettings.GetBool(DesktopFxSettings.GlowEnabledKey, true);
 
-        if (AppSettings.Get("DesktopFxColor") is string hex && hex.Length == 6)
+        if (AppSettings.Get(DesktopFxSettings.ColorKey) is string hex && hex.Length == 6)
         {
             HexInput.Text = "#" + hex;
-            ApplyHexString(hex, updateService: true);
+            ApplyHexString(hex, updateService: false);
         }
 
-        if (AppSettings.Get("DesktopFxGlowRadius") is string rs
-            && int.TryParse(rs, out int r))
-            GlowSizeSlider.Value = Math.Clamp(r, 4, 40);
+        GlowSizeSlider.Value  = DesktopFxSettings.GetInt(DesktopFxSettings.GlowRadiusKey,
+            DesktopFxSettings.DefaultGlowRadius, 4, 40);
+        IntensitySlider.Value = DesktopFxSettings.GetInt(DesktopFxSettings.IntensityKey,
+            DesktopFxSettings.DefaultIntensityPct, 0, 100);
+        FadeSpeedSlider.Value = DesktopFxSettings.GetInt(DesktopFxSettings.FadeSpeedKey,
+            DesktopFxSettings.DefaultFadeSpeedPct, 20, 300);
+        ShowLabelsToggle.IsOn = DesktopFxSettings.GetBool(DesktopFxSettings.LabelsVisibleKey, true);
 
-        if (AppSettings.Get("DesktopFxIntensity") is string ins
-            && int.TryParse(ins, out int intensity))
-            IntensitySlider.Value = Math.Clamp(intensity, 0, 100);
+        var glowStyle = DesktopFxSettings.GetEnum(DesktopFxSettings.GlowStyleKey,
+            DesktopIconGlow.HoverGlowStyle.Solid);
+        SelectByTag(GlowStyleBox, glowStyle.ToString());
+        CycleControls.Visibility = glowStyle == DesktopIconGlow.HoverGlowStyle.Solid
+            ? Visibility.Collapsed : Visibility.Visible;
+        CycleSecondsSlider.Value = DesktopFxSettings.GetInt(DesktopFxSettings.CycleSecondsKey,
+            DesktopFxSettings.DefaultCycleSeconds, 1, 20);
 
-        if (AppSettings.Get("DesktopFxFadeSpeed") is string fs
-            && int.TryParse(fs, out int f))
-            FadeSpeedSlider.Value = Math.Clamp(f, 20, 300);
-
-        bool labelsVisible = AppSettings.Get("DesktopLabelsVisible") is string lv ? lv != "0" : true;
-        ShowLabelsToggle.IsOn = labelsVisible;
+        ClickToggle.IsOn = DesktopFxSettings.GetBool(DesktopFxSettings.ClickEnabledKey, true);
+        SelectByTag(ClickStyleBox, DesktopFxSettings.GetEnum(DesktopFxSettings.ClickStyleKey,
+            DesktopIconGlow.ClickBurstStyle.RingAndSparks).ToString());
+        ClickSizeSlider.Value     = DesktopFxSettings.GetInt(DesktopFxSettings.ClickSizeKey,
+            DesktopFxSettings.DefaultClickSize, 20, 120);
+        ClickDurationSlider.Value = DesktopFxSettings.GetInt(DesktopFxSettings.ClickDurationKey,
+            DesktopFxSettings.DefaultClickDurationMs, 200, 1200);
+        ClickDesktopOnlyToggle.IsOn = DesktopFxSettings.GetBool(DesktopFxSettings.ClickDesktopOnlyKey, true);
 
         _loaded = true;
 
         // Push the restored state to the live service now that loading is complete.
-        if (DesktopGlow is { } dg)
+        if (DesktopGlow is { } dg) DesktopFxSettings.ApplyTo(dg);
+    }
+
+    private static void SelectByTag(ComboBox box, string tag)
+    {
+        foreach (var item in box.Items)
         {
-            dg.Enabled      = GlowToggle.IsOn;
-            dg.GlowRadius   = (int)GlowSizeSlider.Value;
-            dg.Intensity    = (float)IntensitySlider.Value / 100f;
-            dg.FadeSpeed    = (float)FadeSpeedSlider.Value / 100f;
-            dg.HideIconLabels = !labelsVisible;
+            if (item is ComboBoxItem cbi && cbi.Tag as string == tag)
+            {
+                box.SelectedItem = cbi;
+                return;
+            }
         }
     }
+
+    private static string? SelectedTag(ComboBox box)
+        => (box.SelectedItem as ComboBoxItem)?.Tag as string;
 
     // ── Enable toggle ──────────────────────────────────────────────────────
 
@@ -180,4 +197,72 @@ public sealed partial class DesktopFxPage : Page
         SetIconLabelsVisible(visible);
         AppSettings.Set("DesktopLabelsVisible", visible ? "1" : "0");
     }
+
+    // ── Glow style ─────────────────────────────────────────────────────────
+
+    private void GlowStyleBox_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loaded || GlowStyleBox is null || CycleControls is null) return;
+        if (!Enum.TryParse(SelectedTag(GlowStyleBox), out DesktopIconGlow.HoverGlowStyle style)) return;
+        CycleControls.Visibility = style == DesktopIconGlow.HoverGlowStyle.Solid
+            ? Visibility.Collapsed : Visibility.Visible;
+        if (DesktopGlow is { } dg) dg.GlowStyle = style;
+        AppSettings.Set(DesktopFxSettings.GlowStyleKey, style.ToString());
+    }
+
+    private void CycleSecondsSlider_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_loaded || CycleSecondsSlider is null) return;
+        int seconds = (int)CycleSecondsSlider.Value;
+        if (DesktopGlow is { } dg) dg.CycleSeconds = seconds;
+        AppSettings.Set(DesktopFxSettings.CycleSecondsKey, seconds.ToString());
+    }
+
+    // ── Click burst ────────────────────────────────────────────────────────
+
+    private void ClickToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded || ClickToggle is null) return;
+        bool on = ClickToggle.IsOn;
+        if (DesktopGlow is { } dg) dg.ClickBurstEnabled = on;
+        DesktopFxSettings.SetBool(DesktopFxSettings.ClickEnabledKey, on);
+    }
+
+    private void ClickStyleBox_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_loaded || ClickStyleBox is null) return;
+        if (!Enum.TryParse(SelectedTag(ClickStyleBox), out DesktopIconGlow.ClickBurstStyle style)) return;
+        if (DesktopGlow is { } dg) dg.BurstStyle = style;
+        AppSettings.Set(DesktopFxSettings.ClickStyleKey, style.ToString());
+    }
+
+    private void ClickSizeSlider_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_loaded || ClickSizeSlider is null) return;
+        int size = (int)ClickSizeSlider.Value;
+        if (DesktopGlow is { } dg) dg.ClickBurstSize = size;
+        AppSettings.Set(DesktopFxSettings.ClickSizeKey, size.ToString());
+    }
+
+    private void ClickDurationSlider_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_loaded || ClickDurationSlider is null) return;
+        int ms = (int)ClickDurationSlider.Value;
+        if (DesktopGlow is { } dg) dg.ClickBurstDurationMs = ms;
+        AppSettings.Set(DesktopFxSettings.ClickDurationKey, ms.ToString());
+    }
+
+    private void ClickDesktopOnlyToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded || ClickDesktopOnlyToggle is null) return;
+        bool desktopOnly = ClickDesktopOnlyToggle.IsOn;
+        if (DesktopGlow is { } dg) dg.ClickBurstDesktopOnly = desktopOnly;
+        DesktopFxSettings.SetBool(DesktopFxSettings.ClickDesktopOnlyKey, desktopOnly);
+    }
+
+    private void PreviewBurst_Click(object sender, RoutedEventArgs e)
+        => DesktopGlow?.PreviewBurstAtCursor();
 }

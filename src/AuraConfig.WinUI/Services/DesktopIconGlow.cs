@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -6,7 +7,8 @@ using System.Threading;
 namespace AuraConfig.Services;
 
 /// <summary>
-/// Renders a colored glow overlay around desktop icons on hover.
+/// Renders a colored glow overlay around desktop icons on hover, plus a short burst
+/// animation at the mouse tip on left mouse down.
 /// Runs on a dedicated background thread that owns all GDI and Win32 window state.
 ///
 /// Cross-process note: SysListView32 (desktop icon list) lives in explorer.exe.
@@ -69,6 +71,9 @@ public sealed class DesktopIconGlow : IDisposable
     // Input
     [DllImport("user32.dll")] static extern bool  GetCursorPos(out POINT pt);
     [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+    [DllImport("user32.dll")] static extern int   GetSystemMetrics(int index);
+    [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT pt);
+    [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
     // Message loop
     [DllImport("user32.dll")] static extern bool   PeekMessageW(out MSG msg, IntPtr hwnd, uint min, uint max, uint remove);
@@ -122,6 +127,8 @@ public sealed class DesktopIconGlow : IDisposable
     const int  WS_EX_TRANSPARENT = 0x00000020;
     const int  WS_EX_NOACTIVATE  = 0x08000000;
     const int  WS_EX_TOOLWINDOW  = 0x00000080;
+    const int  WS_EX_TOPMOST     = 0x00000008;   // click bursts only: short-lived, must sit above app windows
+    const int  SW_HIDE           = 0;
     const int  SW_SHOWNOACTIVATE = 4;
     // WS_EX_TOPMOST not used — avoids Z-order conflict with Lively Wallpaper and similar apps
     const uint SWP_NOACTIVATE    = 0x0010;
@@ -140,6 +147,9 @@ public sealed class DesktopIconGlow : IDisposable
     const int  WM_NCHITTEST      = 0x0084;
     const int  HTTRANSPARENT     = -1;
     const int  VK_LBUTTON        = 0x01;
+    const int  VK_RBUTTON        = 0x02;
+    const int  SM_SWAPBUTTON     = 23;
+    const uint GA_ROOT           = 2;
     const uint PM_REMOVE         = 1;
 
     // Process access rights for VirtualAllocEx pattern
@@ -152,7 +162,8 @@ public sealed class DesktopIconGlow : IDisposable
     const uint PAGE_READWRITE       = 0x04;
 
     // Z-order sentinels
-    static readonly IntPtr HWND_TOP = IntPtr.Zero;
+    static readonly IntPtr HWND_TOP     = IntPtr.Zero;
+    static readonly IntPtr HWND_TOPMOST = (IntPtr)(-1);
 
     const uint WM_THEMECHANGED  = 0x031A;
     const uint RDW_INVALIDATE   = 0x0001;
@@ -163,6 +174,28 @@ public sealed class DesktopIconGlow : IDisposable
     static readonly IntPtr HWND_BROADCAST = (IntPtr)0xFFFF;
     const int  DebounceMs      = 50;    // hover debounce
     const int  RefreshInterval = 125;   // iterations between icon re-enumeration (~2 s at 16 ms)
+
+    // Glow styles
+    const float CycleMinSaturation = 0.8f;   // keeps color cycling vivid even from a pastel base color
+    const float CycleMinValue      = 0.8f;
+    const float PulseMinLevel      = 0.35f;  // dimmest point of the pulse, as a fraction of full alpha
+
+    // Click burst
+    const int   MaxBursts          = 6;      // concurrent bursts; the oldest is recycled beyond this
+    const int   BurstPadding       = 8;      // px around the burst radius for spark dots and ring thickness
+    const float BurstRingThickness = 3.5f;
+    const float BurstSparkRadius   = 3.5f;
+    const int   BurstSparkCount    = 8;
+    const float BurstSparkReach    = 1.1f;   // sparks travel slightly past the ring
+    const float BurstTrailRatio    = 0.75f;  // trailing spark dot position, as a fraction of the lead dot's
+    const float BurstFlashPortion  = 0.25f;  // share of the burst during which the center flash shows
+    const float BurstFlashRadius   = 6f;
+    const float BurstSpinStep      = 0.37f;  // spark angle offset between consecutive bursts (fraction of a turn)
+
+    // ── Effect options ─────────────────────────────────────────────────────
+
+    public enum HoverGlowStyle { Solid, ColorCycle, Pulse }
+    public enum ClickBurstStyle { Ring, Sparks, RingAndSparks }
 
     // ── Per-slot GDI state ─────────────────────────────────────────────────
 
@@ -179,6 +212,20 @@ public sealed class DesktopIconGlow : IDisposable
         public bool  WasVisible;  // tracks fade-in edge for HWND_TOP raise
     }
 
+    // One click-burst overlay window, reused across clicks.
+    private sealed class Burst
+    {
+        public IntPtr Hwnd;
+        public IntPtr Hdc;
+        public IntPtr Hbmp;
+        public IntPtr Pixels;
+        public int    Size;       // square bitmap side in px
+        public int    X, Y;       // top-left in screen coords
+        public long   StartMs;
+        public bool   Active;
+        public float  Spin;       // spark angle offset so consecutive bursts differ
+    }
+
     // ── State ──────────────────────────────────────────────────────────────
 
     private byte  _r = 0x00, _g = 0x78, _b = 0xD4;
@@ -191,6 +238,18 @@ public sealed class DesktopIconGlow : IDisposable
     private volatile bool _colorDirty;
     private volatile bool _layoutDirty;
     private volatile bool _hideIconLabels = false;
+
+    private volatile HoverGlowStyle _glowStyle = HoverGlowStyle.Solid;
+    private volatile float _cycleSeconds = 6f;
+
+    private volatile bool _clickEnabled     = true;
+    private volatile bool _clickDesktopOnly = true;
+    private volatile ClickBurstStyle _clickStyle = ClickBurstStyle.RingAndSparks;
+    private volatile int  _clickSize        = 48;    // burst radius in px
+    private volatile int  _clickDurationMs  = 450;
+    private readonly ConcurrentQueue<POINT> _pendingBursts = new();
+    private readonly List<Burst> _bursts = new();
+    private int _burstCounter;
 
     private Thread? _thread;
     private volatile bool _running;
@@ -255,6 +314,60 @@ public sealed class DesktopIconGlow : IDisposable
     {
         _r = r; _g = g; _b = b;
         _colorDirty = true;
+    }
+
+    // Solid: fixed color. ColorCycle: hue rotates from the chosen color. Pulse: brightness breathes.
+    public HoverGlowStyle GlowStyle
+    {
+        get => _glowStyle;
+        set { _glowStyle = value; _colorDirty = true; }
+    }
+
+    // Seconds for one full color cycle or one pulse (1–20).
+    public float CycleSeconds
+    {
+        get => _cycleSeconds;
+        set => _cycleSeconds = Math.Clamp(value, 1f, 20f);
+    }
+
+    public bool ClickBurstEnabled
+    {
+        get => _clickEnabled;
+        set => _clickEnabled = value;
+    }
+
+    // When true, bursts only fire for clicks on the desktop itself, not inside app windows.
+    public bool ClickBurstDesktopOnly
+    {
+        get => _clickDesktopOnly;
+        set => _clickDesktopOnly = value;
+    }
+
+    public ClickBurstStyle BurstStyle
+    {
+        get => _clickStyle;
+        set => _clickStyle = value;
+    }
+
+    // Burst radius in pixels (20–120).
+    public int ClickBurstSize
+    {
+        get => _clickSize;
+        set => _clickSize = Math.Clamp(value, 20, 120);
+    }
+
+    // Burst length in milliseconds (200–1200).
+    public int ClickBurstDurationMs
+    {
+        get => _clickDurationMs;
+        set => _clickDurationMs = Math.Clamp(value, 200, 1200);
+    }
+
+    // Plays one burst at the current mouse position (the Desktop FX page's preview button),
+    // regardless of the enabled and desktop-only settings.
+    public void PreviewBurstAtCursor()
+    {
+        if (GetCursorPos(out POINT pt)) _pendingBursts.Enqueue(pt);
     }
 
     public void Start()
@@ -377,7 +490,9 @@ public sealed class DesktopIconGlow : IDisposable
                 }
 
                 PollHover();
+                PollClick();
                 StepAnimation();
+                StepBursts();
 
                 if (_layoutDirty || ++_refreshCount >= RefreshInterval)
                 {
@@ -394,7 +509,7 @@ public sealed class DesktopIconGlow : IDisposable
                 if (_colorDirty)
                 {
                     _colorDirty = false;
-                    foreach (var s in _slots) s.NeedPaint = true;
+                    RepaintAll();
                 }
 
                 Thread.Sleep(16);
@@ -411,6 +526,8 @@ public sealed class DesktopIconGlow : IDisposable
 
             foreach (var s in _slots) FreeSlot(s);
             _slots.Clear();
+            foreach (var b in _bursts) FreeBurst(b);
+            _bursts.Clear();
             _iconRects.Clear();
             CloseExplorerHandle();
         }
@@ -744,7 +861,7 @@ public sealed class DesktopIconGlow : IDisposable
         int w = s.W, h = s.H;
         new Span<uint>(buf, w * h).Clear();
 
-        byte r = _r, g = _g, b = _b;
+        var (r, g, b) = CurrentGlowColor();
         float intensity = _intensity;
         float margin = _glowRadius;
 
@@ -828,14 +945,13 @@ public sealed class DesktopIconGlow : IDisposable
         {
             _debounceStart = 0;
         }
-
-        _prevLeftDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
     }
 
     // ── Animation ──────────────────────────────────────────────────────────
 
     private void StepAnimation()
     {
+        HoverGlowStyle style = _glowStyle;
         for (int i = 0; i < _slots.Count; i++)
         {
             Slot  s   = _slots[i];
@@ -845,13 +961,331 @@ public sealed class DesktopIconGlow : IDisposable
 
             if (MathF.Abs(diff) < 0.005f)
             {
-                if (cur != tgt) { s.Alpha = tgt; Composite(i); }
-                continue;
+                if (cur != tgt) s.Alpha = tgt;
+                else if (style == HoverGlowStyle.Solid || cur <= 0f) continue;
+            }
+            else
+            {
+                s.Alpha = cur + diff * (tgt > cur ? _fadeInSpeed : _fadeOutSpeed);
             }
 
-            s.Alpha = cur + diff * (tgt > cur ? _fadeInSpeed : _fadeOutSpeed);
+            // Animated styles redraw every frame while the glow is visible; idle slots cost nothing.
+            if (style == HoverGlowStyle.ColorCycle && s.Alpha > 0f) PaintBitmap(s);
             Composite(i);
         }
+    }
+
+    // Repaints every slot's bitmap after a color or style change so it shows immediately,
+    // not at the next icon refresh.
+    private void RepaintAll()
+    {
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            Slot s = _slots[i];
+            if (s.Pixels == IntPtr.Zero) continue;
+            PaintBitmap(s);
+            if (s.Alpha > 0f) Composite(i);
+        }
+    }
+
+    // ── Glow color and pulse ───────────────────────────────────────────────
+
+    // Position in the current color cycle or pulse, in [0,1).
+    private float CyclePhase()
+    {
+        long periodMs = (long)(_cycleSeconds * 1000f);
+        return (Environment.TickCount64 % periodMs) / (float)periodMs;
+    }
+
+    private (byte r, byte g, byte b) CurrentGlowColor()
+    {
+        byte r = _r, g = _g, b = _b;
+        if (_glowStyle != HoverGlowStyle.ColorCycle) return (r, g, b);
+
+        RgbToHsv(r, g, b, out float h, out float sat, out float val);
+        h   = (h + CyclePhase()) % 1f;
+        sat = MathF.Max(sat, CycleMinSaturation);
+        val = MathF.Max(val, CycleMinValue);
+        return HsvToRgb(h, sat, val);
+    }
+
+    // Multiplier on the glow's alpha: 1 except in Pulse style, where it breathes
+    // between PulseMinLevel and 1.
+    private float PulseLevel()
+    {
+        if (_glowStyle != HoverGlowStyle.Pulse) return 1f;
+        float wave = 0.5f * (1f + MathF.Cos(CyclePhase() * MathF.Tau));
+        return PulseMinLevel + (1f - PulseMinLevel) * wave;
+    }
+
+    private static void RgbToHsv(byte r, byte g, byte b, out float h, out float s, out float v)
+    {
+        float rf = r / 255f, gf = g / 255f, bf = b / 255f;
+        float max = MathF.Max(rf, MathF.Max(gf, bf));
+        float min = MathF.Min(rf, MathF.Min(gf, bf));
+        float d   = max - min;
+        v = max;
+        s = max <= 0f ? 0f : d / max;
+        if (d <= 0f) { h = 0f; return; }
+        if (max == rf)      h = (gf - bf) / d;
+        else if (max == gf) h = (bf - rf) / d + 2f;
+        else                h = (rf - gf) / d + 4f;
+        h /= 6f;
+        if (h < 0f) h += 1f;
+    }
+
+    private static (byte r, byte g, byte b) HsvToRgb(float h, float s, float v)
+    {
+        float c  = v * s;
+        float hp = h * 6f;
+        float x  = c * (1f - MathF.Abs(hp % 2f - 1f));
+        float m  = v - c;
+        var (r, g, b) = (int)hp switch
+        {
+            0 => (c, x, 0f),
+            1 => (x, c, 0f),
+            2 => (0f, c, x),
+            3 => (0f, x, c),
+            4 => (x, 0f, c),
+            _ => (c, 0f, x),
+        };
+        return ((byte)((r + m) * 255f), (byte)((g + m) * 255f), (byte)((b + m) * 255f));
+    }
+
+    // ── Click burst ────────────────────────────────────────────────────────
+
+    private void PollClick()
+    {
+        while (_pendingBursts.TryDequeue(out POINT queued))
+            SpawnBurst(queued.X, queued.Y);
+
+        // GetAsyncKeyState reads physical buttons; follow the user's swap-buttons setting.
+        int vk = GetSystemMetrics(SM_SWAPBUTTON) != 0 ? VK_RBUTTON : VK_LBUTTON;
+        bool down    = (GetAsyncKeyState(vk) & 0x8000) != 0;
+        bool pressed = down && !_prevLeftDown;
+        _prevLeftDown = down;
+
+        if (!pressed || !_clickEnabled || !GetCursorPos(out POINT cursor)) return;
+        if (_clickDesktopOnly && !IsDesktopAt(cursor)) return;
+        SpawnBurst(cursor.X, cursor.Y);
+    }
+
+    // True when the point is over the desktop (wallpaper, icons, or our own glow overlays).
+    private static bool IsDesktopAt(POINT pt)
+    {
+        IntPtr hwnd = WindowFromPoint(pt);
+        if (hwnd == IntPtr.Zero) return false;
+        IntPtr root = GetAncestor(hwnd, GA_ROOT);
+        var sb = new System.Text.StringBuilder(64);
+        GetClassNameW(root != IntPtr.Zero ? root : hwnd, sb, 64);
+        string cls = sb.ToString();
+        return cls == "Progman" || cls == "WorkerW" || cls == WndClass;
+    }
+
+    private void SpawnBurst(int cx, int cy)
+    {
+        int size = 2 * (_clickSize + BurstPadding);
+
+        Burst? burst = null;
+        foreach (var b in _bursts)
+            if (!b.Active) { burst = b; break; }
+        if (burst is null && _bursts.Count < MaxBursts)
+        {
+            burst = new Burst();
+            _bursts.Add(burst);
+        }
+        if (burst is null)
+        {
+            // All busy: recycle the one that started first.
+            burst = _bursts[0];
+            foreach (var b in _bursts)
+                if (b.StartMs < burst.StartMs) burst = b;
+        }
+
+        if (burst.Hwnd == IntPtr.Zero)
+        {
+            const int exStyle = WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE |
+                                WS_EX_TOOLWINDOW | WS_EX_TOPMOST;
+            burst.Hwnd = CreateWindowExW(exStyle, WndClass, null, WS_POPUP,
+                cx - size / 2, cy - size / 2, size, size,
+                IntPtr.Zero, IntPtr.Zero, GetModuleHandleW(null), IntPtr.Zero);
+            if (burst.Hwnd == IntPtr.Zero) return;
+        }
+        if (burst.Size != size || burst.Hdc == IntPtr.Zero)
+            AllocateBurstBitmap(burst, size);
+        if (burst.Pixels == IntPtr.Zero) return;
+
+        burst.X       = cx - size / 2;
+        burst.Y       = cy - size / 2;
+        burst.StartMs = Environment.TickCount64;
+        burst.Spin    = (++_burstCounter * BurstSpinStep) % 1f;
+        burst.Active  = true;
+
+        SetWindowPos(burst.Hwnd, HWND_TOPMOST, burst.X, burst.Y, size, size,
+            SWP_NOACTIVATE | SWP_NOREDRAW);
+        PaintBurst(burst, 0f);
+        CompositeBurst(burst);
+        ShowWindow(burst.Hwnd, SW_SHOWNOACTIVATE);
+    }
+
+    private void StepBursts()
+    {
+        if (_bursts.Count == 0) return;
+        long  now      = Environment.TickCount64;
+        float duration = _clickDurationMs;
+        foreach (var b in _bursts)
+        {
+            if (!b.Active) continue;
+            float p = (now - b.StartMs) / duration;
+            if (p >= 1f)
+            {
+                b.Active = false;
+                ShowWindow(b.Hwnd, SW_HIDE);
+                continue;
+            }
+            PaintBurst(b, p);
+            CompositeBurst(b);
+        }
+    }
+
+    private static void AllocateBurstBitmap(Burst b, int size)
+    {
+        if (b.Hdc  != IntPtr.Zero) { DeleteDC(b.Hdc);      b.Hdc  = IntPtr.Zero; }
+        if (b.Hbmp != IntPtr.Zero) { DeleteObject(b.Hbmp); b.Hbmp = IntPtr.Zero; b.Pixels = IntPtr.Zero; }
+
+        IntPtr screenDC = GetDC(IntPtr.Zero);
+        if (screenDC == IntPtr.Zero) return;
+        try
+        {
+            var bmi = new BITMAPINFOHEADER
+            {
+                biSize      = Marshal.SizeOf<BITMAPINFOHEADER>(),
+                biWidth     = size,
+                biHeight    = -size,  // top-down
+                biPlanes    = 1,
+                biBitCount  = 32,
+                biCompression = 0,    // BI_RGB
+            };
+            IntPtr hdc = CreateCompatibleDC(screenDC);
+            if (hdc == IntPtr.Zero) return;
+            IntPtr hbmp = CreateDIBSection(hdc, ref bmi, 0, out IntPtr bits, IntPtr.Zero, 0);
+            if (hbmp == IntPtr.Zero) { DeleteDC(hdc); return; }
+            SelectObject(hdc, hbmp);
+            b.Hdc = hdc; b.Hbmp = hbmp; b.Pixels = bits; b.Size = size;
+        }
+        finally { ReleaseDC(IntPtr.Zero, screenDC); }
+    }
+
+    // Draws the burst at progress p in [0,1): an expanding ring and/or sparks flying
+    // outward, both fading as they go, plus a brief flash at the click point.
+    private unsafe void PaintBurst(Burst b, float p)
+    {
+        uint* buf = (uint*)b.Pixels.ToPointer();
+        int size = b.Size;
+        new Span<uint>(buf, size * size).Clear();
+
+        var (r, g, bl) = CurrentGlowColor();
+        float c     = size / 2f;
+        float eased = 1f - (1f - p) * (1f - p) * (1f - p);   // ease-out cubic
+        float fade  = 1f - p;
+        float reach = _clickSize * eased;
+        ClickBurstStyle style = _clickStyle;
+
+        if (p < BurstFlashPortion)
+        {
+            float fp = p / BurstFlashPortion;
+            DrawDot(buf, size, c, c, BurstFlashRadius * (1f - fp) + 1f, 1f - fp, r, g, bl);
+        }
+
+        if (style != ClickBurstStyle.Sparks)
+        {
+            float thick = BurstRingThickness * (1f - 0.6f * p) + 1f;
+            float outer = reach + thick;
+            for (int py = 0; py < size; py++)
+            {
+                float dy = py + 0.5f - c;
+                for (int px = 0; px < size; px++)
+                {
+                    float dx = px + 0.5f - c;
+                    float d  = MathF.Sqrt(dx * dx + dy * dy);
+                    if (d > outer) continue;
+                    float edge = 1f - MathF.Abs(d - reach) / thick;
+                    if (edge <= 0f) continue;
+                    Blend(buf, py * size + px, edge * fade, r, g, bl);
+                }
+            }
+        }
+
+        if (style != ClickBurstStyle.Ring)
+        {
+            float dist = reach * BurstSparkReach;
+            float rad  = BurstSparkRadius * (1f - 0.7f * p) + 0.75f;
+            for (int k = 0; k < BurstSparkCount; k++)
+            {
+                float ang = (k / (float)BurstSparkCount + b.Spin) * MathF.Tau;
+                float ux = MathF.Cos(ang), uy = MathF.Sin(ang);
+                DrawDot(buf, size, c + ux * dist, c + uy * dist, rad, fade, r, g, bl);
+                // A smaller trailing dot gives each spark a short streak.
+                DrawDot(buf, size, c + ux * dist * BurstTrailRatio, c + uy * dist * BurstTrailRatio,
+                    rad * 0.6f, fade * 0.6f, r, g, bl);
+            }
+        }
+    }
+
+    private static unsafe void DrawDot(uint* buf, int size, float cx, float cy, float radius,
+        float alpha, byte r, byte g, byte b)
+    {
+        int x0 = Math.Max(0, (int)(cx - radius - 1)), x1 = Math.Min(size - 1, (int)(cx + radius + 1));
+        int y0 = Math.Max(0, (int)(cy - radius - 1)), y1 = Math.Min(size - 1, (int)(cy + radius + 1));
+        for (int py = y0; py <= y1; py++)
+        {
+            float dy = py + 0.5f - cy;
+            for (int px = x0; px <= x1; px++)
+            {
+                float dx = px + 0.5f - cx;
+                float cover = radius + 0.5f - MathF.Sqrt(dx * dx + dy * dy);   // 1 px anti-aliased edge
+                if (cover <= 0f) continue;
+                Blend(buf, py * size + px, MathF.Min(cover, 1f) * alpha, r, g, b);
+            }
+        }
+    }
+
+    // Writes a premultiplied BGRA pixel, keeping whichever of old and new is more opaque.
+    private static unsafe void Blend(uint* buf, int idx, float a, byte r, byte g, byte b)
+    {
+        if (a <= 0f) return;
+        if (a > 1f) a = 1f;
+        byte a8 = (byte)(a * 255f);
+        if (a8 <= (byte)(buf[idx] >> 24)) return;
+        buf[idx] = (uint)((a8 << 24) | ((byte)(r * a) << 16) | ((byte)(g * a) << 8) | (byte)(b * a));
+    }
+
+    private static void CompositeBurst(Burst b)
+    {
+        IntPtr screenDC = GetDC(IntPtr.Zero);
+        if (screenDC == IntPtr.Zero) return;
+        try
+        {
+            POINT ptDst = new POINT { X = b.X, Y = b.Y };
+            SIZE  sz    = new SIZE  { cx = b.Size, cy = b.Size };
+            POINT ptSrc = default;
+            BLENDFUNCTION blend = new BLENDFUNCTION
+            {
+                BlendOp             = AC_SRC_OVER,
+                SourceConstantAlpha = 255,
+                AlphaFormat         = AC_SRC_ALPHA,
+            };
+            UpdateLayeredWindow(b.Hwnd, screenDC, ref ptDst, ref sz,
+                                b.Hdc, ref ptSrc, 0, ref blend, ULW_ALPHA);
+        }
+        finally { ReleaseDC(IntPtr.Zero, screenDC); }
+    }
+
+    private static void FreeBurst(Burst b)
+    {
+        if (b.Hwnd != IntPtr.Zero) { DestroyWindow(b.Hwnd);  b.Hwnd = IntPtr.Zero; }
+        if (b.Hdc  != IntPtr.Zero) { DeleteDC(b.Hdc);        b.Hdc  = IntPtr.Zero; }
+        if (b.Hbmp != IntPtr.Zero) { DeleteObject(b.Hbmp);   b.Hbmp = IntPtr.Zero; b.Pixels = IntPtr.Zero; }
     }
 
     // ── Compositing ────────────────────────────────────────────────────────
@@ -863,7 +1297,7 @@ public sealed class DesktopIconGlow : IDisposable
         if (s.Hwnd == IntPtr.Zero || s.Hdc == IntPtr.Zero) return;
 
         RECT rc  = _iconRects[i];
-        byte a8  = (byte)(s.Alpha * 255f);
+        byte a8  = (byte)(s.Alpha * PulseLevel() * 255f);
         bool nowVisible = a8 > 0;
 
         // Raise to top of the non-topmost Z-order the moment a glow starts
