@@ -165,10 +165,31 @@ public sealed partial class ThemesPage : Page
         PopulateMonitorRow(mc[2], Mon2Toggle, Mon2HexInput, editable);
         PopulateMonitorRow(mc[3], Mon3Toggle, Mon3HexInput, editable);
 
+        PopulateWindowsLook(theme, editable);
+
         UpdateColorSwatch(theme.Color);
         StatusBanner.Visibility = Visibility.Collapsed;
 
         _suppressHandlers = false;
+    }
+
+    private void PopulateWindowsLook(AuraTheme theme, bool editable)
+    {
+        ThemeWallpaperText.Text = theme.WallpaperPath is null
+            ? "Don't change the wallpaper"
+            : Path.GetFileName(theme.WallpaperPath) + (File.Exists(theme.WallpaperPath) ? "" : " (file not found)");
+        ToolTipService.SetToolTip(ThemeWallpaperText, theme.WallpaperPath);
+        foreach (ComboBoxItem item in ThemeFitCombo.Items)
+            if ((string)item.Tag == theme.WallpaperFit.ToString()) ThemeFitCombo.SelectedItem = item;
+        foreach (ComboBoxItem item in ThemeModeCombo.Items)
+            if ((string)item.Tag == (theme.WindowsMode ?? "")) ThemeModeCombo.SelectedItem = item;
+        ThemeAccentToggle.IsOn = theme.SetWindowsAccent;
+
+        ThemeFitCombo.IsEnabled          = editable && theme.WallpaperPath is not null;
+        ThemeWallpaperBtn.IsEnabled      = editable;
+        ThemeWallpaperClearBtn.IsEnabled = editable && theme.WallpaperPath is not null;
+        ThemeAccentToggle.IsEnabled      = editable;
+        ThemeModeCombo.IsEnabled         = editable;
     }
 
     private static void PopulateMonitorRow(
@@ -277,6 +298,56 @@ public sealed partial class ThemesPage : Page
         _selected.VisualizerBrightness = e.NewValue / 100.0;
     }
 
+    // ── Windows look handlers ──────────────────────────────────────────────
+
+    private static readonly string[] ImageTypes = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".jfif", ".webp"];
+
+    private async void ThemeWallpaper_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is null || _selected.IsBuiltIn) return;
+        var win = (Application.Current as App)?.MainWindow;
+        if (win is null) return;
+        var picker = new Windows.Storage.Pickers.FileOpenPicker
+        {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary,
+            ViewMode               = Windows.Storage.Pickers.PickerViewMode.Thumbnail,
+        };
+        foreach (var ext in ImageTypes) picker.FileTypeFilter.Add(ext);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(win));
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is null || _selected is null) return;
+        _selected.WallpaperPath = file.Path;
+        PopulateWindowsLook(_selected, editable: true);
+    }
+
+    private void ThemeWallpaperClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is null || _selected.IsBuiltIn) return;
+        _selected.WallpaperPath = null;
+        PopulateWindowsLook(_selected, editable: true);
+    }
+
+    private void ThemeFitCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        if (ThemeFitCombo.SelectedItem is ComboBoxItem { Tag: string tag } && Enum.TryParse(tag, out WallpaperFit fit))
+            _selected.WallpaperFit = fit;
+    }
+
+    private void ThemeAccentToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        _selected.SetWindowsAccent = ThemeAccentToggle.IsOn;
+    }
+
+    private void ThemeModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressHandlers || _selected is null || _selected.IsBuiltIn) return;
+        if (ThemeModeCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+            _selected.WindowsMode = tag.Length == 0 ? null : tag;
+    }
+
     // ── Per-monitor handlers ───────────────────────────────────────────────
 
     private void SetMonitorEnabled(int idx, bool enabled)
@@ -331,8 +402,13 @@ public sealed partial class ThemesPage : Page
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (_selected is null) return;
-        await ServiceManager.Instance.PushThemeAsync(_selected.ToThemeConfig());
-        ShowStatus($"{_selected.Name} is now active");
+        var theme = _selected;
+        bool lookOk = await ThemeStore.ApplyAsync(theme);
+        if (theme.HasWindowsLook && AppSettings.Get("AppTheme") == "System")
+            ThemeService.Apply("System", (Application.Current as App)?.MainWindow?.Content as FrameworkElement);
+        ShowStatus(lookOk
+            ? $"{theme.Name} is now active"
+            : $"{theme.Name} is active, but its wallpaper couldn't be set");
     }
 
     private void Duplicate_Click(object sender, RoutedEventArgs e)

@@ -230,6 +230,91 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- ── WINDOWS LOOK ───────────────────────────────────── -->
+                    <TextBlock Text="WINDOWS LOOK" Style="{StaticResource SectionHeaderTextStyle}" />
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE91B;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Wallpaper" />
+                                    <TextBlock x:Name="ThemeWallpaperText"
+                                               Style="{StaticResource SettingDescriptionTextStyle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="Don't change the wallpaper" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                    <ComboBox x:Name="ThemeFitCombo"
+                                              Width="110"
+                                              VerticalAlignment="Center"
+                                              AutomationProperties.Name="Theme wallpaper fit"
+                                              SelectionChanged="ThemeFitCombo_SelectionChanged">
+                                        <ComboBoxItem Content="Fill" Tag="Fill" />
+                                        <ComboBoxItem Content="Fit" Tag="Fit" />
+                                        <ComboBoxItem Content="Stretch" Tag="Stretch" />
+                                        <ComboBoxItem Content="Tile" Tag="Tile" />
+                                        <ComboBoxItem Content="Center" Tag="Center" />
+                                        <ComboBoxItem Content="Span" Tag="Span" />
+                                    </ComboBox>
+                                    <Button x:Name="ThemeWallpaperBtn" Content="Choose…"
+                                            AutomationProperties.Name="Choose theme wallpaper"
+                                            Click="ThemeWallpaper_Click" />
+                                    <Button x:Name="ThemeWallpaperClearBtn" Content="None"
+                                            AutomationProperties.Name="Theme keeps the current wallpaper"
+                                            ToolTipService.ToolTip="Leave the wallpaper alone when applying this theme"
+                                            Click="ThemeWallpaperClear_Click" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE790;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Windows accent color" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Set the Windows accent to this theme's glow color." />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="ThemeAccentToggle" Grid.Column="2"
+                                              Style="{StaticResource RowToggleSwitchStyle}"
+                                              AutomationProperties.Name="Set the Windows accent to the glow color"
+                                              Toggled="ThemeAccentToggle_Toggled" />
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE793;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Windows mode" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Switch Windows and apps to light or dark with this theme." />
+                                </StackPanel>
+                                <ComboBox x:Name="ThemeModeCombo" Grid.Column="2"
+                                          Width="160" Margin="16,0,0,0"
+                                          VerticalAlignment="Center"
+                                          AutomationProperties.Name="Theme Windows mode"
+                                          SelectionChanged="ThemeModeCombo_SelectionChanged">
+                                    <ComboBoxItem Content="Don't change" Tag="" />
+                                    <ComboBoxItem Content="Light" Tag="Light" />
+                                    <ComboBoxItem Content="Dark" Tag="Dark" />
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- ── WINDOW GLOW ────────────────────────────────────── -->
                     <TextBlock Text="WINDOW GLOW" Style="{StaticResource SectionHeaderTextStyle}" />
 

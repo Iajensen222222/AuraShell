@@ -134,7 +134,7 @@ public sealed class ScheduleService
     {
         var theme = ThemeStore.Instance.AllThemes.FirstOrDefault(t => t.Name == rule.ThemeName);
         if (theme is null) return;
-        await ServiceManager.Instance.PushThemeAsync(theme.ToThemeConfig());
+        await ThemeStore.ApplyAsync(theme);
     }
 
     public string NextChangeDescription()
