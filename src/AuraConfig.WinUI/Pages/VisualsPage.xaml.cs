@@ -18,6 +18,9 @@ public sealed partial class VisualsPage : Page
     private readonly ThemeConfig _theme = new();
     private readonly Rectangle[] _bars = new Rectangle[BandCount];
 
+    // Timestamp of last service audio packet — used to decide when to fall back to local capture
+    private long _lastServiceBandTick;
+
     public VisualsPage()
     {
         InitializeComponent();
@@ -31,6 +34,8 @@ public sealed partial class VisualsPage : Page
         BuildVisualizerBars();
         ServiceManager.Instance.AudioBandsReceived += OnAudioBandsReceived;
         ServiceManager.Instance.StartAudioStream();
+        LocalAudioCapture.Instance.BandsAvailable += OnLocalBandsReceived;
+        LocalAudioCapture.Instance.Start();
 
         // Restore last-applied theme into the local working copy + hex input
         // so navigating back to Visuals shows the user's pick, not a default.
@@ -47,12 +52,20 @@ public sealed partial class VisualsPage : Page
             HoverToggle.IsOn  = last.ShowOnHover;
             GlowToggle.IsOn   = last.GlowEnabled;
         }
+
+        // Restore desktop icon glow settings
+        if (AppSettings.Get("DesktopGlowEnabled") is string glowOnStr)
+            DesktopGlowToggle.IsOn = glowOnStr != "0";
+        if (AppSettings.Get("DesktopGlowIntensity") is string intensityStr
+            && int.TryParse(intensityStr, out int intensityPct))
+            DesktopGlowIntensitySlider.Value = Math.Clamp(intensityPct, 0, 100);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         ServiceManager.Instance.AudioBandsReceived -= OnAudioBandsReceived;
         ServiceManager.Instance.StopAudioStream();
+        LocalAudioCapture.Instance.BandsAvailable -= OnLocalBandsReceived;
     }
 
     private void BuildVisualizerBars()
@@ -83,9 +96,16 @@ public sealed partial class VisualsPage : Page
 
     private void OnAudioBandsReceived(object? sender, AudioBandsPayload payload)
     {
+        _lastServiceBandTick = Environment.TickCount64;
         DispatcherQueue.TryEnqueue(() =>
         {
-            if (!payload.AudioPresent || payload.Bands is null) return;
+            if (!payload.AudioPresent || payload.Bands is null)
+            {
+                AudioSourceLabel.Text = "Service connected — no audio";
+                return;
+            }
+
+            AudioSourceLabel.Text = "Service (128 bands)";
 
             // Rebuild bars if canvas was resized (first real layout pass).
             if (_bars[0] is null || _bars[0].Parent is null)
@@ -94,6 +114,28 @@ public sealed partial class VisualsPage : Page
             for (int i = 0; i < BandCount && i < payload.Bands.Length; i++)
             {
                 double magnitude = Math.Clamp((double)payload.Bands[i], 0.0, 1.0);
+                double h = Math.Max(2.0, magnitude * BarMaxHeight);
+                _bars[i].Height = h;
+                Canvas.SetTop(_bars[i], BarMaxHeight - h);
+            }
+        });
+    }
+
+    private void OnLocalBandsReceived(object? sender, float[] bands)
+    {
+        // Yield to service data when it's been recent (within 500ms)
+        if (Environment.TickCount64 - _lastServiceBandTick < 500) return;
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            AudioSourceLabel.Text = "Direct capture";
+
+            if (_bars[0] is null || _bars[0].Parent is null)
+                BuildVisualizerBars();
+
+            for (int i = 0; i < BandCount && i < bands.Length; i++)
+            {
+                double magnitude = Math.Clamp((double)bands[i], 0.0, 1.0);
                 double h = Math.Max(2.0, magnitude * BarMaxHeight);
                 _bars[i].Height = h;
                 Canvas.SetTop(_bars[i], BarMaxHeight - h);
@@ -121,6 +163,7 @@ public sealed partial class VisualsPage : Page
             byte b = Convert.ToByte(raw[4..6], 16);
             _theme.AccentColor = Windows.UI.Color.FromArgb(255, r, g, b);
             _theme.Name = $"Custom #{raw.ToUpperInvariant()}";
+            DesktopGlow?.SetColor(r, g, b);
             await PushThemeAsync();
         }
         catch
@@ -140,8 +183,8 @@ public sealed partial class VisualsPage : Page
 
     // ── Idle breathing ─────────────────────────────────────────────────────
 
-    private GlowAnimator? Animator =>
-        (Application.Current as App)?.MainWindow?.GlowAnimator;
+    private GlowAnimator?    Animator      => (Application.Current as App)?.MainWindow?.GlowAnimator;
+    private DesktopIconGlow? DesktopGlow   => (Application.Current as App)?.MainWindow?.DesktopIconGlow;
 
     private void BreatheMode_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -179,6 +222,25 @@ public sealed partial class VisualsPage : Page
         double speed    = BreatheSpeedSlider.Value;
         float  maxBoost = (float)BreatheBrightnessSlider.Value / 100f;
         Animator?.StartBreathing(speed, maxBoost, waveMode);
+    }
+
+    // ── Desktop icon hover glow ────────────────────────────────────────────
+
+    private void DesktopGlowToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (DesktopGlowToggle is null) return;
+        bool on = DesktopGlowToggle.IsOn;
+        if (DesktopGlow is { } dg) dg.Enabled = on;
+        AppSettings.Set("DesktopGlowEnabled", on ? "1" : "0");
+    }
+
+    private void DesktopGlowIntensity_Changed(object sender,
+        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (DesktopGlowIntensitySlider is null) return;
+        float intensity = (float)DesktopGlowIntensitySlider.Value / 100f;
+        if (DesktopGlow is { } dg) dg.Intensity = intensity;
+        AppSettings.Set("DesktopGlowIntensity", ((int)DesktopGlowIntensitySlider.Value).ToString());
     }
 
     // ── Options ────────────────────────────────────────────────────────────

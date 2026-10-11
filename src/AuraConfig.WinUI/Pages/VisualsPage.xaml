@@ -109,6 +109,35 @@
                 </StackPanel>
             </Border>
 
+            <!-- DESKTOP ICON HOVER card -->
+            <TextBlock Text="DESKTOP ICON HOVER"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Icon Hover Glow" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Text="A colored glow fades in around desktop icons when you hover over them."
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                    <ToggleSwitch x:Name="DesktopGlowToggle"
+                                  Header="Enable desktop icon hover glow"
+                                  IsOn="True"
+                                  Toggled="DesktopGlowToggle_Toggled" />
+                    <Slider x:Name="DesktopGlowIntensitySlider"
+                            Header="Glow intensity"
+                            Minimum="0" Maximum="100" StepFrequency="5" Value="80"
+                            IsEnabled="{x:Bind DesktopGlowToggle.IsOn, Mode=OneWay}"
+                            ValueChanged="DesktopGlowIntensity_Changed" />
+                </StackPanel>
+            </Border>
+
             <!-- AUDIO VISUALIZER card -->
             <TextBlock Text="AUDIO VISUALIZER"
                        Style="{ThemeResource CaptionTextBlockStyle}"
@@ -130,6 +159,11 @@
                             Height="80"
                             HorizontalAlignment="Stretch"
                             Background="Transparent" />
+                    <TextBlock x:Name="AudioSourceLabel"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Starting audio capture…"
+                               Margin="0,4,0,0" />
                 </StackPanel>
             </Border>
 

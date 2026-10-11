@@ -24,6 +24,23 @@
         <ResourceDictionary>
 
             <!-- ── Custom brushes (dark theme values) ─────────────────────────── -->
+
+            <!--
+                TextBox focused-state override: WinUI 3 unpackaged resolves TextControlBackgroundFocused
+                from system (light) resources even when RequestedTheme=Dark is set on a parent.
+                Declaring these as plain App resources forces the correct values per theme.
+                ThemeService.UpdateBrushColors swaps these when the user changes theme.
+            -->
+            <SolidColorBrush x:Key="TextControlBackground"                    Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="TextControlBackgroundPointerOver"          Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="TextControlBackgroundFocused"              Color="#FF1C1C1C" />
+            <SolidColorBrush x:Key="TextControlForeground"                     Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="TextControlForegroundPointerOver"          Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="TextControlForegroundFocused"              Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForeground"          Color="#72FFFFFF" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#87FFFFFF" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused"   Color="#72FFFFFF" />
+
             <SolidColorBrush x:Key="TextFillColorSecondaryBrush"              Color="#C5FFFFFF" />
             <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"    Color="#0DFFFFFF" />
             <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"            Color="#19000000" />

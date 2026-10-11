@@ -10,12 +10,11 @@
 
     <Grid Margin="24,16,24,16">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />  <!-- 0: header -->
+            <RowDefinition Height="Auto" />  <!-- 1: status bar -->
+            <RowDefinition Height="Auto" />  <!-- 2: toolbar -->
+            <RowDefinition Height="*"    />  <!-- 3: grid + empty state -->
+            <RowDefinition Height="Auto" />  <!-- 4: applied banner -->
         </Grid.RowDefinitions>
 
         <!-- Page header -->
@@ -31,59 +30,78 @@
                 Margin="0,2,0,0" />
         </StackPanel>
 
-        <!-- Status bar strip -->
-        <Border
-            Grid.Row="1"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="16,8"
-            Margin="0,12,0,16">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                    <Ellipse
-                        x:Name="StatusDot"
-                        Width="8" Height="8"
-                        Fill="{ThemeResource SystemFillColorCautionBrush}"
-                        VerticalAlignment="Center" />
-                    <TextBlock
-                        x:Name="StatusText"
-                        Text="Service not connected"
-                        Style="{ThemeResource CaptionTextBlockStyle}"
-                        VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center">
-                    <TextBlock
-                        x:Name="ThemeNameText"
-                        Text=""
-                        Style="{ThemeResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                        VerticalAlignment="Center" />
-                    <Button
-                        x:Name="ReconnectBtn"
-                        Content="Reconnect"
-                        Visibility="Collapsed"
-                        Click="ReconnectBtn_Click"
-                        Padding="8,2"
-                        FontSize="11"
-                        CornerRadius="4" />
-                </StackPanel>
-            </Grid>
-        </Border>
+        <!-- Named perf-stat TextBlocks kept for code-behind compatibility; not shown -->
+        <StackPanel Grid.Row="1" Visibility="Collapsed">
+            <TextBlock x:Name="CpuText" />
+            <TextBlock x:Name="MemText" />
+            <TextBlock x:Name="FpsText" />
+            <TextBlock x:Name="ThemeNameText" />
+        </StackPanel>
 
-        <!-- Preset gallery — using standard {Binding} (no x:DataType) for reliability -->
+        <!-- Toolbar: search + add + desktop shortcut -->
+        <Grid Grid.Row="2" Margin="0,12,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox
+                Grid.Column="0"
+                PlaceholderText="Search presets…"
+                TextChanged="SearchBox_TextChanged" />
+
+            <Button Grid.Column="1" Margin="8,0,0,0" Click="AddItemBtn_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE710;" FontSize="13" />
+                    <TextBlock Text="New Preset" FontSize="13" />
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="2" Margin="8,0,0,0" Click="CreateShortcut_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE71B;" FontSize="13" />
+                    <TextBlock Text="Desktop shortcut" FontSize="13" />
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="3" Margin="8,0,0,0" Click="ImportPresets_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE8B5;" FontSize="13" />
+                    <TextBlock Text="Import All" FontSize="13" />
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="4" Margin="4,0,0,0" Click="ExportPresets_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xEDE1;" FontSize="13" />
+                    <TextBlock Text="Export All" FontSize="13" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Empty state -->
+        <TextBlock x:Name="EmptyState"
+                   Grid.Row="3"
+                   Text="No presets match your search."
+                   Style="{ThemeResource CaptionTextBlockStyle}"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="Collapsed" />
+
+        <!-- Preset gallery -->
         <GridView
-            Grid.Row="2"
+            Grid.Row="3"
             x:Name="PresetsGrid"
             SelectionMode="Single"
             IsItemClickEnabled="True"
-            ItemClick="PresetsGrid_ItemClick">
+            ItemClick="PresetsGrid_ItemClick"
+            CanDragItems="True"
+            CanReorderItems="True"
+            AllowDrop="True"
+            DragItemsCompleted="PresetsGrid_DragItemsCompleted">
 
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -100,54 +118,92 @@
 
             <GridView.ItemTemplate>
                 <DataTemplate>
+                    <!--
+                        Structure required by OnContainerContentChanging:
+                          ContentTemplateRoot = outerBorder (Border)
+                          outerBorder.Child   = Grid
+                          grid.Children[0]    = preview Border
+                          grid.Children[1]    = infoRow Grid
+                            infoRow.Children[0] = chip Border (mode badge)
+                            infoRow.Children[1] = name+hex StackPanel
+                            infoRow.Children[2] = desc TextBlock (Tag="desc")
+                            infoRow.Children[3] = three-dots Button
+                    -->
                     <Border
                         Width="296" Height="196"
                         CornerRadius="12"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1">
+                        BorderThickness="2">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*" />
-                                <RowDefinition Height="50" />
+                                <RowDefinition Height="56" />
                             </Grid.RowDefinitions>
 
-                            <!-- Glow preview — coloured via code-behind tag -->
+                            <!-- grid.Children[0]: glow preview, painted by code-behind -->
                             <Border
                                 Grid.Row="0"
-                                x:Name="GlowBg"
-                                Tag="{Binding}"
-                                CornerRadius="12,12,0,0"
+                                CornerRadius="10,10,0,0"
                                 Background="#0C0D14" />
 
-                            <!-- Name + hex + apply chip -->
-                            <Grid Grid.Row="1" Padding="14,0,14,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock
-                                        Text="{Binding Name}"
-                                        Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                                    <TextBlock
-                                        Text="{Binding HexColor}"
-                                        FontFamily="Cascadia Code"
-                                        FontSize="10"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
+                            <!-- grid.Children[1]: info row
+                                 No column definitions — all children share the same cell.
+                                 Chip (Children[0]) anchors top-left; name (Children[1])
+                                 centres vertically; button (Children[3]) anchors right.
+                                 Padding="14,0,8,0" gives consistent left indent matching
+                                 the card's corner radius. -->
+                            <Grid Grid.Row="1" Padding="14,0,8,0">
+
+                                <!-- infoRow.Children[0]: mode chip — right side, beside the three-dots button -->
                                 <Border
-                                    Grid.Column="1"
-                                    CornerRadius="6"
-                                    Padding="10,5"
+                                    CornerRadius="4"
+                                    Padding="6,2"
+                                    HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
-                                    Background="#20FFFFFF">
+                                    Margin="0,0,44,0"
+                                    Visibility="Collapsed">
                                     <TextBlock
-                                        Text="Apply"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        FontSize="9"
                                         FontWeight="SemiBold" />
                                 </Border>
+
+                                <!-- infoRow.Children[1]: name — centred, right margin avoids button -->
+                                <StackPanel
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,36,0">
+                                    <TextBlock
+                                        Text="{Binding Name}"
+                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                        TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+
+                                <!-- infoRow.Children[2]: description (Tag="desc", hidden until set) -->
+                                <TextBlock
+                                    Tag="desc"
+                                    Text="{Binding Description}"
+                                    FontSize="10"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextTrimming="CharacterEllipsis"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,36,7"
+                                    Visibility="Collapsed" />
+
+                                <!-- infoRow.Children[3]: three-dots menu — anchors right -->
+                                <Button
+                                    Tag="{Binding}"
+                                    Click="ThreeDotsBtn_Click"
+                                    Width="32" Height="32"
+                                    Padding="0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="4">
+                                    <FontIcon Glyph="&#xE712;" FontSize="14" />
+                                </Button>
                             </Grid>
                         </Grid>
                     </Border>
@@ -157,7 +213,7 @@
 
         <!-- Applied banner -->
         <Border
-            Grid.Row="3"
+            Grid.Row="4"
             x:Name="AppliedBanner"
             Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
             CornerRadius="8"
@@ -173,40 +229,5 @@
                     Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
             </StackPanel>
         </Border>
-        <!-- Live performance stats -->
-        <Border
-            Grid.Row="5"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
-            CornerRadius="8"
-            Padding="16,8"
-            Margin="0,10,0,0">
-            <StackPanel Orientation="Horizontal" Spacing="24">
-                <TextBlock x:Name="CpuText" Text="CPU: --"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TextBlock x:Name="MemText" Text="MEM: --"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <TextBlock x:Name="FpsText" Text="FPS: --"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
-        </Border>
-
-        <!-- Desktop shortcut button -->
-        <Button
-            Grid.Row="4"
-            x:Name="CreateShortcutBtn"
-            Click="CreateShortcut_Click"
-            HorizontalAlignment="Left"
-            Margin="0,10,0,0"
-            Padding="12,6">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <FontIcon Glyph="&#xE71B;" FontSize="14" />
-                <TextBlock Text="Create desktop shortcut" FontSize="13" />
-            </StackPanel>
-        </Button>
     </Grid>
 </Page>

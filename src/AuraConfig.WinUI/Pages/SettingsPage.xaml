@@ -20,6 +20,24 @@
                            Margin="0,2,0,0" />
             </StackPanel>
 
+            <!-- STARTUP section -->
+            <TextBlock Text="STARTUP"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                       CharacterSpacing="50" FontWeight="SemiBold" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="16">
+                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               Text="Windows Startup" />
+                    <ToggleSwitch x:Name="StartupToggle"
+                                  Header="Launch AuraShell when Windows starts"
+                                  Toggled="StartupToggle_Toggled" />
+                </StackPanel>
+            </Border>
+
             <!-- APPEARANCE section -->
             <TextBlock Text="APPEARANCE"
                        Style="{ThemeResource CaptionTextBlockStyle}"
@@ -35,7 +53,6 @@
                     <RadioButton x:Name="ThemeDark"
                                  Content="Dark"
                                  GroupName="AppTheme"
-                                 IsChecked="True"
                                  Checked="ThemeRadio_Checked" />
                     <RadioButton x:Name="ThemeLight"
                                  Content="Light"

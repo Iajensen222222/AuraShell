@@ -14,12 +14,14 @@ namespace AuraConfig;
 public sealed partial class MainWindow : Window
 {
     private Frame _navFrame = new Frame();
-    private readonly GlowAnimator _glowAnimator = new();
+    private readonly GlowAnimator    _glowAnimator    = new();
+    private readonly DesktopIconGlow _desktopIconGlow = new();
     private readonly TrayIconService _tray = new();
     private bool _quitting = false;
 
     /// <summary>Exposed so pages (VisualsPage, AppColorsPage) can call SetColor/SetAppColor etc.</summary>
-    public GlowAnimator GlowAnimator => _glowAnimator;
+    public GlowAnimator    GlowAnimator    => _glowAnimator;
+    public DesktopIconGlow DesktopIconGlow => _desktopIconGlow;
 
     // Audio-reactive border: enabled when service is connected and streaming audio
     private bool _audioReactiveBorder = false;
@@ -37,6 +39,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Content = BuildShell();
+
+        // Apply saved theme (and sync plain App.xaml brushes) before first page renders.
+        ThemeService.Apply(AppSettings.Get("AppTheme") ?? "Dark", Content as FrameworkElement);
+
         _navFrame.Navigate(typeof(DashboardPage));
         SetWindowSizeAndCenter(1100, 780);
         ServiceManager.Instance.StartPolling(DispatcherQueue);
@@ -65,6 +71,16 @@ public sealed partial class MainWindow : Window
         // sees the right _themeColor.
         _glowAnimator.StartForegroundHook();
 
+        // Desktop icon hover glow — runs on its own background thread.
+        // Sync glow color with whatever theme was just restored above.
+        {
+            var (dr, dg, db) = lastTheme is not null
+                ? (lastTheme.AccentColor.R, lastTheme.AccentColor.G, lastTheme.AccentColor.B)
+                : ((byte)0x00, (byte)0x78, (byte)0xD4);
+            _desktopIconGlow.SetColor(dr, dg, db);
+        }
+        _desktopIconGlow.Start();
+
         // Set taskbar / titlebar icon
         try
         {
@@ -82,11 +98,13 @@ public sealed partial class MainWindow : Window
         {
             AppWindow.Show();
             this.Activate();
+            _desktopIconGlow.Start();
         });
         _tray.QuitRequested += () => DispatcherQueue.TryEnqueue(() =>
         {
             Logger.Info("MainWindow", "Quit requested from tray");
             _quitting = true;
+            _desktopIconGlow.Dispose();
             _tray.Dispose();
             this.Close();
         });
@@ -96,8 +114,26 @@ public sealed partial class MainWindow : Window
             if (_quitting) return;          // user picked Quit from tray menu
             args.Cancel = true;
             Logger.Info("MainWindow", "Close intercepted → hiding to tray");
+            _desktopIconGlow.Stop();        // restores Explorer's native hover before hiding
             AppWindow.Hide();
         };
+
+        // If a second instance launches while we're in the tray, it signals this
+        // named event. We watch on a thread-pool thread and marshal to the UI thread.
+        System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var evt = App.ShowWindowEvent;
+            if (evt is null) return;
+            while (true)
+            {
+                evt.WaitOne();
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    AppWindow.Show();
+                    this.Activate();
+                });
+            }
+        });
     }
 
     // ── Window geometry ────────────────────────────────────────────────────
@@ -130,11 +166,27 @@ public sealed partial class MainWindow : Window
             IsPaneOpen        = true,
             OpenPaneLength    = 240,
             CompactPaneLength = 48,
+            PaneBackground    = new SolidColorBrush(Colors.Transparent),
             Pane              = pane,
             Content           = _navFrame,
         };
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _glowAnimator.SetWindowHandle(hwnd);
+        HotkeyService.Instance.Initialize(hwnd, DispatcherQueue);
+
+        // Extend content into titlebar (Windows Settings style: no visible titlebar strip,
+        // caption buttons float over the top-right corner of the content).
+        var tb = AppWindow.TitleBar;
+        tb.ExtendsContentIntoTitleBar = true;
+        tb.ButtonBackgroundColor         = Colors.Transparent;
+        tb.ButtonInactiveBackgroundColor = Colors.Transparent;
+        tb.ButtonForegroundColor         = Colors.White;
+        tb.ButtonInactiveForegroundColor = Windows.UI.Color.FromArgb(0xFF, 0x9D, 0x9D, 0x9D);
+        tb.ButtonHoverBackgroundColor    = Windows.UI.Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF);
+        tb.ButtonPressedBackgroundColor  = Windows.UI.Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF);
+
+        // Push frame content below the caption-button zone so nothing is hidden behind them.
+        _navFrame.Margin = new Thickness(0, 48, 0, 0);
 
         return splitView;
     }
@@ -153,7 +205,7 @@ public sealed partial class MainWindow : Window
             FontSize   = 14,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             FontFamily = new FontFamily("Segoe UI Variable Display"),
-            Margin     = new Thickness(20, 16, 20, 8),
+            Margin     = new Thickness(20, 52, 20, 8),
         };
         Grid.SetRow(title, 0);
         grid.Children.Add(title);
@@ -162,6 +214,7 @@ public sealed partial class MainWindow : Window
         var mainItems = new StackPanel { Spacing = 2, Margin = new Thickness(8, 4, 8, 4) };
         mainItems.Children.Add(MakeNavItem("", "Dashboard",     "dashboard"));
         mainItems.Children.Add(MakeNavItem("", "Visuals",       "visuals"));
+        mainItems.Children.Add(MakeNavItem("", "Desktop FX",    "desktopfx"));
         mainItems.Children.Add(MakeNavItem("", "Themes",        "themes"));
         mainItems.Children.Add(MakeNavItem("", "App Colors",    "appcolors"));
         mainItems.Children.Add(MakeNavItem("", "Behavior",      "behavior"));
@@ -284,6 +337,7 @@ public sealed partial class MainWindow : Window
         {
             "dashboard" => typeof(DashboardPage),
             "visuals"   => typeof(VisualsPage),
+            "desktopfx" => typeof(DesktopFxPage),
             "themes"    => typeof(ThemesPage),
             "appcolors" => typeof(AppColorsPage),
             "behavior"  => typeof(BehaviorPage),
@@ -322,4 +376,27 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public void ApplyBorderColor(byte r, byte g, byte b)
         => _glowAnimator.SetColor(r, g, b);
+
+    /// <summary>Syncs the desktop icon glow color when a theme is applied.</summary>
+    public void ApplyDesktopGlowColor(byte r, byte g, byte b)
+        => _desktopIconGlow.SetColor(r, g, b);
+
+    // ── Titlebar accent tint ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Tints the caption button area to a subtle version of the active glow color.
+    /// Called by DashboardPage whenever a preset is applied.
+    /// </summary>
+    public void SetTitleBarAccent(byte r, byte g, byte b)
+    {
+        try
+        {
+            var tb = AppWindow.TitleBar;
+            // Titlebar is transparent (content extends into it), so only accent
+            // the caption button hover/pressed states with the active glow color.
+            tb.ButtonHoverBackgroundColor   = Windows.UI.Color.FromArgb(0x28, r, g, b);
+            tb.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(0x50, r, g, b);
+        }
+        catch { }
+    }
 }

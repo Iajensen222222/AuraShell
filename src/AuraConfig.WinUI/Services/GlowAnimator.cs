@@ -20,6 +20,14 @@ public sealed class GlowAnimator
 
     private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+    [DllImport("user32.dll")] private static extern int  GetSystemMetrics(int nIndex);
+    private const int SM_YVIRTUALSCREEN  = 76;
+    private const int SM_CYVIRTUALSCREEN = 79;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern int  GetWindowLong(IntPtr hwnd, int nIndex);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
@@ -34,10 +42,10 @@ public sealed class GlowAnimator
         uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
         WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
     [DllImport("user32.dll")] private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
-    private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
-    private const uint EVENT_OBJECT_SHOW       = 0x8002;
-    private const uint WINEVENT_OUTOFCONTEXT   = 0x0000;
-    private const int  OBJID_WINDOW            = 0;
+    private const uint EVENT_SYSTEM_FOREGROUND    = 0x0003;
+    private const uint EVENT_OBJECT_SHOW          = 0x8002;
+    private const uint WINEVENT_OUTOFCONTEXT      = 0x0000;
+    private const int  OBJID_WINDOW               = 0;
     [DllImport("kernel32.dll")] private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
@@ -75,6 +83,317 @@ public sealed class GlowAnimator
     //      have to re-apply ourselves to keep the tint sticky.
     private System.Threading.Timer? _repaintTimer;
     private const int RepaintIntervalMs = 1500;
+
+    // ── Animation mode (Glow / FadeBetween / Rainbow) ─────────────────────
+    // Runs a continuous 20fps timer that computes the current border color from
+    // the mode's timing params and applies it to all windows at once.
+
+    private System.Threading.Timer? _animModeTimer;
+    private const int AnimModeIntervalMs = 50;  // 20fps
+
+    private sealed record GlowModeParams(
+        byte R, byte G, byte B,
+        double FadeIn, double StayOn, double FadeOut, double StayOff);
+
+    private sealed record FadeBetweenParams(
+        byte R1, byte G1, byte B1,
+        byte R2, byte G2, byte B2,
+        double FadeIn, double StayOn1, double FadeOut, double StayOn2);
+
+    private sealed record RainbowParams(
+        IReadOnlyList<(byte R, byte G, byte B)> Colors,
+        double TransitionSec);
+
+    private sealed record LocationGlowParams(
+        byte TopR, byte TopG, byte TopB,
+        byte BotR, byte BotG, byte BotB);
+
+    private GlowModeParams?     _glowParams;
+    private FadeBetweenParams?  _fadeBetweenParams;
+    private RainbowParams?      _rainbowParams;
+    private LocationGlowParams? _locationGlowParams;
+    private double              _animPhase;     // seconds elapsed
+
+    // Audio reactive mode — event-driven, no timer
+    private bool                    _audioReactiveActive;
+    private EventHandler<float[]>?  _audioHandler;
+    private float                   _smoothedCentroid = 0.5f;
+
+    // Overall brightness multiplier applied to every border color output (1.0 = normal)
+    private float _brightness = 1.0f;
+    public void SetBrightness(float factor) => _brightness = Math.Clamp(factor, 0f, 4f);
+
+    private bool IsAnimationModeActive => _animModeTimer is not null || _audioReactiveActive;
+
+    public void StartGlowMode(byte r, byte g, byte b,
+        double fadeInSec, double stayOnColorSec, double fadeOutSec, double stayOnBlackSec)
+    {
+        StopAnimationMode();
+        _glowParams = new GlowModeParams(r, g, b, fadeInSec, stayOnColorSec, fadeOutSec,
+            Math.Max(0, stayOnBlackSec));
+        _animPhase  = 0;
+        StopBreathing();
+        _animModeTimer = new System.Threading.Timer(
+            _ => AnimModeTick(), null,
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs),
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs));
+    }
+
+    public void StartFadeBetweenMode(
+        byte r1, byte g1, byte b1, byte r2, byte g2, byte b2,
+        double fadeInSec, double stayOn1Sec, double fadeOutSec, double stayOn2Sec)
+    {
+        StopAnimationMode();
+        _fadeBetweenParams = new FadeBetweenParams(
+            r1, g1, b1, r2, g2, b2,
+            fadeInSec, stayOn1Sec, fadeOutSec, stayOn2Sec);
+        _animPhase = 0;
+        StopBreathing();
+        _animModeTimer = new System.Threading.Timer(
+            _ => AnimModeTick(), null,
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs),
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs));
+    }
+
+    public void StartRainbowMode(IReadOnlyList<(byte R, byte G, byte B)> colors, double transitionSec)
+    {
+        if (colors.Count < 2) return;
+        StopAnimationMode();
+        _rainbowParams = new RainbowParams(colors, Math.Max(0.05, transitionSec));
+        _animPhase     = 0;
+        StopBreathing();
+        _animModeTimer = new System.Threading.Timer(
+            _ => AnimModeTick(), null,
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs),
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs));
+    }
+
+    public void StartAudioReactiveMode(
+        byte bassR, byte bassG, byte bassB,
+        byte trebleR, byte trebleG, byte trebleB,
+        int hueWeight)
+    {
+        StopAnimationMode();
+        _themeColor       = (bassR, bassG, bassB);
+        _smoothedCentroid = 0.5f;
+        StopBreathing();
+        _audioHandler = (_, bands) =>
+        {
+            float raw = ComputeCentroid(bands);
+            _smoothedCentroid = 0.65f * _smoothedCentroid + 0.35f * raw;
+
+            float effective = 0.5f + (_smoothedCentroid - 0.5f) * (hueWeight / 100f);
+            effective = Math.Clamp(effective, 0f, 1f);
+            // S-curve: both endpoints stick to their color; transition compresses to the midrange
+            effective = effective < 0.5f
+                ? 0.5f * MathF.Pow(2f * effective, 3f)
+                : 1f - 0.5f * MathF.Pow(2f * (1f - effective), 3f);
+
+            float energy = 0f;
+            foreach (var v in bands) energy += v;
+            float brightness = 0.60f + Math.Min(1f, energy / 16f) * 0.40f;
+
+            byte r = (byte)Math.Clamp((int)((bassR + (trebleR - bassR) * effective) * brightness), 0, 255);
+            byte g = (byte)Math.Clamp((int)((bassG + (trebleG - bassG) * effective) * brightness), 0, 255);
+            byte b = (byte)Math.Clamp((int)((bassB + (trebleB - bassB) * effective) * brightness), 0, 255);
+            SetAllWindowBordersImmediate(r, g, b);
+        };
+        _audioReactiveActive = true;
+        LocalAudioCapture.Instance.BandsAvailable += _audioHandler;
+        LocalAudioCapture.Instance.Start();
+        EnsureRepaintTimerStarted();
+    }
+
+    private static float ComputeCentroid(float[] bands)
+    {
+        float weighted = 0f, total = 0f;
+        for (int i = 0; i < bands.Length; i++)
+        {
+            weighted += bands[i] * i;
+            total    += bands[i];
+        }
+        return total < 0.001f ? 0.5f : weighted / (total * (bands.Length - 1));
+    }
+
+    public void StartLocationGlowMode(byte topR, byte topG, byte topB,
+                                       byte botR, byte botG, byte botB)
+    {
+        StopAnimationMode();
+        _locationGlowParams = new LocationGlowParams(topR, topG, topB, botR, botG, botB);
+        _animPhase = 0;
+        StopBreathing();
+        _animModeTimer = new System.Threading.Timer(
+            _ => AnimModeTick(), null,
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs),
+            TimeSpan.FromMilliseconds(AnimModeIntervalMs));
+    }
+
+    public void StopAnimationMode()
+    {
+        _animModeTimer?.Dispose();
+        _animModeTimer      = null;
+        _glowParams         = null;
+        _fadeBetweenParams  = null;
+        _rainbowParams      = null;
+        _locationGlowParams = null;
+        _animPhase          = 0;
+        if (_audioHandler is not null)
+        {
+            LocalAudioCapture.Instance.BandsAvailable -= _audioHandler;
+            _audioHandler = null;
+        }
+        _audioReactiveActive = false;
+        _smoothedCentroid    = 0.5f;
+        // Restore the static theme color so windows don't stay at the last
+        // animation frame color after the mode is stopped.
+        SetAllWindowBorders(_themeColor.r, _themeColor.g, _themeColor.b);
+    }
+
+    private void AnimModeTick()
+    {
+        try
+        {
+            _animPhase += AnimModeIntervalMs / 1000.0;
+
+            if (_glowParams is { } gp)
+            {
+                var color = ComputeGlowColor(gp);
+                SetAllWindowBordersImmediate(color.r, color.g, color.b);
+            }
+            else if (_fadeBetweenParams is { } fb)
+            {
+                var color = ComputeFadeBetweenColor(fb);
+                SetAllWindowBordersImmediate(color.r, color.g, color.b);
+            }
+            else if (_rainbowParams is { } rp)
+            {
+                var color = ComputeRainbowColor(rp);
+                SetAllWindowBordersImmediate(color.r, color.g, color.b);
+            }
+            else if (_locationGlowParams is { } lg)
+            {
+                ApplyLocationGlowTick(lg);
+            }
+        }
+        catch { }
+    }
+
+    private void ApplyLocationGlowTick(LocationGlowParams lg)
+    {
+        int virtualTop    = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        int virtualHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        if (virtualHeight <= 0) return;
+
+        var hwnds = new List<IntPtr>(64);
+        EnumWindows((hwnd, _) => { if (IsEligibleWindow(hwnd)) hwnds.Add(hwnd); return true; },
+                    IntPtr.Zero);
+
+        foreach (var hwnd in hwnds)
+        {
+            if (!GetWindowRect(hwnd, out RECT r)) continue;
+            int centerY = (r.Top + r.Bottom) / 2;
+            double factor = Math.Clamp((double)(centerY - virtualTop) / virtualHeight, 0.0, 1.0);
+
+            byte red   = (byte)Math.Clamp(lg.TopR + (lg.BotR - lg.TopR) * factor, 0, 255);
+            byte green = (byte)Math.Clamp(lg.TopG + (lg.BotG - lg.TopG) * factor, 0, 255);
+            byte blue  = (byte)Math.Clamp(lg.TopB + (lg.BotB - lg.TopB) * factor, 0, 255);
+
+            int colorRef = PackColorRef(red, green, blue);
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+        }
+    }
+
+    // Shared factor computation used by both Glow mode and PerSide mode.
+    private double ComputeGlowFactor(double fadeIn, double stayOn, double fadeOut, double stayOff)
+    {
+        double cycle = fadeIn + stayOn + fadeOut + stayOff;
+        if (cycle <= 0) return 1.0;
+        double t = _animPhase % cycle;
+        if (t < fadeIn)
+            return fadeIn > 0 ? EaseOutCubic(t / fadeIn) : 1.0;
+        if (t < fadeIn + stayOn)
+            return 1.0;
+        if (t < fadeIn + stayOn + fadeOut)
+            return fadeOut > 0 ? 1.0 - EaseInOutSine((t - fadeIn - stayOn) / fadeOut) : 0.0;
+        return 0.0;
+    }
+
+    private (byte r, byte g, byte b) ComputeGlowColor(GlowModeParams p)
+    {
+        double factor = ComputeGlowFactor(p.FadeIn, p.StayOn, p.FadeOut, p.StayOff);
+        return (
+            (byte)Math.Clamp((int)(p.R * factor), 0, 255),
+            (byte)Math.Clamp((int)(p.G * factor), 0, 255),
+            (byte)Math.Clamp((int)(p.B * factor), 0, 255));
+    }
+
+    private (byte r, byte g, byte b) ComputeFadeBetweenColor(FadeBetweenParams p)
+    {
+        double cycle = p.FadeIn + p.StayOn1 + p.FadeOut + p.StayOn2;
+        if (cycle <= 0) return (p.R1, p.G1, p.B1);
+
+        double t = _animPhase % cycle;
+        double factor;  // 0.0 = Color1, 1.0 = Color2
+
+        if (t < p.FadeIn)
+            factor = p.FadeIn > 0 ? EaseOutCubic(t / p.FadeIn) : 1.0;
+        else if (t < p.FadeIn + p.StayOn1)
+            factor = 1.0;
+        else if (t < p.FadeIn + p.StayOn1 + p.FadeOut)
+            factor = p.FadeOut > 0
+                ? 1.0 - EaseInOutSine((t - p.FadeIn - p.StayOn1) / p.FadeOut)
+                : 0.0;
+        else if (p.StayOn2 > 0.001)
+            factor = 0.0;
+        else
+            factor = 0.0;
+
+        return (
+            (byte)Math.Clamp((int)(p.R1 + (p.R2 - p.R1) * factor), 0, 255),
+            (byte)Math.Clamp((int)(p.G1 + (p.G2 - p.G1) * factor), 0, 255),
+            (byte)Math.Clamp((int)(p.B1 + (p.B2 - p.B1) * factor), 0, 255));
+    }
+
+    private (byte r, byte g, byte b) ComputeRainbowColor(RainbowParams p)
+    {
+        int count    = p.Colors.Count;
+        double total = count * p.TransitionSec;
+        double t     = _animPhase % total;
+        int    idx   = (int)(t / p.TransitionSec) % count;
+        int    next  = (idx + 1) % count;
+        double frac  = EaseInOutSine((t % p.TransitionSec) / p.TransitionSec);
+
+        var (r1, g1, b1) = p.Colors[idx];
+        var (r2, g2, b2) = p.Colors[next];
+        return (
+            (byte)Math.Clamp((int)(r1 + (r2 - r1) * frac), 0, 255),
+            (byte)Math.Clamp((int)(g1 + (g2 - g1) * frac), 0, 255),
+            (byte)Math.Clamp((int)(b1 + (b2 - b1) * frac), 0, 255));
+    }
+
+    private static double EaseOutCubic(double t)
+    {
+        t = Math.Clamp(t, 0.0, 1.0);
+        return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
+    }
+
+    private static double EaseInOutSine(double t)
+    {
+        t = Math.Clamp(t, 0.0, 1.0);
+        return -(Math.Cos(Math.PI * t) - 1.0) / 2.0;
+    }
+
+    private void SetAllWindowBordersImmediate(byte r, byte g, byte b)
+    {
+        var hwnds = new List<IntPtr>(64);
+        EnumWindows((hwnd, _) => { if (IsEligibleWindow(hwnd)) hwnds.Add(hwnd); return true; },
+                    IntPtr.Zero);
+        foreach (var hwnd in hwnds)
+        {
+            int colorRef = PackColorRef(r, g, b);
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorRef, sizeof(int));
+        }
+    }
 
     // Foreground hook + multi-window concurrent fade. Three triggers fire fades:
     //   - EVENT_SYSTEM_FOREGROUND on the NEW foreground (fade-in from black)
@@ -149,11 +468,9 @@ public sealed class GlowAnimator
     {
         try
         {
-            // Skip the repaint while breathing is active — that timer is already
-            // touching every window each frame and a second concurrent enum
-            // would just churn DWM. (Breathing's tick reads _themeColor so a
-            // theme change still takes effect on the next breathe tick.)
-            if (_breatheTimer is not null) return;
+            // Skip while breathing or animation mode runs — those timers already
+            // touch every window each frame; a second concurrent enum churns DWM.
+            if (_breatheTimer is not null || IsAnimationModeActive) return;
 
             var (r, g, b) = _themeColor;
             SetAllWindowBorders(r, g, b);
@@ -192,6 +509,8 @@ public sealed class GlowAnimator
     private void OnForegroundChanged(IntPtr h, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint thread, uint time)
     {
+        // Animation mode handles all windows on its own 50ms tick; skip fades.
+        if (IsAnimationModeActive) return;
         if (idObject != OBJID_WINDOW || hwnd == IntPtr.Zero) return;
         if (!IsEligibleWindow(hwnd)) return;
 
@@ -216,11 +535,9 @@ public sealed class GlowAnimator
     private void OnObjectShown(IntPtr h, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint thread, uint time)
     {
-        // EVENT_OBJECT_SHOW fires for EVERY shown UI object including menus,
-        // tooltips, combo dropdowns, balloon notifications. Filter to top-level
-        // application windows only.
         if (idObject != OBJID_WINDOW || hwnd == IntPtr.Zero) return;
         if (!IsEligibleWindow(hwnd)) return;
+        if (IsAnimationModeActive) return;
 
         var (r, g, b) = GetEffectiveColor(hwnd, _themeColor.r, _themeColor.g, _themeColor.b);
         StartFade(hwnd, r, g, b);
@@ -497,6 +814,11 @@ public sealed class GlowAnimator
         catch { return null; }
     }
 
-    private static int PackColorRef(byte r, byte g, byte b)
-        => (b << 16) | (g << 8) | r;  // DWM COLORREF = 0x00BBGGRR
+    private int PackColorRef(byte r, byte g, byte b)
+    {
+        r = (byte)Math.Clamp((int)(r * _brightness), 0, 255);
+        g = (byte)Math.Clamp((int)(g * _brightness), 0, 255);
+        b = (byte)Math.Clamp((int)(b * _brightness), 0, 255);
+        return (b << 16) | (g << 8) | r;  // DWM COLORREF = 0x00BBGGRR
+    }
 }

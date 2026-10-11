@@ -15,6 +15,10 @@ public partial class App : Application
     // 'rainbow' flicker the user reported.
     private static System.Threading.Mutex? _singleInstance;
 
+    // Named event used to signal the running instance to bring its window forward.
+    // A second launch attempt sets this event instead of silently exiting.
+    internal static System.Threading.EventWaitHandle? ShowWindowEvent;
+
     public App()
     {
         Logger.Info("App", "Process starting");
@@ -23,9 +27,20 @@ public partial class App : Application
         _singleInstance = new System.Threading.Mutex(true, "AuraConfig_SingleInstance", out createdNew);
         if (!createdNew)
         {
-            Logger.Warn("App", "Another AuraConfig instance is already running — exiting");
+            Logger.Warn("App", "Another AuraConfig instance is already running — signalling it to show");
+            try
+            {
+                using var evt = System.Threading.EventWaitHandle.OpenExisting("AuraConfig_ShowWindow");
+                evt.Set();
+            }
+            catch { }
             System.Environment.Exit(0);
+            return;
         }
+
+        // First instance: create the named event so a second launch can signal us.
+        ShowWindowEvent = new System.Threading.EventWaitHandle(
+            false, System.Threading.EventResetMode.AutoReset, "AuraConfig_ShowWindow");
 
         // Existing crash dumper — keeps the original winui_crash.log intact for
         // automation that already greps it.

@@ -19,10 +19,13 @@ public sealed partial class SettingsPage : Page
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         // Restore saved preferences without triggering handlers.
+        StartupToggle.Toggled        -= StartupToggle_Toggled;
         ThemeDark.Checked            -= ThemeRadio_Checked;
         ThemeLight.Checked           -= ThemeRadio_Checked;
         ThemeSystem.Checked          -= ThemeRadio_Checked;
         NotificationsToggle.Toggled  -= NotificationsToggle_Toggled;
+
+        StartupToggle.IsOn = IsStartupEnabled();
 
         string theme = AppSettings.Get(KeyTheme) ?? "Dark";
         (theme switch
@@ -39,7 +42,39 @@ public sealed partial class SettingsPage : Page
         ThemeLight.Checked           += ThemeRadio_Checked;
         ThemeSystem.Checked          += ThemeRadio_Checked;
         NotificationsToggle.Toggled  += NotificationsToggle_Toggled;
+        StartupToggle.Toggled        += StartupToggle_Toggled;
     }
+
+    // ── Startup ────────────────────────────────────────────────────────────
+
+    private const string StartupRunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string StartupAppName = "AuraShell";
+
+    private static bool IsStartupEnabled()
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser
+            .OpenSubKey(StartupRunKey, writable: false);
+        return key?.GetValue(StartupAppName) is not null;
+    }
+
+    private static void SetStartupEnabled(bool enable)
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser
+            .OpenSubKey(StartupRunKey, writable: true)!;
+        if (enable)
+        {
+            string exe = Environment.ProcessPath
+                      ?? System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName;
+            key.SetValue(StartupAppName, $"\"{exe}\"");
+        }
+        else
+        {
+            key.DeleteValue(StartupAppName, throwOnMissingValue: false);
+        }
+    }
+
+    private void StartupToggle_Toggled(object sender, RoutedEventArgs e)
+        => SetStartupEnabled(StartupToggle.IsOn);
 
     // ── Theme ──────────────────────────────────────────────────────────────
 
@@ -59,17 +94,7 @@ public sealed partial class SettingsPage : Page
     }
 
     private void ApplyTheme(string name)
-    {
-        var theme = name switch
-        {
-            "Light"  => ElementTheme.Light,
-            "System" => ElementTheme.Default,
-            _        => ElementTheme.Dark
-        };
-
-        if (XamlRoot?.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-    }
+        => ThemeService.Apply(name, XamlRoot?.Content as FrameworkElement);
 
     // ── Notifications ──────────────────────────────────────────────────────
 

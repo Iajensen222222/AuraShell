@@ -290,3 +290,76 @@ public static class GlowPresets
         new GlowPreset("Slate",       120, 144, 156,  70, 0.60),
     ];
 }
+
+// ── Dashboard / border-mode models ─────────────────────────────────────────
+
+public enum BorderMode { SolidColor, Glow, FadeBetween, Rainbow, LocationGlow, AudioReactive }
+
+/// <summary>
+/// A user-created dashboard card that defines both color and animation mode
+/// for the DWM window border. Persisted to dashboard_items.json.
+/// </summary>
+public class DashboardItem
+{
+    public Guid       Id          { get; set; } = Guid.NewGuid();
+    public string     Name        { get; set; } = "New Item";
+    public string     Description { get; set; } = "";
+    public BorderMode Mode        { get; set; } = BorderMode.SolidColor;
+
+    // Primary color (SolidColor, Glow, FadeBetween Color A)
+    public byte R { get; set; } = 0x00;
+    public byte G { get; set; } = 0x78;
+    public byte B { get; set; } = 0xD4;
+
+    // Secondary color (FadeBetween Color B only)
+    public byte R2 { get; set; } = 0xFF;
+    public byte G2 { get; set; } = 0x00;
+    public byte B2 { get; set; } = 0xFF;
+
+    // Rainbow color list
+    public List<RainbowColor> RainbowColors { get; set; } = new();
+
+    // Timing parameters (seconds, 0.0–30.0)
+    public double FadeInSec      { get; set; } = 2.0;
+    public double StayOnColorSec { get; set; } = 1.0;
+    public double FadeOutSec     { get; set; } = 2.0;
+    // Stay-on-black pause; 0 = continuous cycle (no black hold)
+    public double StayOnBlackSec { get; set; } = 0.5;
+    // Rainbow: transition duration per color step
+    public double TransitionSec  { get; set; } = 2.0;
+    // Audio reactive: how strongly frequency shifts the color blend (0=none, 100=full)
+    public int AudioHueWeight    { get; set; } = 60;
+    // Overall border brightness multiplier in percent (0=off, 100=normal, 200=double)
+    public int Brightness        { get; set; } = 100;
+    // Global hotkey: Win32 MOD_* flags (0=none), VK code (0=no hotkey assigned)
+    public int HotkeyModifiers   { get; set; } = 0;
+    public int HotkeyKey         { get; set; } = 0;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Windows.UI.Color Color =>
+        Windows.UI.Color.FromArgb(255, R, G, B);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string HexColor => $"#{R:X2}{G:X2}{B:X2}";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string ModeLabel => Mode switch
+    {
+        BorderMode.Glow        => "Glow",
+        BorderMode.FadeBetween => "Fade",
+        BorderMode.Rainbow     => "Rainbow",
+        BorderMode.LocationGlow  => "Zone",
+        BorderMode.AudioReactive => "Audio",
+        _                        => "",
+    };
+}
+
+public class RainbowColor
+{
+    public byte R { get; set; }
+    public byte G { get; set; }
+    public byte B { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Hex => $"#{R:X2}{G:X2}{B:X2}";
+}
