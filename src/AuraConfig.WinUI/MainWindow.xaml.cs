@@ -240,6 +240,7 @@ public sealed partial class MainWindow : Window
         mainItems.Children.Add(MakeNavItem("\uE80F", "Dashboard",     "dashboard"));
         mainItems.Children.Add(MakeNavItem("\uE790", "Visuals",       "visuals"));
         mainItems.Children.Add(MakeNavItem("\uE945", "Desktop FX",    "desktopfx"));
+        mainItems.Children.Add(MakeNavItem("\uE91B", "Wallpaper & Colors", "look"));
         mainItems.Children.Add(MakeNavItem("\uE771", "Themes",        "themes"));
         mainItems.Children.Add(MakeNavItem("\uECAA", "App Colors",    "appcolors"));
         mainItems.Children.Add(MakeNavItem("\uE7E8", "Behavior",      "behavior"));
@@ -377,6 +378,7 @@ public sealed partial class MainWindow : Window
             "dashboard" => typeof(DashboardPage),
             "visuals"   => typeof(VisualsPage),
             "desktopfx" => typeof(DesktopFxPage),
+            "look"      => typeof(DesktopLookPage),
             "themes"    => typeof(ThemesPage),
             "appcolors" => typeof(AppColorsPage),
             "behavior"  => typeof(BehaviorPage),
