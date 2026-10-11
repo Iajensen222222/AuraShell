@@ -143,13 +143,33 @@ public sealed partial class MainWindow : Window
 
     // ── Window geometry ────────────────────────────────────────────────────
 
-    private void SetWindowSizeAndCenter(int width, int height)
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    private const double DefaultDpi       = 96.0;
+    private const double MaxWorkAreaShare = 0.92;   // never open larger than this share of the screen
+
+    /// <summary>
+    /// Sizes the window in DIPs (so it looks the same at 100 % and 150 % scaling),
+    /// capped to the monitor's work area, and centers it.
+    /// </summary>
+    private void SetWindowSizeAndCenter(int widthDip, int heightDip)
     {
         var appWindow = AppWindow;
-        appWindow.Resize(new SizeInt32(width, height));
-
         var displayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
         var workArea = displayArea.WorkArea;
+
+        double scale = 1.0;
+        try
+        {
+            uint dpi = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
+            if (dpi > 0) scale = dpi / DefaultDpi;
+        }
+        catch { }
+
+        int width  = Math.Min((int)(widthDip  * scale), (int)(workArea.Width  * MaxWorkAreaShare));
+        int height = Math.Min((int)(heightDip * scale), (int)(workArea.Height * MaxWorkAreaShare));
+        appWindow.Resize(new SizeInt32(width, height));
 
         var x = workArea.X + (workArea.Width  - width)  / 2;
         var y = workArea.Y + (workArea.Height - height) / 2;

@@ -52,12 +52,9 @@ public sealed partial class ThemesPage : Page
     {
         ThemeListPanel.Children.Add(new TextBlock
         {
-            Text             = text,
-            Style            = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-            Foreground       = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"],
-            Margin           = new Thickness(8, 8, 8, 2),
-            CharacterSpacing = 50,
-            FontWeight       = Microsoft.UI.Text.FontWeights.SemiBold,
+            Text   = text,
+            Style  = (Style)Application.Current.Resources["SectionHeaderTextStyle"],
+            Margin = new Thickness(12, 10, 8, 4),
         });
     }
 
@@ -65,34 +62,35 @@ public sealed partial class ThemesPage : Page
     {
         var swatch = new Border
         {
-            Width        = 16,
-            Height       = 16,
-            CornerRadius = new CornerRadius(3),
+            Width        = 18,
+            Height       = 18,
+            CornerRadius = new CornerRadius(9),
             Background   = new SolidColorBrush(theme.Color),
         };
 
         var nameBlock = new TextBlock
         {
             Text              = theme.Name,
-            FontSize          = 13,
+            FontSize          = 14,
+            TextTrimming      = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         row.Children.Add(swatch);
         row.Children.Add(nameBlock);
 
+        // SubtleButtonStyle (App.xaml) gives the row its hover and pressed tint.
         var btn = new Button
         {
+            Style                      = (Style)Application.Current.Resources["SubtleButtonStyle"],
             Content                    = row,
             Tag                        = theme,
             HorizontalAlignment        = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
-            Padding                    = new Thickness(8, 6, 12, 6),
-            CornerRadius               = new CornerRadius(4),
-            Background                 = new SolidColorBrush(Colors.Transparent),
-            BorderThickness            = new Thickness(0),
+            Padding                    = new Thickness(12, 8, 12, 8),
         };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(btn, theme.Name);
         btn.Click += ThemeCard_Click;
         return btn;
     }
@@ -119,7 +117,7 @@ public sealed partial class ThemesPage : Page
             if (child is not Button btn) continue;
             bool isTarget = btn.Tag is AuraTheme t && ReferenceEquals(t, target);
             btn.Background = isTarget
-                ? new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF))
+                ? (Brush)Application.Current.Resources["AppNavSelectedBrush"]
                 : new SolidColorBrush(Colors.Transparent);
         }
     }
@@ -203,6 +201,22 @@ public sealed partial class ThemesPage : Page
     {
         if (e.Key == Windows.System.VirtualKey.Enter)
             ApplyColor_Click(sender, null!);
+    }
+
+    private void ColorSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is null) return;
+        if (_selected.IsBuiltIn)
+        {
+            ShowStatus("Built-in themes can't be changed. Duplicate it first.");
+            return;
+        }
+        var c = _selected.Color;
+        DashboardPage.ShowColorPickerWindow(c.R, c.G, c.B, (nr, ng, nb) =>
+        {
+            ColorHexInput.Text = $"#{nr:X2}{ng:X2}{nb:X2}";
+            ApplyColor_Click(sender, null!);
+        });
     }
 
     private void ApplyColor_Click(object sender, RoutedEventArgs e)
@@ -318,7 +332,7 @@ public sealed partial class ThemesPage : Page
     {
         if (_selected is null) return;
         await ServiceManager.Instance.PushThemeAsync(_selected.ToThemeConfig());
-        ShowStatus($"✓  {_selected.Name} applied");
+        ShowStatus($"{_selected.Name} is now active");
     }
 
     private void Duplicate_Click(object sender, RoutedEventArgs e)
@@ -327,14 +341,14 @@ public sealed partial class ThemesPage : Page
         var copy = ThemeStore.Instance.Duplicate(_selected);
         // RebuildList() fires via CollectionChanged; select the copy
         SelectTheme(copy);
-        ShowStatus($"Created “{copy.Name}” — edit and Save to keep changes");
+        ShowStatus($"Created “{copy.Name}”. Make your changes, then click Save.");
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (_selected is null || _selected.IsBuiltIn) return;
         ThemeStore.Instance.UpdateCustom(_selected);
-        ShowStatus($"✓  “{_selected.Name}” saved");
+        ShowStatus($"“{_selected.Name}” saved");
     }
 
     private async void Delete_Click(object sender, RoutedEventArgs e)

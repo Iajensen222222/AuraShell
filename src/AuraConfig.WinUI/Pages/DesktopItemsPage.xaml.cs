@@ -1,5 +1,4 @@
 using AuraConfig.Services;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -39,7 +38,11 @@ public sealed partial class DesktopItemsPage : Page
                 if (path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                     SetTarget(path);
                 else
-                    ShowResult("Drop a .lnk shortcut file.", success: false);
+                {
+                    // The result line lives in the step-2 card; show it so the hint is visible.
+                    CurrentItemCard.Visibility = Visibility.Visible;
+                    ShowResult("That isn't a shortcut. Drop a shortcut (.lnk) file instead.", success: false);
+                }
             }
         }
     }
@@ -112,8 +115,8 @@ public sealed partial class DesktopItemsPage : Page
 
         bool ok = ShellShortcut.SetIcon(_targetPath, _iconSource, iconIndex: 0);
         ShowResult(
-            ok ? "Icon applied. You may need to press F5 to refresh your desktop."
-               : "Could not apply icon — check that the shortcut is not read-only.",
+            ok ? "Icon changed. If the desktop still shows the old one, click the desktop and press F5."
+               : "Couldn't change the icon. Check that the shortcut isn't read-only.",
             success: ok);
     }
 
@@ -123,8 +126,8 @@ public sealed partial class DesktopItemsPage : Page
 
         bool ok = ShellShortcut.ClearIcon(_targetPath);
         ShowResult(
-            ok ? "Default icon restored."
-               : "Could not restore icon — check that the shortcut is not read-only.",
+            ok ? "Original icon restored."
+               : "Couldn't restore the icon. Check that the shortcut isn't read-only.",
             success: ok);
 
         if (ok) ResetIconSource();
@@ -135,8 +138,8 @@ public sealed partial class DesktopItemsPage : Page
     private void ShowResult(string message, bool success)
     {
         ResultText.Text = message;
-        ResultText.Foreground = new SolidColorBrush(
-            success ? Colors.LightGreen : Colors.OrangeRed);
+        ResultText.Foreground = (Brush)Application.Current.Resources[
+            success ? "SystemFillColorSuccessBrush" : "SystemFillColorCriticalBrush"];
         ResultText.Visibility = Visibility.Visible;
     }
 

@@ -5,66 +5,99 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       mc:Ignorable="d">
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
 
-            <!-- Header -->
             <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold"
-                           FontFamily="Segoe UI Variable Display" Text="Schedule" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="Automatically switch themes at specific times"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Schedule" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                           Text="Switch themes automatically by day and time, for example a calmer theme in the evening." />
             </StackPanel>
 
-            <ToggleSwitch x:Name="SchedulerEnabled"
-                          Header="Enable scheduled theme switching"
-                          IsOn="True"
-                          Toggled="SchedulerEnabled_Toggled" />
+            <TextBlock Text="AUTOMATIC SWITCHING" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="14,10">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon Glyph="&#xE823;" FontSize="14"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center" />
-                    <TextBlock x:Name="NextChangeText"
-                               Text="No upcoming scheduled changes"
-                               Style="{ThemeResource BodyTextBlockStyle}"
-                               VerticalAlignment="Center" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE823;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Use the schedule" />
+                        <TextBlock x:Name="NextChangeText"
+                                   Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="No upcoming scheduled changes" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="SchedulerEnabled" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                  IsOn="True"
+                                  Toggled="SchedulerEnabled_Toggled" />
+                </Grid>
+            </Border>
+
+            <Grid Margin="0,22,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="RULES" Style="{StaticResource SectionHeaderTextStyle}"
+                           Margin="2,0,0,0" VerticalAlignment="Bottom" />
+                <Button Grid.Column="1" Click="AddRule_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE710;" FontSize="13" />
+                        <TextBlock Text="Add rule" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <StackPanel x:Name="RulesList" Spacing="4" />
+
+            <!-- Empty state -->
+            <Border x:Name="EmptyState"
+                    Style="{StaticResource CardStyle}"
+                    Padding="24,32"
+                    Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" Spacing="6">
+                    <FontIcon Glyph="&#xE787;" FontSize="32"
+                              Foreground="{StaticResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="No rules yet"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               HorizontalAlignment="Center" Margin="0,6,0,0" />
+                    <TextBlock Text="Add a rule to pick the days, the time range and the theme to use."
+                               Style="{StaticResource SettingDescriptionTextStyle}"
+                               TextAlignment="Center" HorizontalAlignment="Center" />
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="RULES"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <StackPanel x:Name="RulesList" Spacing="8" />
-
-            <TextBlock x:Name="EmptyState"
-                       Text="No rules yet — click Add rule to create one."
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Visibility="Collapsed" />
-
-            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                <Button Content="Add rule" Click="AddRule_Click" />
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
                 <Button Content="Save schedule"
-                        Style="{ThemeResource AccentButtonStyle}"
+                        Style="{StaticResource AccentButtonStyle}"
                         Click="SaveRules_Click" />
-            </StackPanel>
+                <TextBlock Grid.Column="1"
+                           Style="{StaticResource SettingDescriptionTextStyle}"
+                           Margin="12,0,0,0" VerticalAlignment="Center"
+                           Text="Rule changes take effect when you save." />
+            </Grid>
 
             <!-- Status banner -->
             <Border x:Name="StatusBanner"
-                    Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-                    CornerRadius="8" Padding="14,10" Visibility="Collapsed">
-                <TextBlock x:Name="StatusText"
-                           Style="{ThemeResource CaptionTextBlockStyle}"
-                           Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                    Background="{StaticResource SystemFillColorSuccessBackgroundBrush}"
+                    CornerRadius="4" Padding="12,8" Margin="0,8,0,0"
+                    HorizontalAlignment="Left"
+                    Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE73E;" FontSize="13"
+                              Foreground="{StaticResource SystemFillColorSuccessBrush}" />
+                    <TextBlock x:Name="StatusText"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{StaticResource SystemFillColorSuccessBrush}" />
+                </StackPanel>
             </Border>
 
         </StackPanel>

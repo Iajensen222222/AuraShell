@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Margin="24,16,24,16">
+    <Grid Padding="36,4,36,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />  <!-- 0: header -->
             <RowDefinition Height="Auto" />  <!-- 1: status bar -->
@@ -19,15 +19,9 @@
 
         <!-- Page header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,4">
-            <TextBlock
-                FontSize="40" FontWeight="SemiBold"
-                FontFamily="Segoe UI Variable Display"
-                Text="Presets" />
-            <TextBlock
-                Style="{ThemeResource CaptionTextBlockStyle}"
-                Text="Choose your Aura glow"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Margin="0,2,0,0" />
+            <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Dashboard" />
+            <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                       Text="Click a preset to apply it. Drag presets to reorder them, or use the ••• menu to edit." />
         </StackPanel>
 
         <!-- Named perf-stat TextBlocks kept for code-behind compatibility; not shown -->
@@ -38,58 +32,77 @@
             <TextBlock x:Name="ThemeNameText" />
         </StackPanel>
 
-        <!-- Toolbar: search + add + desktop shortcut -->
-        <Grid Grid.Row="2" Margin="0,12,0,12">
+        <!-- Toolbar: search, new preset, more actions -->
+        <Grid Grid.Row="2" Margin="0,16,0,12" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="360" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <TextBox
                 Grid.Column="0"
-                PlaceholderText="Search presets…"
+                PlaceholderText="Search presets"
+                AutomationProperties.Name="Search presets"
                 TextChanged="SearchBox_TextChanged" />
 
-            <Button Grid.Column="1" Margin="8,0,0,0" Click="AddItemBtn_Click">
-                <StackPanel Orientation="Horizontal" Spacing="6">
+            <Button Grid.Column="2"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="AddItemBtn_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE710;" FontSize="13" />
-                    <TextBlock Text="New Preset" FontSize="13" />
+                    <TextBlock Text="New preset" />
                 </StackPanel>
             </Button>
 
-            <Button Grid.Column="2" Margin="8,0,0,0" Click="CreateShortcut_Click">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <FontIcon Glyph="&#xE71B;" FontSize="13" />
-                    <TextBlock Text="Desktop shortcut" FontSize="13" />
+            <Button Grid.Column="3"
+                    ToolTipService.ToolTip="Desktop shortcut, import and export"
+                    AutomationProperties.Name="More actions">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="More" />
+                    <FontIcon Glyph="&#xE70D;" FontSize="10" />
                 </StackPanel>
-            </Button>
-
-            <Button Grid.Column="3" Margin="8,0,0,0" Click="ImportPresets_Click">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <FontIcon Glyph="&#xE8B5;" FontSize="13" />
-                    <TextBlock Text="Import All" FontSize="13" />
-                </StackPanel>
-            </Button>
-
-            <Button Grid.Column="4" Margin="4,0,0,0" Click="ExportPresets_Click">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <FontIcon Glyph="&#xEDE1;" FontSize="13" />
-                    <TextBlock Text="Export All" FontSize="13" />
-                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuFlyoutItem Text="Add desktop shortcut" Click="CreateShortcut_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE71B;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="Import presets…" Click="ImportPresets_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE8B5;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem Text="Export all presets…" Click="ExportPresets_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xEDE1;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Button.Flyout>
             </Button>
         </Grid>
 
-        <!-- Empty state -->
-        <TextBlock x:Name="EmptyState"
-                   Grid.Row="3"
-                   Text="No presets match your search."
-                   Style="{ThemeResource CaptionTextBlockStyle}"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Visibility="Collapsed" />
+        <!-- Empty state (no presets, or nothing matches the search) -->
+        <StackPanel x:Name="EmptyState"
+                    Grid.Row="3"
+                    Spacing="6"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="Collapsed">
+            <FontIcon Glyph="&#xE721;" FontSize="32"
+                      Foreground="{StaticResource AccentTextFillColorPrimaryBrush}" />
+            <TextBlock x:Name="EmptyStateTitle"
+                       Text="No presets match your search"
+                       Style="{StaticResource BodyStrongTextBlockStyle}"
+                       HorizontalAlignment="Center" Margin="0,8,0,0" />
+            <TextBlock x:Name="EmptyStateText"
+                       Text="Try a different word, or clear the search box."
+                       Style="{StaticResource SettingDescriptionTextStyle}"
+                       HorizontalAlignment="Center" TextAlignment="Center" />
+        </StackPanel>
 
         <!-- Preset gallery -->
         <GridView
@@ -131,7 +144,7 @@
                     -->
                     <Border
                         Width="296" Height="196"
-                        CornerRadius="12"
+                        CornerRadius="8"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="2">
@@ -144,7 +157,7 @@
                             <!-- grid.Children[0]: glow preview, painted by code-behind -->
                             <Border
                                 Grid.Row="0"
-                                CornerRadius="10,10,0,0"
+                                CornerRadius="6,6,0,0"
                                 Background="#0C0D14" />
 
                             <!-- grid.Children[1]: info row
@@ -215,18 +228,19 @@
         <Border
             Grid.Row="4"
             x:Name="AppliedBanner"
-            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-            CornerRadius="8"
-            Padding="16,10"
-            Margin="0,12,0,0"
+            Background="{StaticResource SystemFillColorSuccessBackgroundBrush}"
+            CornerRadius="4"
+            Padding="12,8"
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
             Visibility="Collapsed">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <FontIcon Glyph="&#xE73E;" FontSize="14"
-                          Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                <FontIcon Glyph="&#xE73E;" FontSize="13"
+                          Foreground="{StaticResource SystemFillColorSuccessBrush}" />
                 <TextBlock
                     x:Name="AppliedText"
-                    Style="{ThemeResource BodyTextBlockStyle}"
-                    Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{StaticResource SystemFillColorSuccessBrush}" />
             </StackPanel>
         </Border>
     </Grid>

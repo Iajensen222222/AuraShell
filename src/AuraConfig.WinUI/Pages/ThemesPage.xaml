@@ -8,310 +8,94 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid Padding="36,4,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="250" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!-- Header -->
+        <StackPanel Grid.ColumnSpan="2" Margin="0,0,36,16">
+            <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Themes" />
+            <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                       Text="A theme saves a glow color with its effects. Pick one to apply it, or duplicate a built-in theme to make it your own." />
+        </StackPanel>
+
         <!-- ── LEFT: theme list ─────────────────────────────────────────── -->
-        <Border Grid.Column="0"
-                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                BorderThickness="0,0,1,0">
+        <Border Grid.Row="1" Grid.Column="0"
+                Style="{StaticResource CardStyle}"
+                Padding="4"
+                Margin="0,0,0,36">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <ScrollViewer Grid.Row="0" Padding="8,8,8,0">
+                <ScrollViewer Grid.Row="0" Padding="0,0,0,4">
                     <StackPanel x:Name="ThemeListPanel" Spacing="2" />
                 </ScrollViewer>
 
-                <!-- New theme button -->
+                <Border Grid.Row="1" Style="{StaticResource CardDividerStyle}"
+                        Margin="-4,0" VerticalAlignment="Top" />
                 <Button Grid.Row="1"
                         x:Name="NewThemeBtn"
+                        Style="{StaticResource SubtleButtonStyle}"
                         Click="NewTheme_Click"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Left"
-                        Margin="8,4,8,8"
-                        Padding="12,8"
-                        CornerRadius="6">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE710;" FontSize="14" />
-                        <TextBlock Text="New theme" FontSize="13" />
+                        Margin="0,5,0,0"
+                        Padding="12,9">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE710;" FontSize="14"
+                                  Foreground="{StaticResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="New theme" />
                     </StackPanel>
                 </Button>
             </Grid>
         </Border>
 
-        <!-- ── RIGHT: editor panel ─────────────────────────────────────── -->
-        <ScrollViewer Grid.Column="1" Padding="24,16,24,24">
-            <StackPanel Spacing="16">
+        <!-- ── RIGHT: editor ────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1" Padding="20,0,36,36">
+            <StackPanel>
 
-                <!-- Header -->
-                <StackPanel Margin="0,0,0,4">
-                    <TextBlock FontSize="40" FontWeight="SemiBold"
-                               FontFamily="Segoe UI Variable Display"
-                               Text="Themes" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Create and manage your glow themes"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Margin="0,2,0,0" />
-                </StackPanel>
-
-                <!-- No-selection placeholder -->
+                <!-- Nothing selected -->
                 <StackPanel x:Name="NoSelectionPanel"
-                            VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Spacing="8"
-                            Margin="0,60,0,0">
-                    <FontIcon Glyph="&#xE790;" FontSize="48"
-                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock Text="Select a theme to edit"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Margin="0,80,0,0">
+                    <FontIcon Glyph="&#xE771;" FontSize="40"
+                              Foreground="{StaticResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="Pick a theme on the left"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBlock Text="You can apply it right away, or change its color and effects."
+                               Style="{StaticResource SettingDescriptionTextStyle}"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Editor (hidden until a theme is selected) -->
-                <StackPanel x:Name="EditorPanel" Visibility="Collapsed" Spacing="16">
+                <!-- Editor (shown when a theme is selected) -->
+                <StackPanel x:Name="EditorPanel" Visibility="Collapsed" Spacing="4" MaxWidth="760">
 
-                    <!-- Built-in notice -->
-                    <Border x:Name="BuiltInNoticeBorder"
-                            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
-                            CornerRadius="8" Padding="14,10" Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE946;" FontSize="14"
-                                      Foreground="{ThemeResource SystemFillColorCautionBrush}" />
-                            <TextBlock Text="Built-in themes are read-only. Use Duplicate to create an editable copy."
-                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- NAME card -->
-                    <TextBlock Text="NAME"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="8">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Theme Name" />
-                            <TextBox x:Name="NameInput"
-                                     PlaceholderText="e.g. Midnight Blue"
-                                     TextChanged="NameInput_TextChanged" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- COLOUR card -->
-                    <TextBlock Text="COLOUR"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold"
-                               Margin="0,8,0,0" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="16">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Glow Color" />
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                                <!-- Color preview swatch -->
-                                <Border x:Name="ColorSwatch"
-                                        Width="36" Height="36" CornerRadius="6"
-                                        Background="#FF0078D4" />
-                                <TextBox x:Name="ColorHexInput"
-                                         PlaceholderText="#0078D4"
-                                         Width="140"
-                                         KeyDown="ColorHexInput_KeyDown" />
-                                <Button Content="Apply color"
-                                        Click="ApplyColor_Click" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- ANIMATION card -->
-                    <TextBlock Text="ANIMATION"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold"
-                               Margin="0,8,0,0" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Glow Animation" />
-                            <Slider x:Name="SpeedSlider"
-                                    Minimum="0" Maximum="200" Value="100"
-                                    Header="Pulse Speed"
-                                    ValueChanged="SpeedSlider_ValueChanged" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- OPTIONS card -->
-                    <TextBlock Text="OPTIONS"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold"
-                               Margin="0,8,0,0" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="16">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Overlay Behavior" />
-                            <ToggleSwitch x:Name="HoverToggle"
-                                          Header="Show glow on hover"
-                                          IsOn="True"
-                                          Toggled="HoverToggle_Toggled" />
-                            <ToggleSwitch x:Name="GlowToggle"
-                                          Header="Enable glow effect"
-                                          IsOn="True"
-                                          Toggled="GlowToggle_Toggled" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- AUDIO VISUALIZER card -->
-                    <TextBlock Text="AUDIO VISUALIZER"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold"
-                               Margin="0,8,0,0" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="12">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Visualizer Bar" />
-                            <ToggleSwitch x:Name="VisualizerToggle"
-                                          Header="Show audio visualizer bar"
-                                          IsOn="True"
-                                          Toggled="VisualizerToggle_Toggled" />
-                            <Slider x:Name="VisualizerHeightSlider"
-                                    Minimum="40" Maximum="200" Value="80"
-                                    Header="Bar height (px)"
-                                    ValueChanged="VisualizerHeightSlider_ValueChanged" />
-                            <Slider x:Name="VisualizerBrightnessSlider"
-                                    Minimum="0" Maximum="200" Value="100"
-                                    Header="Brightness (0–2×)"
-                                    ValueChanged="VisualizerBrightnessSlider_ValueChanged" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- PER-MONITOR GLOW card -->
-                    <TextBlock Text="PER-MONITOR GLOW"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               CharacterSpacing="50" FontWeight="SemiBold"
-                               Margin="0,8,0,0" />
-
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="12" Padding="20">
-                        <StackPanel Spacing="16">
-                            <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                       Text="Monitor Glow Overrides" />
-                            <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Text="Leave color blank to inherit the global accent color."
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                       TextWrapping="Wrap" />
-
-                            <!-- Monitor 1 — always visible -->
-                            <StackPanel x:Name="MonitorRow0" Spacing="8">
-                                <TextBlock Text="Monitor 1 — Primary" FontSize="12"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <ToggleSwitch x:Name="Mon0Toggle"
-                                              Header="Enable overlay on this monitor"
-                                              IsOn="True"
-                                              Toggled="Mon0Toggle_Toggled" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox x:Name="Mon0HexInput"
-                                             PlaceholderText="inherit global color"
-                                             Width="180"
-                                             KeyDown="Mon0Hex_KeyDown" />
-                                    <Button Content="Apply color" Click="Mon0Apply_Click" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Monitor 2 — shown when ≥ 2 monitors detected -->
-                            <StackPanel x:Name="MonitorRow1" Spacing="8" Visibility="Collapsed">
-                                <TextBlock Text="Monitor 2" FontSize="12"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <ToggleSwitch x:Name="Mon1Toggle"
-                                              Header="Enable overlay on this monitor"
-                                              IsOn="True"
-                                              Toggled="Mon1Toggle_Toggled" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox x:Name="Mon1HexInput"
-                                             PlaceholderText="inherit global color"
-                                             Width="180"
-                                             KeyDown="Mon1Hex_KeyDown" />
-                                    <Button Content="Apply color" Click="Mon1Apply_Click" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Monitor 3 -->
-                            <StackPanel x:Name="MonitorRow2" Spacing="8" Visibility="Collapsed">
-                                <TextBlock Text="Monitor 3" FontSize="12"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <ToggleSwitch x:Name="Mon2Toggle"
-                                              Header="Enable overlay on this monitor"
-                                              IsOn="True"
-                                              Toggled="Mon2Toggle_Toggled" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox x:Name="Mon2HexInput"
-                                             PlaceholderText="inherit global color"
-                                             Width="180"
-                                             KeyDown="Mon2Hex_KeyDown" />
-                                    <Button Content="Apply color" Click="Mon2Apply_Click" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Monitor 4 -->
-                            <StackPanel x:Name="MonitorRow3" Spacing="8" Visibility="Collapsed">
-                                <TextBlock Text="Monitor 4" FontSize="12"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <ToggleSwitch x:Name="Mon3Toggle"
-                                              Header="Enable overlay on this monitor"
-                                              IsOn="True"
-                                              Toggled="Mon3Toggle_Toggled" />
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox x:Name="Mon3HexInput"
-                                             PlaceholderText="inherit global color"
-                                             Width="180"
-                                             KeyDown="Mon3Hex_KeyDown" />
-                                    <Button Content="Apply color" Click="Mon3Apply_Click" />
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Action buttons -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <!-- Actions -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button x:Name="ApplyBtn"
                                 Click="Apply_Click"
-                                Style="{ThemeResource AccentButtonStyle}"
-                                Padding="16,8">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                Style="{StaticResource AccentButtonStyle}"
+                                ToolTipService.ToolTip="Use this theme now">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE73E;" FontSize="14" />
                                 <TextBlock Text="Apply" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="DuplicateBtn"
                                 Click="Duplicate_Click"
-                                Padding="16,8">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                ToolTipService.ToolTip="Make an editable copy">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE8C8;" FontSize="14" />
                                 <TextBlock Text="Duplicate" />
                             </StackPanel>
@@ -319,8 +103,8 @@
                         <Button x:Name="SaveBtn"
                                 Click="Save_Click"
                                 Visibility="Collapsed"
-                                Padding="16,8">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                ToolTipService.ToolTip="Keep your changes to this theme">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE74E;" FontSize="14" />
                                 <TextBlock Text="Save" />
                             </StackPanel>
@@ -328,8 +112,8 @@
                         <Button x:Name="DeleteBtn"
                                 Click="Delete_Click"
                                 Visibility="Collapsed"
-                                Padding="16,8">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                ToolTipService.ToolTip="Delete this theme">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE74D;" FontSize="14" />
                                 <TextBlock Text="Delete" />
                             </StackPanel>
@@ -338,14 +122,332 @@
 
                     <!-- Status message -->
                     <Border x:Name="StatusBanner"
-                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-                            CornerRadius="8" Padding="14,10" Visibility="Collapsed">
+                            Background="{StaticResource SystemFillColorSuccessBackgroundBrush}"
+                            CornerRadius="4" Padding="12,8" Margin="0,8,0,0"
+                            HorizontalAlignment="Left"
+                            Visibility="Collapsed">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE73E;" FontSize="14"
-                                      Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                            <FontIcon Glyph="&#xE73E;" FontSize="13"
+                                      Foreground="{StaticResource SystemFillColorSuccessBrush}" />
                             <TextBlock x:Name="StatusText"
-                                       Style="{ThemeResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{StaticResource SystemFillColorSuccessBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Built-in notice -->
+                    <Border x:Name="BuiltInNoticeBorder"
+                            Background="{StaticResource SystemFillColorCautionBackgroundBrush}"
+                            CornerRadius="4" Padding="12,8" Margin="0,8,0,0"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE72E;" FontSize="13" Margin="0,1,10,0"
+                                      VerticalAlignment="Top"
+                                      Foreground="{StaticResource SystemFillColorCautionBrush}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="Built-in themes can't be changed. Click Duplicate to make a copy you can edit."
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+                    </Border>
+
+                    <!-- ── BASICS ─────────────────────────────────────────── -->
+                    <TextBlock Text="BASICS" Style="{StaticResource SectionHeaderTextStyle}" />
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE8AC;" Style="{StaticResource SettingIconStyle}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                           VerticalAlignment="Center" Text="Name" />
+                                <TextBox x:Name="NameInput" Grid.Column="2"
+                                         Width="240" Margin="16,0,0,0"
+                                         PlaceholderText="e.g. Midnight Blue"
+                                         AutomationProperties.Name="Theme name"
+                                         TextChanged="NameInput_TextChanged" />
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE790;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow color" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Click the swatch or type a hex code and press Enter." />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                    <Button Padding="3"
+                                            VerticalAlignment="Center"
+                                            ToolTipService.ToolTip="Open color picker"
+                                            AutomationProperties.Name="Open color picker"
+                                            Click="ColorSwatch_Click">
+                                        <Border x:Name="ColorSwatch"
+                                                Width="26" Height="26" CornerRadius="3"
+                                                Background="#FF0078D4" />
+                                    </Button>
+                                    <TextBox x:Name="ColorHexInput"
+                                             PlaceholderText="#0078D4"
+                                             Width="110"
+                                             VerticalAlignment="Center"
+                                             AutomationProperties.Name="Glow color hex code"
+                                             KeyDown="ColorHexInput_KeyDown" />
+                                    <Button Content="Set" Click="ApplyColor_Click"
+                                            ToolTipService.ToolTip="Use this hex code" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE916;" Style="{StaticResource SettingIconStyle}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                           VerticalAlignment="Center" Text="Animation speed" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                           Text="{x:Bind local:Fmt.Times(SpeedSlider.Value), Mode=OneWay}" />
+                                <Slider x:Name="SpeedSlider" Grid.Column="3"
+                                        Style="{StaticResource RowSliderStyle}"
+                                        AutomationProperties.Name="Animation speed"
+                                        Minimum="0" Maximum="200" Value="100"
+                                        ValueChanged="SpeedSlider_ValueChanged" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── WINDOW GLOW ────────────────────────────────────── -->
+                    <TextBlock Text="WINDOW GLOW" Style="{StaticResource SectionHeaderTextStyle}" />
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE7C9;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow effect" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Draw the colored glow around window borders." />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="GlowToggle" Grid.Column="2"
+                                              Style="{StaticResource RowToggleSwitchStyle}"
+                                              IsOn="True"
+                                              Toggled="GlowToggle_Toggled" />
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE8B0;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Highlight on hover" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Brighten the glow when the mouse is over a window." />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="HoverToggle" Grid.Column="2"
+                                              Style="{StaticResource RowToggleSwitchStyle}"
+                                              IsOn="True"
+                                              Toggled="HoverToggle_Toggled" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── AUDIO BAR ──────────────────────────────────────── -->
+                    <TextBlock Text="AUDIO BAR" Style="{StaticResource SectionHeaderTextStyle}" />
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE767;" Style="{StaticResource SettingIconStyle}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Audio visualizer bar" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                               Text="Bars along the taskbar that move with your music." />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="VisualizerToggle" Grid.Column="2"
+                                              Style="{StaticResource RowToggleSwitchStyle}"
+                                              IsOn="True"
+                                              Toggled="VisualizerToggle_Toggled" />
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid Margin="40,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}"
+                                           VerticalAlignment="Center" Text="Bar height" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SliderValueTextStyle}"
+                                           Text="{x:Bind local:Fmt.Px(VisualizerHeightSlider.Value), Mode=OneWay}" />
+                                <Slider x:Name="VisualizerHeightSlider" Grid.Column="2"
+                                        Style="{StaticResource RowSliderStyle}"
+                                        AutomationProperties.Name="Bar height in pixels"
+                                        Minimum="40" Maximum="200" Value="80"
+                                        ValueChanged="VisualizerHeightSlider_ValueChanged" />
+                            </Grid>
+                            <Border Style="{StaticResource CardDividerStyle}" />
+                            <Grid Margin="40,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}"
+                                           VerticalAlignment="Center" Text="Bar brightness" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SliderValueTextStyle}"
+                                           Text="{x:Bind local:Fmt.Times(VisualizerBrightnessSlider.Value), Mode=OneWay}" />
+                                <Slider x:Name="VisualizerBrightnessSlider" Grid.Column="2"
+                                        Style="{StaticResource RowSliderStyle}"
+                                        AutomationProperties.Name="Bar brightness"
+                                        Minimum="0" Maximum="200" Value="100"
+                                        ValueChanged="VisualizerBrightnessSlider_ValueChanged" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── MONITORS ───────────────────────────────────────── -->
+                    <TextBlock Text="MONITORS" Style="{StaticResource SectionHeaderTextStyle}" />
+                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                               Margin="2,0,0,4"
+                               Text="Turn the glow off on a display, or give it its own color. Leave the color empty to use the theme color." />
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel Spacing="14">
+                            <!-- Monitor 1: always visible -->
+                            <Grid x:Name="MonitorRow0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                           VerticalAlignment="Center" Text="Monitor 1 (main)" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                    <TextBox x:Name="Mon0HexInput" PlaceholderText="Theme color" Width="120"
+                                             VerticalAlignment="Center"
+                                             AutomationProperties.Name="Monitor 1 color"
+                                             KeyDown="Mon0Hex_KeyDown" />
+                                    <Button Content="Set" Click="Mon0Apply_Click" />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="Mon0Toggle" Grid.Column="3"
+                                              Style="{StaticResource RowToggleSwitchStyle}"
+                                              AutomationProperties.Name="Glow on monitor 1"
+                                              IsOn="True"
+                                              Toggled="Mon0Toggle_Toggled" />
+                            </Grid>
+
+                            <!-- Monitor 2: shown when 2+ monitors are detected -->
+                            <StackPanel x:Name="MonitorRow1" Spacing="14" Visibility="Collapsed">
+                                <Border Style="{StaticResource CardDividerStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                               VerticalAlignment="Center" Text="Monitor 2" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                        <TextBox x:Name="Mon1HexInput" PlaceholderText="Theme color" Width="120"
+                                                 VerticalAlignment="Center"
+                                                 AutomationProperties.Name="Monitor 2 color"
+                                                 KeyDown="Mon1Hex_KeyDown" />
+                                        <Button Content="Set" Click="Mon1Apply_Click" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="Mon1Toggle" Grid.Column="3"
+                                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                                  AutomationProperties.Name="Glow on monitor 2"
+                                                  IsOn="True"
+                                                  Toggled="Mon1Toggle_Toggled" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Monitor 3 -->
+                            <StackPanel x:Name="MonitorRow2" Spacing="14" Visibility="Collapsed">
+                                <Border Style="{StaticResource CardDividerStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                               VerticalAlignment="Center" Text="Monitor 3" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                        <TextBox x:Name="Mon2HexInput" PlaceholderText="Theme color" Width="120"
+                                                 VerticalAlignment="Center"
+                                                 AutomationProperties.Name="Monitor 3 color"
+                                                 KeyDown="Mon2Hex_KeyDown" />
+                                        <Button Content="Set" Click="Mon2Apply_Click" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="Mon2Toggle" Grid.Column="3"
+                                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                                  AutomationProperties.Name="Glow on monitor 3"
+                                                  IsOn="True"
+                                                  Toggled="Mon2Toggle_Toggled" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Monitor 4 -->
+                            <StackPanel x:Name="MonitorRow3" Spacing="14" Visibility="Collapsed">
+                                <Border Style="{StaticResource CardDividerStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource SettingTitleTextStyle}"
+                                               VerticalAlignment="Center" Text="Monitor 4" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                        <TextBox x:Name="Mon3HexInput" PlaceholderText="Theme color" Width="120"
+                                                 VerticalAlignment="Center"
+                                                 AutomationProperties.Name="Monitor 4 color"
+                                                 KeyDown="Mon3Hex_KeyDown" />
+                                        <Button Content="Set" Click="Mon3Apply_Click" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="Mon3Toggle" Grid.Column="3"
+                                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                                  AutomationProperties.Name="Glow on monitor 4"
+                                                  IsOn="True"
+                                                  Toggled="Mon3Toggle_Toggled" />
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>

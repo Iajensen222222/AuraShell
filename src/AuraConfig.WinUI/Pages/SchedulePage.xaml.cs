@@ -60,7 +60,8 @@ public sealed partial class SchedulePage : Page
 
     private Border BuildRuleCard(ScheduleRule rule, int index)
     {
-        string[] dayLabels = { "M", "T", "W", "T", "F", "S", "S" };
+        string[] dayLabels = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        string[] dayNames  = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
         var dayRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         for (int d = 0; d < 7; d++)
         {
@@ -69,10 +70,12 @@ public sealed partial class SchedulePage : Page
             {
                 Content   = dayLabels[d],
                 IsChecked = rule.Days[d],
-                Width     = 32, Height = 32,
+                Width     = 46, Height = 32,
                 Padding   = new Thickness(0),
-                FontSize  = 11,
+                FontSize  = 12,
             };
+            ToolTipService.SetToolTip(btn, dayNames[d]);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(btn, dayNames[d]);
             btn.Checked   += (_, _) => rule.Days[di] = true;
             btn.Unchecked += (_, _) => rule.Days[di] = false;
             dayRow.Children.Add(btn);
@@ -102,7 +105,7 @@ public sealed partial class SchedulePage : Page
             rule.EndM = args.NewTime?.Minutes ?? rule.EndM;
         };
 
-        var themeBox = new ComboBox { Header = "Theme", MinWidth = 160 };
+        var themeBox = new ComboBox { Header = "Theme", MinWidth = 200 };
         foreach (var t in ThemeStore.Instance.AllThemes)
             themeBox.Items.Add(t.Name);
         if (!string.IsNullOrEmpty(rule.ThemeName) && themeBox.Items.Contains(rule.ThemeName))
@@ -113,9 +116,13 @@ public sealed partial class SchedulePage : Page
         int idx = index;
         var deleteBtn = new Button
         {
-            Content           = "Remove",
-            VerticalAlignment = VerticalAlignment.Bottom,
+            Style             = (Style)Application.Current.Resources["SubtleButtonStyle"],
+            Content           = new FontIcon { Glyph = "", FontSize = 14 },
+            Padding           = new Thickness(8),
+            VerticalAlignment = VerticalAlignment.Center,
         };
+        ToolTipService.SetToolTip(deleteBtn, "Remove this rule");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(deleteBtn, "Remove this rule");
         deleteBtn.Click += (_, _) =>
         {
             _rules.RemoveAt(idx);
@@ -129,21 +136,31 @@ public sealed partial class SchedulePage : Page
         };
         timeRow.Children.Add(fromPicker);
         timeRow.Children.Add(toPicker);
-        timeRow.Children.Add(themeBox);
-        timeRow.Children.Add(deleteBtn);
+
+        // Header: "Rule 1" on the left, delete icon on the right.
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var title = new TextBlock
+        {
+            Text              = $"Rule {index + 1}",
+            Style             = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(deleteBtn, 1);
+        header.Children.Add(title);
+        header.Children.Add(deleteBtn);
 
         var content = new StackPanel { Spacing = 12 };
+        content.Children.Add(header);
         content.Children.Add(dayRow);
         content.Children.Add(timeRow);
+        content.Children.Add(themeBox);
 
         return new Border
         {
-            Background      = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            BorderBrush     = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius    = new CornerRadius(12),
-            Padding         = new Thickness(16),
-            Child           = content,
+            Style = (Style)Application.Current.Resources["CardStyle"],
+            Child = content,
         };
     }
 
@@ -168,7 +185,7 @@ public sealed partial class SchedulePage : Page
         ScheduleService.Instance.SetRules(_rules.Select(CloneRule).ToList());
         UpdateNextChange();
         Logger.Info("SchedulePage", $"Saved {_rules.Count} rule(s). {ScheduleService.Instance.NextChangeDescription()}");
-        ShowStatus("✓  Schedule saved");
+        ShowStatus("Schedule saved");
     }
 
     private void SchedulerEnabled_Toggled(object sender, RoutedEventArgs e)
@@ -183,7 +200,7 @@ public sealed partial class SchedulePage : Page
         if (SchedulerEnabled is null || NextChangeText is null) return;
         NextChangeText.Text = SchedulerEnabled.IsOn
             ? ScheduleService.Instance.NextChangeDescription()
-            : "Scheduler disabled";
+            : "Off. Your theme won't change on its own.";
     }
 
     // ── Status banner ──────────────────────────────────────────────────────

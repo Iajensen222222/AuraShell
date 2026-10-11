@@ -268,6 +268,8 @@ public sealed partial class DashboardPage : Page
             PresetsGrid.ItemsSource     = all;
             PresetsGrid.CanReorderItems = true;
             bool empty = all.Count == 0;
+            EmptyStateTitle.Text = "No presets yet";
+            EmptyStateText.Text  = "Click New preset to make your first glow.";
             EmptyState.Visibility  = empty ? Visibility.Visible  : Visibility.Collapsed;
             PresetsGrid.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -280,6 +282,8 @@ public sealed partial class DashboardPage : Page
             PresetsGrid.ItemsSource     = list;
             PresetsGrid.CanReorderItems = false;   // block reorder on filtered subset
             bool empty = list.Count == 0;
+            EmptyStateTitle.Text = "No presets match your search";
+            EmptyStateText.Text  = "Try a different word, or clear the search box.";
             EmptyState.Visibility  = empty ? Visibility.Visible  : Visibility.Collapsed;
             PresetsGrid.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -488,7 +492,7 @@ public sealed partial class DashboardPage : Page
 
     private async void ShowAppliedBanner(string name)
     {
-        AppliedText.Text = $"✓  {name} applied";
+        AppliedText.Text = $"{name} applied";
         AppliedBanner.Visibility = Visibility.Visible;
         await Task.Delay(3000);
         if (_lastApplied?.Name == name)

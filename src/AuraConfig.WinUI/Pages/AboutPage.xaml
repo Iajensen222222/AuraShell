@@ -8,165 +8,119 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <Page.Resources>
+        <Style x:Key="InfoLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource SettingTitleTextStyle}">
+            <Setter Property="Foreground" Value="{StaticResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="InfoValueStyle" TargetType="TextBlock" BasedOn="{StaticResource SettingTitleTextStyle}">
+            <Setter Property="IsTextSelectionEnabled" Value="True" />
+        </Style>
+    </Page.Resources>
 
-            <!-- Page header -->
-            <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="About" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="AuraShell version and system information"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
+
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="About" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                           Text="Version details, and what to include if you report a problem." />
             </StackPanel>
 
-            <!-- App logo + identity card -->
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="24">
-                <StackPanel Spacing="12">
-                    <FontIcon Glyph="&#xE734;"
-                              FontSize="52"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              HorizontalAlignment="Left" />
-                    <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="AuraShell" />
-                    <TextBlock Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Version 1.0.0" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Windows 11 taskbar glow overlay engine"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="C++ Direct2D engine  ·  C# WinUI 3 interface"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <HyperlinkButton Content="github.com/Iajensen222222/AuraShell"
-                                     NavigateUri="https://github.com/Iajensen222222/AuraShell"
-                                     Padding="0" Margin="0,4,0,0" />
-                </StackPanel>
+            <!-- Identity card -->
+            <Border Style="{StaticResource CardStyle}" Padding="24,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="64" Height="64" CornerRadius="14"
+                            Margin="0,0,20,0" VerticalAlignment="Top"
+                            Background="{StaticResource AppAccentSubtleBrush}">
+                        <FontIcon Glyph="&#xE734;" FontSize="32"
+                                  Foreground="{StaticResource AccentTextFillColorPrimaryBrush}" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="AuraShell" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   Foreground="{StaticResource AccentTextFillColorPrimaryBrush}"
+                                   Text="Version 1.0.0" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Margin="0,6,0,0"
+                                   Text="Restyles and personalizes the Windows 11 desktop: window glow, desktop effects and themes." />
+                        <HyperlinkButton Content="github.com/Iajensen222222/AuraShell"
+                                         NavigateUri="https://github.com/Iajensen222222/AuraShell"
+                                         Padding="0" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <!-- SERVICE card -->
-            <TextBlock Text="SERVICE"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── SERVICE ────────────────────────────────────────────────── -->
+            <TextBlock Text="SERVICE" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="10">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="AuraShellService" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid RowSpacing="12" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="160" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition />
-                            <RowDefinition />
-                            <RowDefinition />
-                        </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Status" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="SvcStatusText" Grid.Row="0" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
 
-                        <TextBlock Grid.Row="0" Grid.Column="0"
-                                   Text="Version"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="SvcVersionText"
-                                   Grid.Row="0" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <TextBlock Grid.Row="1" Text="Version" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="SvcVersionText" Grid.Row="1" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0"
-                                   Text="Status"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="SvcStatusText"
-                                   Grid.Row="1" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-
-                        <TextBlock Grid.Row="2" Grid.Column="0"
-                                   Text="Uptime"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="SvcUptimeText"
-                                   Grid.Row="2" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                    </Grid>
-                </StackPanel>
+                    <TextBlock Grid.Row="2" Text="Running for" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="SvcUptimeText" Grid.Row="2" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
+                </Grid>
             </Border>
 
-            <!-- SYSTEM card -->
-            <TextBlock Text="SYSTEM"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── SYSTEM ─────────────────────────────────────────────────── -->
+            <TextBlock Text="SYSTEM" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="10">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Environment" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid RowSpacing="12" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="160" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition />
-                            <RowDefinition />
-                            <RowDefinition />
-                        </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Windows" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="OsVersionText" Grid.Row="0" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
 
-                        <TextBlock Grid.Row="0" Grid.Column="0"
-                                   Text="OS"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="OsVersionText"
-                                   Grid.Row="0" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="1" Text="Window size" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="DpiText" Grid.Row="1" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0"
-                                   Text="Display DPI"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="DpiText"
-                                   Grid.Row="1" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-
-                        <TextBlock Grid.Row="2" Grid.Column="0"
-                                   Text=".NET Runtime"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                        <TextBlock x:Name="RuntimeText"
-                                   Grid.Row="2" Grid.Column="1"
-                                   Text="—"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
-                    </Grid>
-                </StackPanel>
+                    <TextBlock Grid.Row="2" Text=".NET runtime" Style="{StaticResource InfoLabelStyle}" />
+                    <TextBlock x:Name="RuntimeText" Grid.Row="2" Grid.Column="1"
+                               Text="—" Style="{StaticResource InfoValueStyle}" />
+                </Grid>
             </Border>
 
-            <!-- License card -->
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="8">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}" Text="License" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="MIT License — Copyright © 2026 AuraShell Development Team"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Permission is granted to use, copy, modify, and distribute this software."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
+            <!-- ── LICENSE ────────────────────────────────────────────────── -->
+            <TextBlock Text="LICENSE" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="2">
+                    <TextBlock Style="{StaticResource SettingTitleTextStyle}"
+                               Text="MIT License, © 2026 AuraShell Development Team" />
+                    <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                               Text="You may use, copy, modify and share this software." />
                 </StackPanel>
             </Border>
 

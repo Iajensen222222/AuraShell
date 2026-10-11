@@ -48,16 +48,20 @@ public sealed partial class AppColorsPage : Page
         PresetSwatches.Items.Clear();
         foreach (var preset in GlowPresets.All)
         {
+            // SubtleButtonStyle keeps the swatch color on hover (the default button
+            // template would swap it for the gray hover fill).
             var btn = new Button
             {
-                Width        = 28,
-                Height       = 28,
+                Style        = (Style)Application.Current.Resources["SubtleButtonStyle"],
+                Width        = 30,
+                Height       = 30,
                 Padding      = new Thickness(0),
-                Margin       = new Thickness(2),
                 CornerRadius = new CornerRadius(4),
                 Background   = new SolidColorBrush(preset.Color),
                 Tag          = preset,
             };
+            ToolTipService.SetToolTip(btn, $"{preset.Name}  {preset.HexColor}");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(btn, preset.Name);
             btn.Click += Swatch_Click;
             PresetSwatches.Items.Add(btn);
         }
@@ -110,61 +114,69 @@ public sealed partial class AppColorsPage : Page
     {
         var swatch = new Border
         {
-            Width             = 18,
-            Height            = 18,
-            CornerRadius      = new CornerRadius(3),
+            Width             = 24,
+            Height            = 24,
+            CornerRadius      = new CornerRadius(4),
             Background        = new SolidColorBrush(entry.Color),
             VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, 16, 0),
         };
 
         var nameLabel = new TextBlock
         {
-            Text              = entry.ExeName,
-            FontSize          = 14,
-            VerticalAlignment = VerticalAlignment.Center,
+            Text  = entry.ExeName,
+            Style = (Style)Application.Current.Resources["SettingTitleTextStyle"],
         };
 
         var hexLabel = new TextBlock
         {
-            Text              = entry.HexColor,
-            FontFamily        = new FontFamily("Cascadia Code"),
-            FontSize          = 11,
-            Foreground        = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
-            VerticalAlignment = VerticalAlignment.Center,
+            Text  = entry.HexColor,
+            Style = (Style)Application.Current.Resources["SettingDescriptionTextStyle"],
         };
 
-        var info = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        info.Children.Add(swatch);
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         info.Children.Add(nameLabel);
         info.Children.Add(hexLabel);
 
-        var editBtn = new Button { Content = "Edit" };
+        var editBtn = MakeIconButton("", $"Change color for {entry.ExeName}");
         editBtn.Click += (_, _) => StartEditing(entry.ExeName);
 
-        var removeBtn = new Button { Content = "Remove" };
+        var removeBtn = MakeIconButton("", $"Remove {entry.ExeName}");
         removeBtn.Click += (_, _) => RemoveEntry(entry.ExeName);
 
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         actions.Children.Add(editBtn);
         actions.Children.Add(removeBtn);
 
         var rowGrid = new Grid();
+        rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(info, 0);
-        Grid.SetColumn(actions, 1);
+        Grid.SetColumn(info, 1);
+        Grid.SetColumn(actions, 2);
+        rowGrid.Children.Add(swatch);
         rowGrid.Children.Add(info);
         rowGrid.Children.Add(actions);
 
         return new Border
         {
-            Background      = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
-            BorderBrush     = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius    = new CornerRadius(8),
-            Padding         = new Thickness(12, 10, 12, 10),
-            Child           = rowGrid,
+            Style   = (Style)Application.Current.Resources["CardStyle"],
+            Padding = new Thickness(16, 10, 12, 10),
+            Child   = rowGrid,
         };
+    }
+
+    private static Button MakeIconButton(string glyph, string label)
+    {
+        var btn = new Button
+        {
+            Style   = (Style)Application.Current.Resources["SubtleButtonStyle"],
+            Content = new FontIcon { Glyph = glyph, FontSize = 14 },
+            Padding = new Thickness(8),
+        };
+        ToolTipService.SetToolTip(btn, label);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(btn, label);
+        return btn;
     }
 
     // ── Selection / editing ────────────────────────────────────────────────
@@ -188,7 +200,7 @@ public sealed partial class AppColorsPage : Page
         Animator?.ClearAppColor(exeName);
         SaveEntries();
         RebuildList();
-        ShowStatus($"Removed override for {exeName}");
+        ShowStatus($"Removed {exeName}. It uses your theme color again.");
     }
 
     private void SetFromPath(string fullPath)
@@ -207,6 +219,29 @@ public sealed partial class AppColorsPage : Page
         if (sender is not Button { Tag: GlowPreset preset }) return;
         AppHexInput.Text = preset.HexColor;
         AppColorPreview.Background = new SolidColorBrush(preset.Color);
+    }
+
+    private void AppHexInput_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+            ApplyHex_Click(sender, null!);
+    }
+
+    private void AppColorPreview_Click(object sender, RoutedEventArgs e)
+    {
+        var c = (AppColorPreview.Background as SolidColorBrush)?.Color
+                ?? Color.FromArgb(255, 0x00, 0x78, 0xD4);
+        DashboardPage.ShowColorPickerWindow(c.R, c.G, c.B, (nr, ng, nb) =>
+        {
+            AppHexInput.Text = $"#{nr:X2}{ng:X2}{nb:X2}";
+            AppColorPreview.Background = new SolidColorBrush(Color.FromArgb(255, nr, ng, nb));
+        });
+    }
+
+    private void CancelOverride_Click(object sender, RoutedEventArgs e)
+    {
+        _selectedExe = "";
+        ColorPickerCard.Visibility = Visibility.Collapsed;
     }
 
     private void ApplyHex_Click(object sender, RoutedEventArgs e)
@@ -251,7 +286,8 @@ public sealed partial class AppColorsPage : Page
             SaveEntries();
             RebuildList();
             Logger.Info("AppColorsPage", $"Saved override {_selectedExe} → #{hex.ToUpperInvariant()}");
-            ShowStatus($"✓  {_selectedExe} → #{hex.ToUpperInvariant()}");
+            ShowStatus($"Saved: {_selectedExe} now glows #{hex.ToUpperInvariant()}");
+            ColorPickerCard.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex) { Logger.Error("AppColorsPage", "Save override failed", ex); }
     }

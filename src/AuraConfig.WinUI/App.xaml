@@ -88,6 +88,37 @@
             <SolidColorBrush x:Key="ButtonBorderBrushPressed"         Color="#12FFFFFF" />
             <SolidColorBrush x:Key="ButtonBorderBrushDisabled"        Color="#12FFFFFF" />
 
+            <SolidColorBrush x:Key="ToggleButtonBackground"                     Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver"          Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundPressed"              Color="#08FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonForeground"                     Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundPointerOver"          Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundPressed"              Color="#C5FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrush"                    Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushPointerOver"         Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushPressed"             Color="#12FFFFFF" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundChecked"              Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver"   Color="#E660CDFF" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed"       Color="#CC60CDFF" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundChecked"              Color="#FF000000" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver"   Color="#FF000000" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed"       Color="#CC000000" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked"             Color="#00000000" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver"  Color="#00000000" />
+            <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed"      Color="#00000000" />
+
+            <SolidColorBrush x:Key="HyperlinkButtonForeground"            Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="HyperlinkButtonForegroundPointerOver" Color="#FF99EBFF" />
+            <SolidColorBrush x:Key="HyperlinkButtonForegroundPressed"     Color="#CC60CDFF" />
+
+            <SolidColorBrush x:Key="TimePickerButtonBackground"            Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="TimePickerButtonBackgroundPointerOver" Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="TimePickerButtonBackgroundPressed"     Color="#08FFFFFF" />
+            <SolidColorBrush x:Key="TimePickerButtonBorderBrush"            Color="#24FFFFFF" />
+            <SolidColorBrush x:Key="TimePickerButtonBorderBrushPointerOver" Color="#33FFFFFF" />
+            <SolidColorBrush x:Key="TimePickerButtonBorderBrushPressed"     Color="#24FFFFFF" />
+            <SolidColorBrush x:Key="TimePickerSpacerFill"                   Color="#24FFFFFF" />
+
             <SolidColorBrush x:Key="TextControlBorderBrush"            Color="#24FFFFFF" />
             <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#33FFFFFF" />
             <SolidColorBrush x:Key="TextControlBorderBrushFocused"     Color="#FF60CDFF" />
@@ -246,6 +277,14 @@
                 <Setter Property="CornerRadius"    Value="4" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding"         Value="12,5,12,6" />
+            </Style>
+            <Style TargetType="ToggleButton">
+                <Setter Property="CornerRadius"    Value="4" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+            <Style TargetType="TimePicker">
+                <Setter Property="CornerRadius"    Value="4" />
+                <Setter Property="BorderThickness" Value="1" />
             </Style>
             <Style TargetType="TextBox">
                 <Setter Property="CornerRadius"    Value="4" />

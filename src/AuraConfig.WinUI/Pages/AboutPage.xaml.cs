@@ -37,7 +37,7 @@ public sealed partial class AboutPage : Page
         SvcVersionText.Text = state.ServiceVersion > 0
             ? $"v{state.ServiceVersion >> 8}.{state.ServiceVersion & 0xFF}"
             : "—";
-        SvcStatusText.Text = state.IsConnected ? "Running" : "Stopped / not connected";
+        SvcStatusText.Text = state.IsConnected ? "Running" : "Not running";
         SvcUptimeText.Text = state.IsConnected ? state.UptimeFormatted : "—";
 
         // System section
@@ -53,7 +53,7 @@ public sealed partial class AboutPage : Page
                 var appWindow = AppWindow.GetFromWindowId(
                     Microsoft.UI.Win32Interop.GetWindowIdFromWindow(
                         WinRT.Interop.WindowNative.GetWindowHandle(window)));
-                DpiText.Text = $"{appWindow.ClientSize.Width} × {appWindow.ClientSize.Height} px  (screen)";
+                DpiText.Text = $"{appWindow.ClientSize.Width} × {appWindow.ClientSize.Height} px";
             }
         }
         catch
