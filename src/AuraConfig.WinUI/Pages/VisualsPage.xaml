@@ -8,200 +8,273 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
 
-            <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Visuals" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="Customize your Aura glow experience"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
-            </StackPanel>
-
-            <!-- COLOUR card -->
-            <TextBlock Text="COLOUR"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Accent Color" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Select a preset colour on the Dashboard, or enter a hex code below."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Visuals" />
+                    <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                               Text="Choose the glow color around your windows and how it moves." />
+                </StackPanel>
+                <Button x:Name="SaveAsThemeBtn" Grid.Column="1"
+                        VerticalAlignment="Bottom"
+                        ToolTipService.ToolTip="Save the current color and options as a theme you can reuse"
+                        Click="SaveAsTheme_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE74E;" FontSize="14" />
+                        <TextBlock Text="Save as theme…" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ── COLOR ──────────────────────────────────────────────────── -->
+            <TextBlock Text="COLOR" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE790;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow color" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Pick a preset on the Dashboard, click the swatch, or type a hex code and press Enter." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                        <Button Padding="3"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="Open color picker"
+                                AutomationProperties.Name="Open color picker"
+                                Click="ColorSwatch_Click">
+                            <Border x:Name="ColorSwatch"
+                                    Width="26" Height="26"
+                                    CornerRadius="3"
+                                    Background="#00F2FF" />
+                        </Button>
                         <TextBox x:Name="HexInput"
                                  PlaceholderText="#00F2FF"
-                                 Width="140"
+                                 Width="110"
+                                 VerticalAlignment="Center"
+                                 AutomationProperties.Name="Glow color hex code"
                                  KeyDown="HexInput_KeyDown" />
                         <Button Content="Apply" Click="ApplyHex_Click"
-                                Style="{ThemeResource AccentButtonStyle}" />
+                                Style="{StaticResource AccentButtonStyle}" />
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
 
-            <!-- ANIMATION card -->
-            <TextBlock Text="ANIMATION"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <!-- ── MOTION ─────────────────────────────────────────────────── -->
+            <TextBlock Text="MOTION" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="20">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Glow Animation" />
-                    <Slider x:Name="SpeedSlider"
-                            Minimum="0" Maximum="200"
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE916;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Animation speed" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="How fast the glow animates. 0 holds it still." />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                               Text="{x:Bind local:Fmt.Times(SpeedSlider.Value), Mode=OneWay}" />
+                    <Slider x:Name="SpeedSlider" Grid.Column="3"
+                            Style="{StaticResource RowSliderStyle}"
+                            AutomationProperties.Name="Animation speed"
+                            Minimum="0" Maximum="200" StepFrequency="5"
                             Value="100"
-                            Header="Pulse Speed"
                             ValueChanged="SpeedSlider_ValueChanged" />
-                </StackPanel>
+                </Grid>
             </Border>
 
-            <!-- IDLE BREATHING card -->
-            <TextBlock Text="IDLE BREATHING"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE9D9;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Breathing borders" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Make every window border slowly brighten and dim, even when you're not using it." />
+                        </StackPanel>
+                        <ComboBox x:Name="BreatheModeBox" Grid.Column="2"
+                                  MinWidth="180" Margin="16,0,0,0"
+                                  VerticalAlignment="Center"
+                                  AutomationProperties.Name="Breathing borders mode"
+                                  SelectionChanged="BreatheMode_Changed">
+                            <ComboBoxItem Content="Off" Tag="0" IsSelected="True" />
+                            <ComboBoxItem Content="All together" Tag="1" />
+                            <ComboBoxItem Content="Wave, left to right" Tag="2" />
+                        </ComboBox>
+                    </Grid>
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Border Breathing Animation" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Make every window border pulse gently in the background."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
-                    <ComboBox x:Name="BreatheModeBox"
-                              Header="Mode"
-                              MinWidth="320"
-                              SelectionChanged="BreatheMode_Changed">
-                        <ComboBoxItem Content="Disabled" Tag="0" IsSelected="True" />
-                        <ComboBoxItem Content="Synchronized — all borders pulse together" Tag="1" />
-                        <ComboBoxItem Content="Wave — pulse rolls left to right" Tag="2" />
-                    </ComboBox>
-                    <StackPanel x:Name="BreatheControls" Visibility="Collapsed" Spacing="8">
-                        <Slider x:Name="BreatheSpeedSlider"
-                                Header="Speed"
-                                Minimum="0.5" Maximum="5.0" StepFrequency="0.1" Value="2.5"
-                                ValueChanged="BreatheSpeed_Changed" />
-                        <TextBlock x:Name="BreatheSpeedLabel"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Text="2.5 s per cycle" />
-                        <Slider x:Name="BreatheBrightnessSlider"
-                                Header="Max brightness boost"
-                                Minimum="0" Maximum="100" StepFrequency="5" Value="40"
-                                ValueChanged="BreatheBrightness_Changed" />
+                    <!-- Shown when breathing is on -->
+                    <StackPanel x:Name="BreatheControls" Visibility="Collapsed" Spacing="14">
+                        <Border Style="{StaticResource CardDividerStyle}" />
+                        <Grid Margin="40,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Breath length" />
+                                <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                           Text="Seconds for one full in-and-out cycle." />
+                            </StackPanel>
+                            <TextBlock x:Name="BreatheSpeedLabel" Grid.Column="1"
+                                       Style="{StaticResource SliderValueTextStyle}"
+                                       MinWidth="96"
+                                       Text="2.5 s per cycle" />
+                            <Slider x:Name="BreatheSpeedSlider" Grid.Column="2"
+                                    Style="{StaticResource RowSliderStyle}"
+                                    AutomationProperties.Name="Breath length in seconds"
+                                    Minimum="0.5" Maximum="5.0" StepFrequency="0.1" Value="2.5"
+                                    ValueChanged="BreatheSpeed_Changed" />
+                        </Grid>
+                        <Border Style="{StaticResource CardDividerStyle}" />
+                        <Grid Margin="40,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Brightness boost" />
+                                <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                           Text="How much brighter the border gets at the peak of each breath." />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Style="{StaticResource SliderValueTextStyle}"
+                                       Text="{x:Bind local:Fmt.Pct(BreatheBrightnessSlider.Value), Mode=OneWay}" />
+                            <Slider x:Name="BreatheBrightnessSlider" Grid.Column="2"
+                                    Style="{StaticResource RowSliderStyle}"
+                                    AutomationProperties.Name="Brightness boost"
+                                    Minimum="0" Maximum="100" StepFrequency="5" Value="40"
+                                    ValueChanged="BreatheBrightness_Changed" />
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- DESKTOP ICON HOVER card -->
-            <TextBlock Text="DESKTOP ICON HOVER"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <!-- ── WINDOW GLOW ────────────────────────────────────────────── -->
+            <TextBlock Text="WINDOW GLOW" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Icon Hover Glow" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="A colored glow fades in around desktop icons when you hover over them."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
-                    <ToggleSwitch x:Name="DesktopGlowToggle"
-                                  Header="Enable desktop icon hover glow"
-                                  IsOn="True"
-                                  Toggled="DesktopGlowToggle_Toggled" />
-                    <Slider x:Name="DesktopGlowIntensitySlider"
-                            Header="Glow intensity"
-                            Minimum="0" Maximum="100" StepFrequency="5" Value="80"
-                            IsEnabled="{x:Bind DesktopGlowToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="DesktopGlowIntensity_Changed" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE7C9;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow effect" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Draw the colored glow around window borders." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="GlowToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="True"
+                                      Toggled="GlowToggle_Toggled" />
+                    </Grid>
+                    <Border Style="{StaticResource CardDividerStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE8B0;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Highlight on hover" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Show the overlay when the mouse moves over a window." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="HoverToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="True"
+                                      Toggled="HoverToggle_Toggled" />
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- AUDIO VISUALIZER card -->
-            <TextBlock Text="AUDIO VISUALIZER"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <!-- Desktop icon glow lives on its own page now; point people there. -->
+            <Button HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="16,14"
+                    CornerRadius="8"
+                    Click="OpenDesktopFx_Click">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE945;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Desktop icon glow and click effects" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Hover glow, brightness and click bursts are on the Desktop FX page." />
+                    </StackPanel>
+                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Margin="16,0,0,0" />
+                </Grid>
+            </Button>
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="8">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Live Audio Bands" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Real-time frequency spectrum from the system audio."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
+            <!-- ── AUDIO ──────────────────────────────────────────────────── -->
+            <TextBlock Text="AUDIO" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE767;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Live audio" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="What AuraShell hears from your speakers right now. Play some music to see it move." />
+                        </StackPanel>
+                        <Border Grid.Column="2"
+                                Margin="16,0,0,0"
+                                Padding="8,3"
+                                CornerRadius="10"
+                                VerticalAlignment="Center"
+                                Background="{StaticResource AppAccentSubtleBrush}">
+                            <TextBlock x:Name="AudioSourceLabel"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{StaticResource AccentTextFillColorPrimaryBrush}"
+                                       Text="Starting audio capture…" />
+                        </Border>
+                    </Grid>
                     <Canvas x:Name="VisualizerCanvas"
                             Height="80"
+                            Margin="0,4,0,0"
                             HorizontalAlignment="Stretch"
-                            Background="Transparent" />
-                    <TextBlock x:Name="AudioSourceLabel"
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Starting audio capture…"
-                               Margin="0,4,0,0" />
+                            Background="Transparent"
+                            SizeChanged="VisualizerCanvas_SizeChanged" />
                 </StackPanel>
             </Border>
 
-            <!-- OPTIONS card -->
-            <TextBlock Text="OPTIONS"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Overlay Behavior" />
-                    <ToggleSwitch x:Name="HoverToggle"
-                                  Header="Show overlay on hover"
-                                  IsOn="True"
-                                  Toggled="HoverToggle_Toggled" />
-                    <ToggleSwitch x:Name="GlowToggle"
-                                  Header="Enable glow effect"
-                                  IsOn="True"
-                                  Toggled="GlowToggle_Toggled" />
-                </StackPanel>
-            </Border>
-
-            <!-- Save as theme shortcut -->
-            <Button x:Name="SaveAsThemeBtn"
-                    Click="SaveAsTheme_Click"
-                    HorizontalAlignment="Left"
-                    Margin="0,8,0,0"
-                    Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon Glyph="&#xE74E;" FontSize="14" />
-                    <TextBlock Text="Save as theme…" FontSize="13" />
-                </StackPanel>
-            </Button>
         </StackPanel>
     </ScrollViewer>
 </Page>

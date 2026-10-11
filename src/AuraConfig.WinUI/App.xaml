@@ -170,7 +170,7 @@
                 <Setter Property="FontWeight"       Value="SemiBold" />
                 <Setter Property="CharacterSpacing" Value="60" />
                 <Setter Property="Foreground"       Value="{StaticResource AccentTextFillColorPrimaryBrush}" />
-                <Setter Property="Margin"           Value="2,14,0,0" />
+                <Setter Property="Margin"           Value="2,22,0,4" />
             </Style>
             <!-- Title and helper text of one setting row. -->
             <Style x:Key="SettingTitleTextStyle" TargetType="TextBlock">
@@ -184,6 +184,29 @@
                 <Setter Property="Foreground"   Value="{StaticResource TextFillColorSecondaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="Margin"       Value="0,2,0,0" />
+            </Style>
+            <!-- Current value shown to the left of a row slider ("48 px"). -->
+            <Style x:Key="SliderValueTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"          Value="13" />
+                <Setter Property="FontFamily"        Value="Segoe UI Variable Text" />
+                <Setter Property="Foreground"        Value="{StaticResource TextFillColorSecondaryBrush}" />
+                <Setter Property="MinWidth"          Value="56" />
+                <Setter Property="TextAlignment"     Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin"            Value="0,0,12,0" />
+            </Style>
+            <!-- Slider in the right-hand column of a setting row. -->
+            <Style x:Key="RowSliderStyle" TargetType="Slider">
+                <Setter Property="Width"             Value="220" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <!-- Root column of every page: cards stack with a small gap, capped width. -->
+            <Style x:Key="PageStackStyle" TargetType="StackPanel">
+                <Setter Property="Spacing"  Value="4" />
+                <Setter Property="MaxWidth" Value="1000" />
+            </Style>
+            <Style x:Key="PageScrollViewerStyle" TargetType="ScrollViewer">
+                <Setter Property="Padding" Value="36,4,36,36" />
             </Style>
             <!-- Leading glyph of a setting row. -->
             <Style x:Key="SettingIconStyle" TargetType="FontIcon">
@@ -210,10 +233,12 @@
             <Style x:Key="RowToggleSwitchStyle" TargetType="ToggleSwitch">
                 <Setter Property="OnContent"           Value="" />
                 <Setter Property="OffContent"          Value="" />
+                <!-- The template reserves room for On/Off text; 40 px is just the switch. -->
                 <Setter Property="MinWidth"            Value="0" />
+                <Setter Property="Width"               Value="40" />
                 <Setter Property="HorizontalAlignment" Value="Right" />
                 <Setter Property="VerticalAlignment"   Value="Center" />
-                <Setter Property="Margin"              Value="16,0,-12,0" />
+                <Setter Property="Margin"              Value="16,0,0,0" />
             </Style>
 
             <!-- ── Implicit control styles: Fluent corner radius on built-in controls ── -->

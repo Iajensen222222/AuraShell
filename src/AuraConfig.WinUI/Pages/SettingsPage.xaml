@@ -8,141 +8,179 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
 
-            <!-- Page header -->
             <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Settings" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="Application preferences"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Settings" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                           Text="How the AuraShell app itself looks and starts." />
             </StackPanel>
 
-            <!-- STARTUP section -->
-            <TextBlock Text="STARTUP"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── APPEARANCE ─────────────────────────────────────────────── -->
+            <TextBlock Text="APPEARANCE" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Windows Startup" />
-                    <ToggleSwitch x:Name="StartupToggle"
-                                  Header="Launch AuraShell when Windows starts"
-                                  Toggled="StartupToggle_Toggled" />
-                </StackPanel>
-            </Border>
-
-            <!-- APPEARANCE section -->
-            <TextBlock Text="APPEARANCE"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Theme" />
-                    <RadioButton x:Name="ThemeDark"
-                                 Content="Dark"
-                                 GroupName="AppTheme"
-                                 Checked="ThemeRadio_Checked" />
-                    <RadioButton x:Name="ThemeLight"
-                                 Content="Light"
-                                 GroupName="AppTheme"
-                                 Checked="ThemeRadio_Checked" />
-                    <RadioButton x:Name="ThemeSystem"
-                                 Content="Use system setting"
-                                 GroupName="AppTheme"
-                                 Checked="ThemeRadio_Checked" />
-                </StackPanel>
-            </Border>
-
-            <!-- NOTIFICATIONS section -->
-            <TextBlock Text="NOTIFICATIONS"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Notifications" />
-                    <ToggleSwitch x:Name="NotificationsToggle"
-                                  Header="Show toast notifications"
-                                  IsOn="True"
-                                  Toggled="NotificationsToggle_Toggled" />
-                </StackPanel>
-            </Border>
-
-            <!-- NOTIFICATION BADGE section -->
-            <TextBlock Text="NOTIFICATION BADGE"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Pending Notification Glow" />
-                    <ToggleSwitch x:Name="BadgeGlowToggle"
-                                  Header="Glow border on apps with notifications"
-                                  IsOn="False"
-                                  Toggled="BadgeGlow_Toggled" />
-                    <StackPanel x:Name="BadgeControls" Visibility="Collapsed" Spacing="8">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border x:Name="BadgeColorSwatch"
-                                    Width="28" Height="28" CornerRadius="4"
-                                    Background="#FFFFA500" VerticalAlignment="Center" />
-                            <TextBox x:Name="BadgeHexInput"
-                                     PlaceholderText="#FFA500"
-                                     Text="#FFA500"
-                                     Width="120" />
-                            <Button Content="Apply" Click="BadgeColor_Apply" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE793;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="App theme" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Light or dark for this window. Your desktop glow is not affected." />
                         </StackPanel>
-                        <TextBlock Text="Default amber #FFA500 — overrides the per-app or theme border color while a notification is pending."
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   TextWrapping="Wrap" />
-                        <TextBlock x:Name="BadgeAccessNotice"
-                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Visibility="Collapsed"
-                                   TextWrapping="Wrap" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="40,0,0,0">
+                        <RadioButton x:Name="ThemeDark"
+                                     Content="Dark" Tag="Dark"
+                                     GroupName="AppTheme"
+                                     Checked="ThemeRadio_Checked" />
+                        <RadioButton x:Name="ThemeLight"
+                                     Content="Light" Tag="Light"
+                                     GroupName="AppTheme"
+                                     Checked="ThemeRadio_Checked" />
+                        <RadioButton x:Name="ThemeSystem"
+                                     Content="Match Windows" Tag="System"
+                                     GroupName="AppTheme"
+                                     Checked="ThemeRadio_Checked" />
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- RESET section -->
-            <TextBlock Text="RESET"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── STARTUP ────────────────────────────────────────────────── -->
+            <TextBlock Text="STARTUP" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Restore Defaults" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="Reset all AuraShell settings to their factory defaults. This cannot be undone."
-                               TextWrapping="Wrap" />
-                    <Button Content="Reset to defaults"
-                            Click="ResetDefaults_Click" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE7E8;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Start with Windows" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Open AuraShell in the background when you sign in, so your glow is always on." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="StartupToggle" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                  Toggled="StartupToggle_Toggled" />
+                </Grid>
+            </Border>
+
+            <!-- ── NOTIFICATIONS ──────────────────────────────────────────── -->
+            <TextBlock Text="NOTIFICATIONS" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xEA8F;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="AuraShell notifications" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Show a Windows notification when AuraShell has something to tell you." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="NotificationsToggle" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                  IsOn="True"
+                                  Toggled="NotificationsToggle_Toggled" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE7E7;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow apps with unread notifications" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="While an app has a notification waiting, its window border glows in this color instead." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="BadgeGlowToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="False"
+                                      Toggled="BadgeGlow_Toggled" />
+                    </Grid>
+
+                    <!-- Shown when the badge glow is on -->
+                    <StackPanel x:Name="BadgeControls" Visibility="Collapsed" Spacing="14">
+                        <Border Style="{StaticResource CardDividerStyle}" />
+                        <Grid Margin="40,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Notification color" />
+                                <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                           Text="Amber (#FFA500) by default." />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                                <Border x:Name="BadgeColorSwatch"
+                                        Width="28" Height="28" CornerRadius="4"
+                                        Background="#FFFFA500" VerticalAlignment="Center" />
+                                <TextBox x:Name="BadgeHexInput"
+                                         PlaceholderText="#FFA500"
+                                         Text="#FFA500"
+                                         Width="110"
+                                         VerticalAlignment="Center"
+                                         AutomationProperties.Name="Notification color hex code" />
+                                <Button Content="Apply" Click="BadgeColor_Apply" />
+                            </StackPanel>
+                        </Grid>
+                        <Border x:Name="BadgeAccessBanner"
+                                Margin="40,0,0,0"
+                                Padding="12,8"
+                                CornerRadius="4"
+                                Background="{StaticResource SystemFillColorCautionBackgroundBrush}"
+                                Visibility="{x:Bind BadgeAccessNotice.Visibility, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE7BA;" FontSize="14"
+                                          Foreground="{StaticResource SystemFillColorCautionBrush}" />
+                                <TextBlock x:Name="BadgeAccessNotice"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Visibility="Collapsed"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
+            </Border>
+
+            <!-- ── RESET ──────────────────────────────────────────────────── -->
+            <TextBlock Text="RESET" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE777;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Restore defaults" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Put every AuraShell setting back the way it was at install. This can't be undone." />
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Reset…"
+                            Margin="16,0,0,0"
+                            Click="ResetDefaults_Click" />
+                </Grid>
             </Border>
 
         </StackPanel>

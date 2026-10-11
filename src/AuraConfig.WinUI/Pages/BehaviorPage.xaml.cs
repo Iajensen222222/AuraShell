@@ -1,20 +1,14 @@
 using System;
 using System.Diagnostics;
 using AuraConfig.Services;
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.Win32;
-using Windows.UI;
 
 namespace AuraConfig.Pages;
 
 public sealed partial class BehaviorPage : Page
 {
-    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValueName = "AuraShell";
-
     public BehaviorPage()
     {
         InitializeComponent();
@@ -29,11 +23,6 @@ public sealed partial class BehaviorPage : Page
         Logger.Info("BehaviorPage", "Loaded");
         ServiceManager.Instance.StateChanged += OnServiceStateChanged;
         UpdateStatusIndicator(ServiceManager.Instance.CurrentState.IsConnected);
-
-        // Reflect current auto-start state from registry
-        AutoStartToggle.Toggled -= AutoStartToggle_Toggled;
-        AutoStartToggle.IsOn = IsAutoStartEnabled();
-        AutoStartToggle.Toggled += AutoStartToggle_Toggled;
 
         // Suppress initial Toggled events while syncing defaults (both default to on).
         AutoHideToggle.Toggled     -= AutoHideToggle_Toggled;
@@ -56,8 +45,9 @@ public sealed partial class BehaviorPage : Page
 
     private void UpdateStatusIndicator(bool connected)
     {
-        SvcStatusDot.Fill = new SolidColorBrush(connected ? Colors.LightGreen : Colors.OrangeRed);
-        SvcStatusText.Text = connected ? "Service running" : "Service stopped / not connected";
+        SvcStatusDot.Fill = (Brush)Application.Current.Resources[
+            connected ? "SystemFillColorSuccessBrush" : "SystemFillColorCriticalBrush"];
+        SvcStatusText.Text = connected ? "Service is running" : "Service isn't running";
     }
 
     // ── Service control ────────────────────────────────────────────────────
@@ -169,33 +159,10 @@ public sealed partial class BehaviorPage : Page
     private void ShowInfo(string level, string message)
     {
         ServiceInfoText.Text = message;
-        ServiceInfoBar.Background = level == "Warning"
-            ? new SolidColorBrush(Color.FromArgb(0x30, 0xFC, 0xE1, 0x00))
-            : new SolidColorBrush(Color.FromArgb(0x20, 0x60, 0xCD, 0xFF));
+        // Theme brushes from App.xaml so the banner reads in light and dark.
+        ServiceInfoBar.Background = (Brush)Application.Current.Resources[
+            level == "Warning" ? "SystemFillColorCautionBackgroundBrush" : "AppAccentSubtleBrush"];
         ServiceInfoBar.Visibility = Visibility.Visible;
-    }
-
-    // ── Startup toggles ────────────────────────────────────────────────────
-
-    private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        bool enable = AutoStartToggle.IsOn;
-        bool ok = enable ? SetAutoStart() : RemoveAutoStart();
-
-        ShowInfo(ok ? "Informational" : "Warning",
-            ok
-                ? (enable ? "Auto-start enabled — AuraShell will launch at login."
-                          : "Auto-start disabled.")
-                : "Could not update registry. Try running as administrator.");
-    }
-
-    private void ElevatedToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        // Elevated auto-start requires a Task Scheduler entry — deferred to v1.1.
-        ShowInfo("Informational",
-                 ElevatedToggle.IsOn
-                     ? "Elevated start requested (requires Task Scheduler setup — coming in v1.1)"
-                     : "Standard user start selected.");
     }
 
     // ── Shell monitoring toggles ───────────────────────────────────────────
@@ -220,47 +187,5 @@ public sealed partial class BehaviorPage : Page
         _ = ServiceManager.Instance.SendFeaturesAsync(
                 AutoHideToggle.IsOn,
                 MultiMonitorToggle.IsOn);
-    }
-
-    // ── Registry helpers ───────────────────────────────────────────────────
-
-    private static bool IsAutoStartEnabled()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath);
-            return key?.GetValue(RunValueName) is not null;
-        }
-        catch { return false; }
-    }
-
-    private static bool SetAutoStart()
-    {
-        try
-        {
-            string exePath = Environment.ProcessPath
-                          ?? Process.GetCurrentProcess().MainModule?.FileName
-                          ?? string.Empty;
-            if (string.IsNullOrEmpty(exePath)) return false;
-
-            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
-            if (key is null) return false;
-
-            key.SetValue(RunValueName, $"\"{exePath}\"");
-            return true;
-        }
-        catch { return false; }
-    }
-
-    private static bool RemoveAutoStart()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
-            if (key?.GetValue(RunValueName) is null) return true; // already absent
-            key.DeleteValue(RunValueName);
-            return true;
-        }
-        catch { return false; }
     }
 }

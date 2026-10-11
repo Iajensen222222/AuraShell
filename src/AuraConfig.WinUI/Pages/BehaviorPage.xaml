@@ -7,123 +7,131 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
 
-            <!-- Page header -->
             <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Behavior" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="System integration and startup settings"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Behavior" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                           Text="The background service that draws your effects, and how it follows the taskbar and monitors." />
             </StackPanel>
 
-            <!-- SERVICE section -->
-            <TextBlock Text="SERVICE"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── SERVICE ────────────────────────────────────────────────── -->
+            <TextBlock Text="SERVICE" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="AuraShellService" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Status dot sits where other rows have their icon -->
+                        <Grid Width="24" Margin="0,0,16,0" VerticalAlignment="Center">
+                            <Ellipse x:Name="SvcStatusDot"
+                                     Width="12" Height="12"
+                                     Fill="{StaticResource SystemFillColorCautionBrush}"
+                                     HorizontalAlignment="Center" />
+                        </Grid>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock x:Name="SvcStatusText"
+                                       Style="{StaticResource SettingTitleTextStyle}"
+                                       Text="Checking service…" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="AuraShellService paints the glow and listens for audio. Start, stop or restart the installed service." />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                            <Button Content="Start"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    ToolTipService.ToolTip="Start the installed Windows service (asks for administrator permission)"
+                                    Click="StartService_Click" />
+                            <Button Content="Stop"
+                                    ToolTipService.ToolTip="Stop the Windows service"
+                                    Click="StopService_Click" />
+                            <Button Content="Restart"
+                                    ToolTipService.ToolTip="Stop and start the Windows service"
+                                    Click="RestartService_Click" />
+                        </StackPanel>
+                    </Grid>
 
-                    <!-- Status row -->
-                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <Ellipse x:Name="SvcStatusDot"
-                                 Width="10" Height="10"
-                                 Fill="{ThemeResource SystemFillColorCautionBrush}"
-                                 VerticalAlignment="Center" />
-                        <TextBlock x:Name="SvcStatusText"
-                                   Text="Unknown"
-                                   Style="{ThemeResource BodyTextBlockStyle}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-
-                    <!-- Buttons -->
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Start (sc.exe)"
-                                Style="{ThemeResource AccentButtonStyle}"
-                                Click="StartService_Click" />
-                        <Button Content="Stop"
-                                Click="StopService_Click" />
-                        <Button Content="Restart"
-                                Click="RestartService_Click" />
-                    </StackPanel>
-
-                    <!-- Direct launch — works even when the service isn't installed -->
-                    <StackPanel Spacing="4">
-                        <Button Content="Launch service directly (dev mode)"
-                                Click="LaunchServiceDirect_Click" />
-                        <TextBlock Text="Runs AuraShellService.exe without requiring Windows Service registration. Use this if Start above fails."
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
-
-                    <!-- InfoBar replaced with simple banner — InfoBar crashes in
-                         unpackaged WinUI 3 2.0.1 during compositor template init -->
+                    <!-- Feedback banner (InfoBar crashes unpackaged; plain Border instead) -->
                     <Border x:Name="ServiceInfoBar"
+                            Margin="40,0,0,0"
                             CornerRadius="4"
                             Padding="12,8"
                             Visibility="Collapsed">
                         <TextBlock x:Name="ServiceInfoText" TextWrapping="Wrap"
-                                   Style="{ThemeResource CaptionTextBlockStyle}" />
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
                     </Border>
                 </StackPanel>
             </Border>
 
-            <!-- STARTUP section -->
-            <TextBlock Text="STARTUP"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE768;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Run without installing" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Starts AuraShellService.exe directly, no Windows service needed. Use this if Start doesn't work." />
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Launch"
+                            Margin="16,0,0,0"
+                            Click="LaunchServiceDirect_Click" />
+                </Grid>
+            </Border>
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Windows Startup" />
-                    <ToggleSwitch x:Name="AutoStartToggle"
-                                  Header="Auto-start with Windows"
-                                  IsOn="False"
-                                  Toggled="AutoStartToggle_Toggled" />
-                    <ToggleSwitch x:Name="ElevatedToggle"
-                                  Header="Run elevated (administrator)"
-                                  IsOn="False"
-                                  Toggled="ElevatedToggle_Toggled" />
+            <!-- ── TASKBAR AND MONITORS ───────────────────────────────────── -->
+            <TextBlock Text="TASKBAR AND MONITORS" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE75B;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Follow taskbar auto-hide" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Hide the taskbar glow when Windows slides the taskbar out of view." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="AutoHideToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="True"
+                                      Toggled="AutoHideToggle_Toggled" />
+                    </Grid>
+                    <Border Style="{StaticResource CardDividerStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="All monitors" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Draw effects on every connected display, not just the main one." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="MultiMonitorToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="True"
+                                      Toggled="MultiMonitorToggle_Toggled" />
+                    </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- SHELL MONITORING section -->
-            <TextBlock Text="SHELL MONITORING"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Taskbar Integration" />
-                    <ToggleSwitch x:Name="AutoHideToggle"
-                                  Header="Track taskbar auto-hide"
-                                  IsOn="True"
-                                  Toggled="AutoHideToggle_Toggled" />
-                    <ToggleSwitch x:Name="MultiMonitorToggle"
-                                  Header="Enable multi-monitor support"
-                                  IsOn="True"
-                                  Toggled="MultiMonitorToggle_Toggled" />
-                </StackPanel>
-            </Border>
+            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                       Margin="2,12,0,0"
+                       Text="Looking for “Start with Windows”? It's on the Settings page." />
 
         </StackPanel>
     </ScrollViewer>

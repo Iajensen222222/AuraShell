@@ -8,234 +8,357 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24,16,24,24">
-        <StackPanel Spacing="16">
+    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+        <StackPanel Style="{StaticResource PageStackStyle}">
 
             <StackPanel Margin="0,0,0,4">
-                <TextBlock FontSize="40" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Text="Desktop FX" />
-                <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                           Text="Customize hover glow and click effects on the desktop"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,2,0,0" />
+                <TextBlock Style="{StaticResource PageTitleTextStyle}" Text="Desktop FX" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                           Text="Make desktop icons glow when you point at them, and add a small effect when you click." />
             </StackPanel>
 
-            <!-- HOVER GLOW section header -->
-            <TextBlock Text="HOVER GLOW"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold" />
+            <!-- ── HOVER GLOW ─────────────────────────────────────────────── -->
+            <TextBlock Text="HOVER GLOW" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Icon Hover Glow" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="A colored glow fades in around desktop icons when you hover over them."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
-
-                    <ToggleSwitch x:Name="GlowToggle"
-                                  Header="Enable desktop icon hover glow"
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE7C9;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Icon hover glow" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="A soft glow fades in around a desktop icon while the mouse is over it." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="GlowToggle" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
                                   IsOn="True"
                                   Toggled="GlowToggle_Toggled" />
+                </Grid>
+            </Border>
 
-                    <!-- Color picker row -->
-                    <StackPanel Spacing="8">
-                        <TextBlock Style="{ThemeResource BodyTextBlockStyle}" Text="Glow color" />
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBox x:Name="HexInput"
-                                     PlaceholderText="#FF8C00"
-                                     Width="140"
-                                     IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                                     KeyDown="HexInput_KeyDown" />
-                            <Button Content="Apply"
-                                    Style="{ThemeResource AccentButtonStyle}"
-                                    IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                                    Click="ApplyHex_Click" />
-                            <Button Padding="3"
-                                    CornerRadius="4"
-                                    BorderThickness="1"
-                                    Background="Transparent"
-                                    VerticalAlignment="Center"
-                                    IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                                    Click="ColorPreview_Click">
-                                <Border x:Name="ColorPreview"
-                                        Width="22" Height="22"
-                                        CornerRadius="3"
-                                        Background="#FF8C00"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1" />
-                            </Button>
-                        </StackPanel>
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE790;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow color" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Click the swatch to pick a color, or type a hex code and press Enter." />
                     </StackPanel>
-
-                    <!-- Glow style -->
-                    <ComboBox x:Name="GlowStyleBox"
-                              Header="Glow style"
-                              MinWidth="320"
-                              IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                              SelectionChanged="GlowStyleBox_Changed">
-                        <ComboBoxItem Content="Solid — the chosen color" Tag="Solid" IsSelected="True" />
-                        <ComboBoxItem Content="Color cycle — slowly shifts through the rainbow" Tag="ColorCycle" />
-                        <ComboBoxItem Content="Pulse — gently brightens and dims" Tag="Pulse" />
-                    </ComboBox>
-                    <StackPanel x:Name="CycleControls" Visibility="Collapsed" Spacing="4">
-                        <Slider x:Name="CycleSecondsSlider"
-                                Header="Cycle length (seconds)"
-                                Minimum="1" Maximum="20" StepFrequency="1" Value="6"
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0">
+                        <Button Padding="3"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="Open color picker"
+                                AutomationProperties.Name="Open color picker"
                                 IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                                ValueChanged="CycleSecondsSlider_Changed" />
-                        <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Text="Time for one full color cycle or one pulse."
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                Click="ColorPreview_Click">
+                            <Border x:Name="ColorPreview"
+                                    Width="26" Height="26"
+                                    CornerRadius="3"
+                                    Background="#FF8C00" />
+                        </Button>
+                        <TextBox x:Name="HexInput"
+                                 PlaceholderText="#FF8C00"
+                                 Width="110"
+                                 VerticalAlignment="Center"
+                                 AutomationProperties.Name="Glow color hex code"
+                                 IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                 KeyDown="HexInput_KeyDown" />
+                        <Button Content="Apply"
+                                Style="{StaticResource AccentButtonStyle}"
+                                IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                Click="ApplyHex_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE81C;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow style" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Keep one color, slowly cycle through the rainbow, or gently pulse." />
+                        </StackPanel>
+                        <ComboBox x:Name="GlowStyleBox" Grid.Column="2"
+                                  MinWidth="180" Margin="16,0,0,0"
+                                  VerticalAlignment="Center"
+                                  AutomationProperties.Name="Glow style"
+                                  IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                  SelectionChanged="GlowStyleBox_Changed">
+                            <ComboBoxItem Content="Solid color" Tag="Solid" IsSelected="True" />
+                            <ComboBoxItem Content="Color cycle" Tag="ColorCycle" />
+                            <ComboBoxItem Content="Pulse" Tag="Pulse" />
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Shown for Color cycle and Pulse -->
+                    <StackPanel x:Name="CycleControls" Visibility="Collapsed" Spacing="14">
+                        <Border Style="{StaticResource CardDividerStyle}" />
+                        <Grid Margin="40,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Cycle length" />
+                                <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                           Text="Time for one full color cycle or one pulse." />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Style="{StaticResource SliderValueTextStyle}"
+                                       Text="{x:Bind local:Fmt.Seconds(CycleSecondsSlider.Value), Mode=OneWay}" />
+                            <Slider x:Name="CycleSecondsSlider" Grid.Column="2"
+                                    Style="{StaticResource RowSliderStyle}"
+                                    AutomationProperties.Name="Cycle length in seconds"
+                                    Minimum="1" Maximum="20" StepFrequency="1" Value="6"
+                                    IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                    ValueChanged="CycleSecondsSlider_Changed" />
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- CLICK EFFECT section header -->
-            <TextBlock Text="CLICK EFFECT"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Click Burst" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="A short burst plays at the mouse tip when you press the left button. It uses the glow color, including color cycling."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
-
-                    <ToggleSwitch x:Name="ClickToggle"
-                                  Header="Enable click burst"
-                                  IsOn="True"
-                                  Toggled="ClickToggle_Toggled" />
-
-                    <ComboBox x:Name="ClickStyleBox"
-                              Header="Burst style"
-                              MinWidth="320"
-                              IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
-                              SelectionChanged="ClickStyleBox_Changed">
-                        <ComboBoxItem Content="Ring — an expanding ripple" Tag="Ring" />
-                        <ComboBoxItem Content="Sparks — dots flying outward" Tag="Sparks" />
-                        <ComboBoxItem Content="Ring and sparks" Tag="RingAndSparks" IsSelected="True" />
-                    </ComboBox>
-
-                    <Slider x:Name="ClickSizeSlider"
-                            Header="Burst size (px)"
-                            Minimum="20" Maximum="120" StepFrequency="4" Value="48"
-                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="ClickSizeSlider_Changed" />
-
-                    <Slider x:Name="ClickDurationSlider"
-                            Header="Burst length (ms)"
-                            Minimum="200" Maximum="1200" StepFrequency="50" Value="450"
-                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="ClickDurationSlider_Changed" />
-
-                    <ToggleSwitch x:Name="ClickDesktopOnlyToggle"
-                                  Header="Only when clicking the desktop"
-                                  OnContent="Desktop only" OffContent="Everywhere"
-                                  IsOn="True"
-                                  IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
-                                  Toggled="ClickDesktopOnlyToggle_Toggled" />
-
-                    <Button Content="Preview burst"
-                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
-                            Click="PreviewBurst_Click" />
-                </StackPanel>
-            </Border>
-
-            <!-- APPEARANCE section header -->
-            <TextBlock Text="APPEARANCE"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Glow Shape &amp; Size" />
-
-                    <Slider x:Name="GlowSizeSlider"
-                            Header="Glow radius (px)"
-                            Minimum="4" Maximum="40" StepFrequency="2" Value="14"
-                            IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="GlowSizeSlider_Changed" />
-
-                    <Slider x:Name="IntensitySlider"
-                            Header="Glow brightness"
-                            Minimum="0" Maximum="100" StepFrequency="5" Value="80"
-                            IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="IntensitySlider_Changed" />
-                </StackPanel>
-            </Border>
-
-            <!-- ANIMATION section header -->
-            <TextBlock Text="ANIMATION"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
-
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Fade Speed" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Controls how quickly the glow fades in and out when hovering."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
-
-                    <Slider x:Name="FadeSpeedSlider"
-                            Minimum="20" Maximum="300" StepFrequency="10" Value="100"
-                            IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
-                            ValueChanged="FadeSpeedSlider_Changed" />
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
                     <Grid>
-                        <TextBlock Text="Slow" Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   HorizontalAlignment="Left" />
-                        <TextBlock Text="Fast" Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   HorizontalAlignment="Right" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE740;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow size" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="How far the glow spreads out from the icon." />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                   Text="{x:Bind local:Fmt.Px(GlowSizeSlider.Value), Mode=OneWay}" />
+                        <Slider x:Name="GlowSizeSlider" Grid.Column="3"
+                                Style="{StaticResource RowSliderStyle}"
+                                AutomationProperties.Name="Glow size in pixels"
+                                Minimum="4" Maximum="40" StepFrequency="2" Value="14"
+                                IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="GlowSizeSlider_Changed" />
+                    </Grid>
+
+                    <Border Style="{StaticResource CardDividerStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE706;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow brightness" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Lower it for a subtle hint, raise it for a bold halo." />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                   Text="{x:Bind local:Fmt.Pct(IntensitySlider.Value), Mode=OneWay}" />
+                        <Slider x:Name="IntensitySlider" Grid.Column="3"
+                                Style="{StaticResource RowSliderStyle}"
+                                AutomationProperties.Name="Glow brightness"
+                                Minimum="0" Maximum="100" StepFrequency="5" Value="80"
+                                IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="IntensitySlider_Changed" />
+                    </Grid>
+
+                    <Border Style="{StaticResource CardDividerStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE916;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Fade speed" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="How quickly the glow appears and disappears. Higher is faster." />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                   Text="{x:Bind local:Fmt.Times(FadeSpeedSlider.Value), Mode=OneWay}" />
+                        <Slider x:Name="FadeSpeedSlider" Grid.Column="3"
+                                Style="{StaticResource RowSliderStyle}"
+                                AutomationProperties.Name="Fade speed"
+                                Minimum="20" Maximum="300" StepFrequency="10" Value="100"
+                                IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="FadeSpeedSlider_Changed" />
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- ICON LABELS section header -->
-            <TextBlock Text="ICON LABELS"
-                       Style="{ThemeResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                       CharacterSpacing="50" FontWeight="SemiBold"
-                       Margin="0,8,0,0" />
+            <!-- ── CLICK EFFECT ───────────────────────────────────────────── -->
+            <TextBlock Text="CLICK EFFECT" Style="{StaticResource SectionHeaderTextStyle}" />
 
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
-                <StackPanel Spacing="16">
-                    <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               Text="Icon Label Visibility" />
-                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                               Text="Show or hide the text labels displayed beneath each desktop icon. Takes effect immediately."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               TextWrapping="Wrap" />
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE8B0;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Click burst" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="A short burst plays at the mouse pointer when you left-click. It uses the glow color." />
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Preview"
+                            Margin="16,0,0,0"
+                            ToolTipService.ToolTip="Play the burst on screen now"
+                            IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                            Click="PreviewBurst_Click" />
+                    <ToggleSwitch x:Name="ClickToggle" Grid.Column="3"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                  IsOn="True"
+                                  Toggled="ClickToggle_Toggled" />
+                </Grid>
+            </Border>
 
-                    <ToggleSwitch x:Name="ShowLabelsToggle"
-                                  Header="Show icon labels"
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE81C;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Burst style" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="An expanding ring, sparks flying outward, or both." />
+                        </StackPanel>
+                        <ComboBox x:Name="ClickStyleBox" Grid.Column="2"
+                                  MinWidth="180" Margin="16,0,0,0"
+                                  VerticalAlignment="Center"
+                                  AutomationProperties.Name="Burst style"
+                                  IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                                  SelectionChanged="ClickStyleBox_Changed">
+                            <ComboBoxItem Content="Ring" Tag="Ring" />
+                            <ComboBoxItem Content="Sparks" Tag="Sparks" />
+                            <ComboBoxItem Content="Ring and sparks" Tag="RingAndSparks" IsSelected="True" />
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Style="{StaticResource CardDividerStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE740;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Burst size" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="How wide the burst grows." />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                   Text="{x:Bind local:Fmt.Px(ClickSizeSlider.Value), Mode=OneWay}" />
+                        <Slider x:Name="ClickSizeSlider" Grid.Column="3"
+                                Style="{StaticResource RowSliderStyle}"
+                                AutomationProperties.Name="Burst size in pixels"
+                                Minimum="20" Maximum="120" StepFrequency="4" Value="48"
+                                IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="ClickSizeSlider_Changed" />
+                    </Grid>
+
+                    <Border Style="{StaticResource CardDividerStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE916;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Burst length" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="How long the burst stays on screen." />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Style="{StaticResource SliderValueTextStyle}"
+                                   Text="{x:Bind local:Fmt.Ms(ClickDurationSlider.Value), Mode=OneWay}" />
+                        <Slider x:Name="ClickDurationSlider" Grid.Column="3"
+                                Style="{StaticResource RowSliderStyle}"
+                                AutomationProperties.Name="Burst length in milliseconds"
+                                Minimum="200" Maximum="1200" StepFrequency="50" Value="450"
+                                IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                                ValueChanged="ClickDurationSlider_Changed" />
+                    </Grid>
+
+                    <Border Style="{StaticResource CardDividerStyle}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE7F4;" Style="{StaticResource SettingIconStyle}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Only on the desktop" />
+                            <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                       Text="Turn off to show the burst on every click, in any app." />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="ClickDesktopOnlyToggle" Grid.Column="2"
+                                      Style="{StaticResource RowToggleSwitchStyle}"
+                                      IsOn="True"
+                                      IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
+                                      Toggled="ClickDesktopOnlyToggle_Toggled" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ── ICON LABELS ────────────────────────────────────────────── -->
+            <TextBlock Text="ICON LABELS" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE8D2;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Show icon names" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Show or hide the text under each desktop icon. Takes effect right away." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="ShowLabelsToggle" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
                                   IsOn="True"
                                   Toggled="ShowLabelsToggle_Toggled" />
-                </StackPanel>
+                </Grid>
             </Border>
 
         </StackPanel>

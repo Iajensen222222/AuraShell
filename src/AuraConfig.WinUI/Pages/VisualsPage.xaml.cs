@@ -51,14 +51,8 @@ public sealed partial class VisualsPage : Page
             SpeedSlider.Value = last.AnimSpeedPct;
             HoverToggle.IsOn  = last.ShowOnHover;
             GlowToggle.IsOn   = last.GlowEnabled;
+            SetSwatch(last.AccentColor.R, last.AccentColor.G, last.AccentColor.B);
         }
-
-        // Restore desktop icon glow settings
-        if (AppSettings.Get("DesktopGlowEnabled") is string glowOnStr)
-            DesktopGlowToggle.IsOn = glowOnStr != "0";
-        if (AppSettings.Get("DesktopGlowIntensity") is string intensityStr
-            && int.TryParse(intensityStr, out int intensityPct))
-            DesktopGlowIntensitySlider.Value = Math.Clamp(intensityPct, 0, 100);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -94,6 +88,13 @@ public sealed partial class VisualsPage : Page
         }
     }
 
+    private void VisualizerCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Bars are laid out for a fixed width; rebuild them when the card resizes.
+        if (e.NewSize.Width > 0 && Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 1)
+            BuildVisualizerBars();
+    }
+
     private void OnAudioBandsReceived(object? sender, AudioBandsPayload payload)
     {
         _lastServiceBandTick = Environment.TickCount64;
@@ -101,11 +102,11 @@ public sealed partial class VisualsPage : Page
         {
             if (!payload.AudioPresent || payload.Bands is null)
             {
-                AudioSourceLabel.Text = "Service connected — no audio";
+                AudioSourceLabel.Text = "Connected, no audio playing";
                 return;
             }
 
-            AudioSourceLabel.Text = "Service (128 bands)";
+            AudioSourceLabel.Text = "From AuraShell service";
 
             // Rebuild bars if canvas was resized (first real layout pass).
             if (_bars[0] is null || _bars[0].Parent is null)
@@ -128,7 +129,7 @@ public sealed partial class VisualsPage : Page
 
         DispatcherQueue.TryEnqueue(() =>
         {
-            AudioSourceLabel.Text = "Direct capture";
+            AudioSourceLabel.Text = "Listening directly";
 
             if (_bars[0] is null || _bars[0].Parent is null)
                 BuildVisualizerBars();
@@ -164,12 +165,26 @@ public sealed partial class VisualsPage : Page
             _theme.AccentColor = Windows.UI.Color.FromArgb(255, r, g, b);
             _theme.Name = $"Custom #{raw.ToUpperInvariant()}";
             DesktopGlow?.SetColor(r, g, b);
+            SetSwatch(r, g, b);
             await PushThemeAsync();
         }
         catch
         {
             // invalid hex — silently ignore
         }
+    }
+
+    private void SetSwatch(byte r, byte g, byte b)
+        => ColorSwatch.Background = new SolidColorBrush(Color.FromArgb(0xFF, r, g, b));
+
+    private void ColorSwatch_Click(object sender, RoutedEventArgs e)
+    {
+        var c = _theme.AccentColor;
+        DashboardPage.ShowColorPickerWindow(c.R, c.G, c.B, (nr, ng, nb) =>
+        {
+            HexInput.Text = $"#{nr:X2}{ng:X2}{nb:X2}";
+            ApplyHex_Click(sender, null!);
+        });
     }
 
     // ── Animation ──────────────────────────────────────────────────────────
@@ -224,24 +239,10 @@ public sealed partial class VisualsPage : Page
         Animator?.StartBreathing(speed, maxBoost, waveMode);
     }
 
-    // ── Desktop icon hover glow ────────────────────────────────────────────
+    // ── Desktop icon glow moved to Desktop FX ──────────────────────────────
 
-    private void DesktopGlowToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (DesktopGlowToggle is null) return;
-        bool on = DesktopGlowToggle.IsOn;
-        if (DesktopGlow is { } dg) dg.Enabled = on;
-        AppSettings.Set("DesktopGlowEnabled", on ? "1" : "0");
-    }
-
-    private void DesktopGlowIntensity_Changed(object sender,
-        Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (DesktopGlowIntensitySlider is null) return;
-        float intensity = (float)DesktopGlowIntensitySlider.Value / 100f;
-        if (DesktopGlow is { } dg) dg.Intensity = intensity;
-        AppSettings.Set("DesktopGlowIntensity", ((int)DesktopGlowIntensitySlider.Value).ToString());
-    }
+    private void OpenDesktopFx_Click(object sender, RoutedEventArgs e)
+        => (Application.Current as App)?.MainWindow?.NavigateTo("desktopfx");
 
     // ── Options ────────────────────────────────────────────────────────────
 

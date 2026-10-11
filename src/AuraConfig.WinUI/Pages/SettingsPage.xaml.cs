@@ -74,7 +74,20 @@ public sealed partial class SettingsPage : Page
     }
 
     private void StartupToggle_Toggled(object sender, RoutedEventArgs e)
-        => SetStartupEnabled(StartupToggle.IsOn);
+    {
+        try
+        {
+            SetStartupEnabled(StartupToggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            // Registry write failed: put the switch back so it shows the real state.
+            Logger.Error("SettingsPage", "Could not update the startup entry", ex);
+            StartupToggle.Toggled -= StartupToggle_Toggled;
+            StartupToggle.IsOn = IsStartupEnabled();
+            StartupToggle.Toggled += StartupToggle_Toggled;
+        }
+    }
 
     // ── Theme ──────────────────────────────────────────────────────────────
 
@@ -82,11 +95,12 @@ public sealed partial class SettingsPage : Page
     {
         if (sender is not RadioButton rb) return;
 
-        string name = rb.Content switch
+        // Tag holds the saved value, so the visible label can change freely.
+        string name = rb.Tag switch
         {
-            "Light"              => "Light",
-            "Use system setting" => "System",
-            _                   => "Dark"
+            "Light"  => "Light",
+            "System" => "System",
+            _        => "Dark"
         };
 
         AppSettings.Set(KeyTheme, name);
