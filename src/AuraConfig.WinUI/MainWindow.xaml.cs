@@ -41,6 +41,7 @@ public sealed partial class MainWindow : Window
         Content = BuildShell();
 
         // Apply saved theme (and sync plain App.xaml brushes) before first page renders.
+        ThemeService.ThemeChanged += ApplyCaptionButtonTheme;
         ThemeService.Apply(AppSettings.Get("AppTheme") ?? "Dark", Content as FrameworkElement);
 
         _navFrame.Navigate(typeof(DashboardPage));
@@ -216,21 +217,21 @@ public sealed partial class MainWindow : Window
 
         // ── Main nav items ─────────────────────────────────────────────────
         var mainItems = new StackPanel { Spacing = 2, Margin = new Thickness(8, 4, 8, 4) };
-        mainItems.Children.Add(MakeNavItem("", "Dashboard",     "dashboard"));
-        mainItems.Children.Add(MakeNavItem("", "Visuals",       "visuals"));
-        mainItems.Children.Add(MakeNavItem("", "Desktop FX",    "desktopfx"));
-        mainItems.Children.Add(MakeNavItem("", "Themes",        "themes"));
-        mainItems.Children.Add(MakeNavItem("", "App Colors",    "appcolors"));
-        mainItems.Children.Add(MakeNavItem("", "Behavior",      "behavior"));
-        mainItems.Children.Add(MakeNavItem("", "Desktop Items", "desktop"));
+        mainItems.Children.Add(MakeNavItem("\uE80F", "Dashboard",     "dashboard"));
+        mainItems.Children.Add(MakeNavItem("\uE790", "Visuals",       "visuals"));
+        mainItems.Children.Add(MakeNavItem("\uE945", "Desktop FX",    "desktopfx"));
+        mainItems.Children.Add(MakeNavItem("\uE771", "Themes",        "themes"));
+        mainItems.Children.Add(MakeNavItem("\uECAA", "App Colors",    "appcolors"));
+        mainItems.Children.Add(MakeNavItem("\uE7E8", "Behavior",      "behavior"));
+        mainItems.Children.Add(MakeNavItem("\uE7F4", "Desktop Items", "desktop"));
         Grid.SetRow(mainItems, 1);
         grid.Children.Add(mainItems);
 
         // ── Footer nav items ───────────────────────────────────────────────
         var footer = new StackPanel { Spacing = 2, Margin = new Thickness(8, 4, 8, 12) };
-        footer.Children.Add(MakeNavItem("", "Schedule", "schedule"));
-        footer.Children.Add(MakeNavItem("", "About",    "about"));
-        footer.Children.Add(MakeNavItem("", "Settings", "settings"));
+        footer.Children.Add(MakeNavItem("\uE823", "Schedule", "schedule"));
+        footer.Children.Add(MakeNavItem("\uE946", "About",    "about"));
+        footer.Children.Add(MakeNavItem("\uE713", "Settings", "settings"));
         Grid.SetRow(footer, 2);
         grid.Children.Add(footer);
 
@@ -249,11 +250,11 @@ public sealed partial class MainWindow : Window
 
     private Button MakeNavItem(string glyph, string label, string tag)
     {
-        // Left selection indicator (3 × 20 px orange pill).
+        // Left selection indicator (3 × 16 px orange pill).
         var indicator = new Rectangle
         {
             Width           = 3,
-            Height          = 20,
+            Height          = 16,
             RadiusX         = 1.5,
             RadiusY         = 1.5,
             Fill            = new SolidColorBrush(Colors.Transparent),
@@ -266,11 +267,12 @@ public sealed partial class MainWindow : Window
         var text = new TextBlock
         {
             Text              = label,
-            FontSize          = 13,
+            FontSize          = 14,
+            FontFamily        = new FontFamily("Segoe UI Variable Text"),
             VerticalAlignment = VerticalAlignment.Center,
         };
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14 };
         row.Children.Add(icon);
         row.Children.Add(text);
 
@@ -283,23 +285,28 @@ public sealed partial class MainWindow : Window
         itemGrid.Children.Add(indicator);
         itemGrid.Children.Add(row);
 
+        // SubtleButtonStyle (App.xaml) supplies the hover/pressed tint and focus visual.
         var btn = new Button
         {
+            Style                      = (Style)Application.Current.Resources["SubtleButtonStyle"],
             Content                    = itemGrid,
             Tag                        = tag,
             HorizontalAlignment        = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-            Padding                    = new Thickness(8, 8, 12, 8),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding                    = new Thickness(4, 9, 12, 9),
             CornerRadius               = new CornerRadius(4),
-            Background                 = new SolidColorBrush(Colors.Transparent),
-            BorderThickness            = new Thickness(0),
         };
+        ToolTipService.SetToolTip(btn, label);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(btn, label);
         btn.Click += NavItem_Click;
         return btn;
     }
 
     private void SelectNavItem(StackPanel panel, string tag)
     {
+        // Shared brush: ThemeService recolors it, so the selection follows light/dark.
+        var selectedBrush = (Brush)Application.Current.Resources["AppNavSelectedBrush"];
+
         foreach (var child in panel.Children)
         {
             if (child is not Button btn || btn.Tag is not string btnTag) continue;
@@ -307,7 +314,7 @@ public sealed partial class MainWindow : Window
             bool selected = btnTag == tag;
 
             btn.Background = selected
-                ? new SolidColorBrush(Windows.UI.Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF))
+                ? selectedBrush
                 : new SolidColorBrush(Colors.Transparent);
 
             // Update the selection indicator pill
@@ -330,7 +337,15 @@ public sealed partial class MainWindow : Window
     private void NavItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not string tag) return;
+        NavigateTo(tag);
+    }
 
+    /// <summary>
+    /// Selects the sidebar item with this tag and shows its page. Pages call this to
+    /// link to each other (for example Visuals → Desktop FX).
+    /// </summary>
+    public void NavigateTo(string tag)
+    {
         _currentTag = tag;
         Logger.Info("Nav", $"Click → {tag}");
 
@@ -362,6 +377,31 @@ public sealed partial class MainWindow : Window
             }
         }
     }
+
+    // ── Caption buttons follow the app theme ───────────────────────────────
+
+    private void ApplyCaptionButtonTheme(bool isDark)
+    {
+        try
+        {
+            var tb = AppWindow.TitleBar;
+            tb.ButtonForegroundColor = isDark ? Colors.White : Colors.Black;
+            tb.ButtonInactiveForegroundColor = isDark
+                ? Windows.UI.Color.FromArgb(0xFF, 0x9D, 0x9D, 0x9D)
+                : Windows.UI.Color.FromArgb(0xFF, 0x80, 0x80, 0x80);
+            tb.ButtonHoverForegroundColor   = isDark ? Colors.White : Colors.Black;
+            tb.ButtonPressedForegroundColor = isDark ? Colors.White : Colors.Black;
+            if (!_titleBarAccented)
+            {
+                byte shade = isDark ? (byte)0xFF : (byte)0x00;
+                tb.ButtonHoverBackgroundColor   = Windows.UI.Color.FromArgb(0x20, shade, shade, shade);
+                tb.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(0x40, shade, shade, shade);
+            }
+        }
+        catch { }
+    }
+
+    private bool _titleBarAccented;
 
     // ── Audio-reactive border pulse ────────────────────────────────────────
 
@@ -398,6 +438,7 @@ public sealed partial class MainWindow : Window
             var tb = AppWindow.TitleBar;
             // Titlebar is transparent (content extends into it), so only accent
             // the caption button hover/pressed states with the active glow color.
+            _titleBarAccented = true;
             tb.ButtonHoverBackgroundColor   = Windows.UI.Color.FromArgb(0x28, r, g, b);
             tb.ButtonPressedBackgroundColor = Windows.UI.Color.FromArgb(0x50, r, g, b);
         }

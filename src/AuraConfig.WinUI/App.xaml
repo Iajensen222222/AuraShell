@@ -51,6 +51,77 @@
             <!-- ThemesPage requires these two keys missing from WinUI 3 unpackaged resources -->
             <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"         Color="#18FFFFFF" />
             <SolidColorBrush x:Key="SystemFillColorCautionBackgroundBrush"  Color="#30FCE100" />
+            <SolidColorBrush x:Key="SystemFillColorCriticalBrush"           Color="#FF99A4"   />
+            <SolidColorBrush x:Key="SystemFillColorCriticalBackgroundBrush" Color="#442726"   />
+            <!-- DesktopItemsPage highlights the drop zone with this key on drag-enter. -->
+            <SolidColorBrush x:Key="AccentFillColorDefaultBrush"            Color="#60CDFF"   />
+
+            <!-- ── App palette (dark values; ThemeService swaps them for light) ── -->
+            <SolidColorBrush x:Key="AppTextPrimaryBrush"        Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="AppAccentFillBrush"         Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="AppAccentFillHoverBrush"    Color="#E660CDFF" />
+            <SolidColorBrush x:Key="AppAccentFillPressedBrush"  Color="#CC60CDFF" />
+            <SolidColorBrush x:Key="AppAccentTextBrush"         Color="#FF000000" />
+            <SolidColorBrush x:Key="AppAccentSubtleBrush"       Color="#2660CDFF" />
+            <SolidColorBrush x:Key="AppSubtleHoverBrush"        Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="AppSubtlePressedBrush"      Color="#0AFFFFFF" />
+            <SolidColorBrush x:Key="AppNavSelectedBrush"        Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="AppDropZoneBrush"           Color="#06FFFFFF" />
+
+            <!--
+                Lightweight-styling overrides for the built-in control templates. Same
+                mechanism as the TextControl* keys above: plain keys the default templates
+                pick up, swapped per theme by ThemeService. They give buttons Fluent fills
+                and make toggles, sliders and radio buttons use the app accent instead of
+                whatever the Windows accent color happens to be.
+            -->
+            <SolidColorBrush x:Key="ButtonBackground"                 Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver"      Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed"          Color="#08FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled"         Color="#0BFFFFFF" />
+            <SolidColorBrush x:Key="ButtonForeground"                 Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver"      Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed"          Color="#C5FFFFFF" />
+            <SolidColorBrush x:Key="ButtonForegroundDisabled"         Color="#5DFFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrush"                Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver"     Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPressed"         Color="#12FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrushDisabled"        Color="#12FFFFFF" />
+
+            <SolidColorBrush x:Key="TextControlBorderBrush"            Color="#24FFFFFF" />
+            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#33FFFFFF" />
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused"     Color="#FF60CDFF" />
+
+            <SolidColorBrush x:Key="ComboBoxBackground"                Color="#0FFFFFFF" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver"     Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundPressed"         Color="#08FFFFFF" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrush"               Color="#24FFFFFF" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver"    Color="#33FFFFFF" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushPressed"        Color="#24FFFFFF" />
+
+            <SolidColorBrush x:Key="ToggleSwitchFillOn"                Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver"     Color="#E660CDFF" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPressed"         Color="#CC60CDFF" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOn"            Color="#FF000000" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#FF000000" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed"     Color="#FF000000" />
+
+            <SolidColorBrush x:Key="SliderTrackValueFill"              Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPointerOver"   Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPressed"       Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="SliderThumbBackground"             Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver"  Color="#E660CDFF" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPressed"      Color="#CC60CDFF" />
+
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStroke"            Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" Color="#E660CDFF" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedStrokePressed"     Color="#CC60CDFF" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill"              Color="#FF60CDFF" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPointerOver"   Color="#E660CDFF" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFillPressed"       Color="#CC60CDFF" />
+            <SolidColorBrush x:Key="RadioButtonCheckGlyphFill"                       Color="#FF000000" />
+            <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPointerOver"            Color="#FF000000" />
+            <SolidColorBrush x:Key="RadioButtonCheckGlyphFillPressed"                Color="#FF000000" />
 
             <!-- ── Text styles (WinUI type-ramp values) ───────────────────────── -->
             <Style x:Key="CaptionTextBlockStyle" TargetType="TextBlock">
@@ -79,11 +150,195 @@
                 <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
             </Style>
 
-            <!-- ── Accent button style ────────────────────────────────────────── -->
+            <!-- ── Page layout styles shared by every page ─────────────────────── -->
+            <Style x:Key="PageTitleTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"   Value="32" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
+            </Style>
+            <Style x:Key="PageSubtitleTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"     Value="14" />
+                <Setter Property="FontFamily"   Value="Segoe UI Variable Text" />
+                <Setter Property="Foreground"   Value="{StaticResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Margin"       Value="0,4,0,0" />
+            </Style>
+            <!-- Accent, letter-spaced label above a group of cards. -->
+            <Style x:Key="SectionHeaderTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"         Value="12" />
+                <Setter Property="FontFamily"       Value="Segoe UI Variable Small" />
+                <Setter Property="FontWeight"       Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="60" />
+                <Setter Property="Foreground"       Value="{StaticResource AccentTextFillColorPrimaryBrush}" />
+                <Setter Property="Margin"           Value="2,14,0,0" />
+            </Style>
+            <!-- Title and helper text of one setting row. -->
+            <Style x:Key="SettingTitleTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"     Value="14" />
+                <Setter Property="FontFamily"   Value="Segoe UI Variable Text" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+            <Style x:Key="SettingDescriptionTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize"     Value="12" />
+                <Setter Property="FontFamily"   Value="Segoe UI Variable Small" />
+                <Setter Property="Foreground"   Value="{StaticResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Margin"       Value="0,2,0,0" />
+            </Style>
+            <!-- Leading glyph of a setting row. -->
+            <Style x:Key="SettingIconStyle" TargetType="FontIcon">
+                <Setter Property="FontSize"          Value="20" />
+                <Setter Property="Width"             Value="24" />
+                <Setter Property="Margin"            Value="0,0,16,0" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <!-- A settings card: one rounded tile per setting or group of settings. -->
+            <Style x:Key="CardStyle" TargetType="Border">
+                <Setter Property="Background"      Value="{StaticResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush"     Value="{StaticResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius"    Value="8" />
+                <Setter Property="Padding"         Value="16,14" />
+            </Style>
+            <!-- Thin line between rows that share one card (cancels the card's side padding). -->
+            <Style x:Key="CardDividerStyle" TargetType="Border">
+                <Setter Property="Height"     Value="1" />
+                <Setter Property="Margin"     Value="-16,0" />
+                <Setter Property="Background" Value="{StaticResource DividerStrokeColorDefaultBrush}" />
+            </Style>
+            <!-- Toggle at the right edge of a setting row: no header and no On/Off text. -->
+            <Style x:Key="RowToggleSwitchStyle" TargetType="ToggleSwitch">
+                <Setter Property="OnContent"           Value="" />
+                <Setter Property="OffContent"          Value="" />
+                <Setter Property="MinWidth"            Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment"   Value="Center" />
+                <Setter Property="Margin"              Value="16,0,-12,0" />
+            </Style>
+
+            <!-- ── Implicit control styles: Fluent corner radius on built-in controls ── -->
+            <Style TargetType="Button">
+                <Setter Property="CornerRadius"    Value="4" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding"         Value="12,5,12,6" />
+            </Style>
+            <Style TargetType="TextBox">
+                <Setter Property="CornerRadius"    Value="4" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+            <Style TargetType="ComboBox">
+                <Setter Property="CornerRadius"    Value="4" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+
+            <!--
+                Accent button. A full template (not just setters) so hover and press tint
+                the accent color instead of falling back to the gray ButtonBackground* keys.
+            -->
             <Style x:Key="AccentButtonStyle" TargetType="Button">
-                <Setter Property="Background"   Value="#60CDFF" />
-                <Setter Property="Foreground"   Value="#000000" />
-                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Background"            Value="{StaticResource AppAccentFillBrush}" />
+                <Setter Property="Foreground"            Value="{StaticResource AppAccentTextBrush}" />
+                <Setter Property="BorderThickness"       Value="0" />
+                <Setter Property="CornerRadius"          Value="4" />
+                <Setter Property="Padding"               Value="12,6,12,7" />
+                <Setter Property="FontSize"              Value="14" />
+                <Setter Property="FontFamily"            Value="Segoe UI Variable Text" />
+                <Setter Property="FontWeight"            Value="SemiBold" />
+                <Setter Property="HorizontalAlignment"   Value="Left" />
+                <Setter Property="VerticalAlignment"     Value="Center" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin"     Value="-3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource AppAccentFillHoverBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource AppAccentFillPressedBrush}" />
+                                                <Setter Target="ContentPresenter.Opacity" Value="0.8" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.4" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  AutomationProperties.AccessibilityView="Raw" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Borderless button for icon buttons and nav rows: transparent until hovered. -->
+            <Style x:Key="SubtleButtonStyle" TargetType="Button">
+                <Setter Property="Background"            Value="Transparent" />
+                <Setter Property="Foreground"            Value="{StaticResource AppTextPrimaryBrush}" />
+                <Setter Property="BorderThickness"       Value="0" />
+                <Setter Property="CornerRadius"          Value="4" />
+                <Setter Property="Padding"               Value="8,6" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  Background="{TemplateBinding Background}"
+                                  CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Overlay.Background" Value="{StaticResource AppSubtleHoverBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Overlay.Background" Value="{StaticResource AppSubtlePressedBrush}" />
+                                                <Setter Target="ContentPresenter.Opacity" Value="0.75" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.4" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Border x:Name="Overlay"
+                                        Background="Transparent"
+                                        CornerRadius="{TemplateBinding CornerRadius}" />
+                                <ContentPresenter x:Name="ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  AutomationProperties.AccessibilityView="Raw" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
         </ResourceDictionary>
