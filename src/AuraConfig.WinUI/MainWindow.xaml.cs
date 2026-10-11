@@ -133,6 +133,8 @@ public sealed partial class MainWindow : Window
                 {
                     AppWindow.Show();
                     this.Activate();
+                    // Closing to the tray stopped the desktop effects; restart them like the tray's Show does.
+                    _desktopIconGlow.Start();
                 });
             }
         });
