@@ -2,14 +2,27 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cwctype>
 #include <filesystem>
 #include <fstream>
+
+#include <windows.h>
 
 #include <nlohmann/json.hpp>
 
 #include "logging/logger.h"
 
 namespace aura::context {
+
+static std::wstring utf8ToWstr(std::string const& str) {
+    if (str.empty()) return {};
+    int const needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+    std::wstring out(static_cast<size_t>(needed > 0 ? needed - 1 : 0), L'\0');
+    if (needed > 0) {
+        MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &out[0], needed);
+    }
+    return out;
+}
 
 ThemePresetLoader& ThemePresetLoader::getInstance() {
     static ThemePresetLoader instance;
@@ -39,8 +52,7 @@ int ThemePresetLoader::loadFromDirectory(const std::wstring& presetsDirectory) {
 
                 aura::app::ThemeConfig cfg;
                 if (j.contains("themeName"))
-                    cfg.themeName = std::wstring(j["themeName"].get<std::string>().begin(),
-                                                 j["themeName"].get<std::string>().end());
+                    cfg.themeName = utf8ToWstr(j["themeName"].get<std::string>());
                 if (j.contains("animSpeedPct"))
                     cfg.animSpeedPct = j["animSpeedPct"].get<uint32_t>();
                 if (j.contains("showOnHover"))
