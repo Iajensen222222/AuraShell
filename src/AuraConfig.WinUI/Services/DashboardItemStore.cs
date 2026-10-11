@@ -10,14 +10,15 @@ namespace AuraConfig.Services;
 /// </summary>
 public sealed class DashboardItemStore
 {
-    public static readonly DashboardItemStore Instance = new();
-
     private static readonly string FilePath = System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AuraShell", "dashboard_items.json");
 
     private static readonly JsonSerializerOptions JsonOpts =
         new() { WriteIndented = true };
+
+    // Declared after FilePath and JsonOpts: static initializers run in order, and the constructor loads with them.
+    public static readonly DashboardItemStore Instance = new();
 
     public ObservableCollection<DashboardItem> Items { get; } = new();
     public Guid? LastAppliedId { get; private set; }
