@@ -117,7 +117,8 @@ public sealed partial class MainWindow : Window
             if (_quitting) return;          // user picked Quit from tray menu
             args.Cancel = true;
             Logger.Info("MainWindow", "Close intercepted → hiding to tray");
-            _desktopIconGlow.Stop();        // restores Explorer's native hover before hiding
+            // Desktop effects keep running in the tray, like the window-border glow.
+            // Turning the hover glow off (Desktop FX) or Quit gives Explorer its gray hover back.
             AppWindow.Hide();
         };
 
@@ -134,7 +135,7 @@ public sealed partial class MainWindow : Window
                 {
                     AppWindow.Show();
                     this.Activate();
-                    // Closing to the tray stopped the desktop effects; restart them like the tray's Show does.
+                    // No-op while running; restarts the effects if they ever stopped.
                     _desktopIconGlow.Start();
                 });
             }

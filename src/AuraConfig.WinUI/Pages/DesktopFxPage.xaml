@@ -31,7 +31,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Icon hover glow" />
                         <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
-                                   Text="A soft glow fades in around a desktop icon while the mouse is over it." />
+                                   Text="A soft glow fades in around a desktop icon while the mouse is over it. Turn off to get the usual Windows gray highlight back." />
                     </StackPanel>
                     <ToggleSwitch x:Name="GlowToggle" Grid.Column="2"
                                   Style="{StaticResource RowToggleSwitchStyle}"

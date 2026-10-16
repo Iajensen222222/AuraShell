@@ -86,6 +86,11 @@ public sealed class DesktopIconGlow : IDisposable
     [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
     static extern int SetWindowTheme(IntPtr hwnd, string? subApp, string? subId);
 
+    // Window properties — snapshot and restore Explorer's own theme association
+    [DllImport("user32.dll")] static extern IntPtr GetPropW(IntPtr hwnd, IntPtr atom);
+    [DllImport("user32.dll")] static extern bool   SetPropW(IntPtr hwnd, IntPtr atom, IntPtr data);
+    [DllImport("user32.dll")] static extern IntPtr RemovePropW(IntPtr hwnd, IntPtr atom);
+
     [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr hwnd, uint msg, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr hwnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
 
@@ -163,7 +168,8 @@ public sealed class DesktopIconGlow : IDisposable
 
     // Z-order sentinels
     static readonly IntPtr HWND_TOP     = IntPtr.Zero;
-    static readonly IntPtr HWND_TOPMOST = (IntPtr)(-1);
+    static readonly IntPtr HWND_TOPMOST   = (IntPtr)(-1);
+    static readonly IntPtr HWND_NOTOPMOST = (IntPtr)(-2);
 
     const uint WM_THEMECHANGED  = 0x031A;
     const uint RDW_INVALIDATE   = 0x0001;
@@ -172,6 +178,14 @@ public sealed class DesktopIconGlow : IDisposable
     const uint RDW_UPDATENOW    = 0x0100;
     const uint RDW_ALLCHILDREN  = 0x0080;
     static readonly IntPtr HWND_BROADCAST = (IntPtr)0xFFFF;
+
+    // uxtheme keeps a window's SetWindowTheme association in these integer-atom window
+    // properties (sub-app name, sub-id list, flags). Their values are atoms in the owning
+    // process's local atom table, so a name set from our process means nothing to
+    // explorer.exe, and SetWindowTheme(null, null) only deletes them: the desktop then
+    // falls back to the plain ListView style with no gray hover box. To give Explorer its
+    // own highlight back we save the raw values before suppressing and write them back.
+    static readonly ushort[] ThemePropAtoms = { 43280, 43281, 43282 };
     const int  DebounceMs      = 50;    // hover debounce
     const int  RefreshInterval = 125;   // iterations between icon re-enumeration (~2 s at 16 ms)
 
@@ -422,16 +436,121 @@ public sealed class DesktopIconGlow : IDisposable
         _thread = null;
     }
 
-    // Clears our theme override so Explorer's ListView restores its native hover.
-    // Always does a fresh window walk — never reads _hListView — so it is safe
-    // to call from any thread regardless of whether the background thread has
-    // written _hListView yet.
+    // ── Explorer's native hover box ────────────────────────────────────────
+
+    /// <summary>Explorer's own theme properties on the desktop ListView, saved before we change them.</summary>
+    private sealed class ThemeSnapshot
+    {
+        public long   Hwnd   { get; set; }
+        public uint   Pid    { get; set; }
+        public long[] Values { get; set; } = Array.Empty<long>();   // 0 = property absent
+    }
+
+    // Shared by the UI thread (Stop) and the overlay thread; guarded by s_themeLock.
+    private static readonly object s_themeLock = new();
+    private static ThemeSnapshot? s_themeSnapshot;
+
+    // Persisted so a restart after a crash or Task Manager kill can still restore
+    // the original values, as long as it is the same Explorer window.
+    private static readonly string ThemeSnapshotPath = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AuraShell", "desktop_theme_snapshot.json");
+
+    private static bool SnapshotMatches(ThemeSnapshot? snap, IntPtr lv, uint pid)
+        => snap is not null && snap.Hwnd == lv.ToInt64() && snap.Pid == pid
+           && snap.Values.Length == ThemePropAtoms.Length;
+
+    // Caller holds s_themeLock.
+    private static ThemeSnapshot? LoadSnapshotLocked(IntPtr lv, uint pid)
+    {
+        if (SnapshotMatches(s_themeSnapshot, lv, pid)) return s_themeSnapshot;
+        try
+        {
+            if (System.IO.File.Exists(ThemeSnapshotPath))
+            {
+                var snap = System.Text.Json.JsonSerializer.Deserialize<ThemeSnapshot>(
+                    System.IO.File.ReadAllText(ThemeSnapshotPath));
+                if (SnapshotMatches(snap, lv, pid))
+                {
+                    s_themeSnapshot = snap;
+                    return snap;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn("DesktopIconGlow", $"Could not read theme snapshot: {ex.Message}");
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Hides Explorer's gray hover/selection box so only our glow shows. Saves Explorer's
+    /// own theme properties first (once per Explorer window) so they can be put back.
+    /// </summary>
+    private static void SuppressNativeHover(IntPtr lv)
+    {
+        if (lv == IntPtr.Zero || !IsWindow(lv)) return;
+        lock (s_themeLock)
+        {
+            GetWindowThreadProcessId(lv, out uint pid);
+            if (LoadSnapshotLocked(lv, pid) is null)
+            {
+                var values = new long[ThemePropAtoms.Length];
+                for (int i = 0; i < ThemePropAtoms.Length; i++)
+                    values[i] = GetPropW(lv, (IntPtr)ThemePropAtoms[i]).ToInt64();
+                s_themeSnapshot = new ThemeSnapshot { Hwnd = lv.ToInt64(), Pid = pid, Values = values };
+                try
+                {
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ThemeSnapshotPath)!);
+                    System.IO.File.WriteAllText(ThemeSnapshotPath,
+                        System.Text.Json.JsonSerializer.Serialize(s_themeSnapshot));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn("DesktopIconGlow", $"Could not save theme snapshot: {ex.Message}");
+                }
+                Logger.Info("DesktopIconGlow",
+                    $"Saved Explorer theme properties: {string.Join(", ", Array.ConvertAll(values, v => $"0x{v:X}"))}");
+            }
+            SetWindowTheme(lv, " ", " ");
+        }
+    }
+
+    // Puts back Explorer's own theme properties and lets the ListView reload its theme,
+    // which brings back the native gray hover box. Always does a fresh window walk —
+    // never reads _hListView — so it is safe to call from any thread regardless of
+    // whether the background thread has written _hListView yet.
     private static void RestoreListViewTheme()
     {
         IntPtr lv = LocateDesktopListView();
         if (lv == IntPtr.Zero || !IsWindow(lv)) return;
-        SetWindowTheme(lv, null, null);
         SetWindowRgn(lv, IntPtr.Zero, true);
+
+        lock (s_themeLock)
+        {
+            GetWindowThreadProcessId(lv, out uint pid);
+            if (LoadSnapshotLocked(lv, pid) is { } snap)
+            {
+                for (int i = 0; i < ThemePropAtoms.Length; i++)
+                {
+                    var atom = (IntPtr)ThemePropAtoms[i];
+                    if (snap.Values[i] != 0) SetPropW(lv, atom, (IntPtr)snap.Values[i]);
+                    else                     RemovePropW(lv, atom);
+                }
+                SendMessageW(lv, WM_THEMECHANGED, IntPtr.Zero, IntPtr.Zero);
+                RedrawWindow(lv, IntPtr.Zero, IntPtr.Zero,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_UPDATENOW | RDW_ALLCHILDREN);
+                return;
+            }
+        }
+
+        // No snapshot for this Explorer window. Explorer never sets a sub-app name on the
+        // desktop ListView itself, so if one is present it is a leftover override (from a
+        // build without snapshots): clear it. Otherwise leave Explorer's properties alone;
+        // clearing them here would delete the very values a later snapshot must capture.
+        if (GetPropW(lv, (IntPtr)ThemePropAtoms[0]) == IntPtr.Zero) return;
+        SetWindowTheme(lv, null, null);
         // Notify the ListView directly and broadcast system-wide (same as a real theme change).
         // Sending only to the child ListView is not enough — Explorer responds to the broadcast.
         SendMessageW(lv, WM_THEMECHANGED, IntPtr.Zero, IntPtr.Zero);
@@ -468,15 +587,14 @@ public sealed class DesktopIconGlow : IDisposable
             {
                 DrainMessages();
 
-                // Detect enable/disable transitions and sync Explorer's native hover theme.
-                // SetWindowTheme(" "," ") suppresses the grey selection box; null,null restores it.
+                // Detect enable/disable transitions and swap between our glow and
+                // Explorer's native gray hover box.
                 if (_enabled != _lastEnabled)
                 {
                     _lastEnabled = _enabled;
                     if (_enabled)
                     {
-                        if (_hListView != IntPtr.Zero && IsWindow(_hListView))
-                            SetWindowTheme(_hListView, " ", " ");
+                        SuppressNativeHover(_hListView);
                     }
                     else
                     {
@@ -618,9 +736,10 @@ public sealed class DesktopIconGlow : IDisposable
             return false;
         }
 
-        // Suppress Explorer's themed hot-item visual (white/gray border on hover)
-        // so only our glow effect is visible. Restored to null,null on thread exit.
-        SetWindowTheme(_hListView, " ", " ");
+        // Suppress Explorer's themed hot-item visual (gray box on hover) so only our glow
+        // shows, but only while the glow is on. Restored on disable and on thread exit.
+        _lastEnabled = _enabled;
+        if (_lastEnabled) SuppressNativeHover(_hListView);
 
         return true;
     }
@@ -927,6 +1046,10 @@ public sealed class DesktopIconGlow : IDisposable
                 break;
             }
         }
+
+        // An app window can cover an icon; the glow sits above app windows, so only
+        // light up when the desktop itself is under the pointer.
+        if (hitIdx >= 0 && !IsDesktopAt(cursor)) hitIdx = -1;
 
         if (hitIdx != _hoveredIdx)
         {
@@ -1302,10 +1425,16 @@ public sealed class DesktopIconGlow : IDisposable
 
         // Raise to top of the non-topmost Z-order the moment a glow starts
         // fading in so it appears above the desktop icon list view without
-        // using WS_EX_TOPMOST (which conflicts with apps like Lively Wallpaper).
+        // staying WS_EX_TOPMOST (which conflicts with apps like Lively Wallpaper).
+        // A plain HWND_TOP from this background process leaves the window under the
+        // desktop after "Show desktop" (Win+D); a TOPMOST then NOTOPMOST pair reliably
+        // lands it at the top of the normal band.
         if (nowVisible && !s.WasVisible)
-            SetWindowPos(s.Hwnd, HWND_TOP, 0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
+        {
+            const uint flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW;
+            SetWindowPos(s.Hwnd, HWND_TOPMOST,   0, 0, 0, 0, flags);
+            SetWindowPos(s.Hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+        }
         s.WasVisible = nowVisible;
 
         IntPtr screenDC = GetDC(IntPtr.Zero);
