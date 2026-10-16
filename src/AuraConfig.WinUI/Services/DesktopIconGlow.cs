@@ -74,6 +74,8 @@ public sealed class DesktopIconGlow : IDisposable
     [DllImport("user32.dll")] static extern int   GetSystemMetrics(int index);
     [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT pt);
     [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr hwnd, uint cmd);
+    [DllImport("user32.dll")] static extern int    GetWindowLongW(IntPtr hwnd, int index);
 
     // Message loop
     [DllImport("user32.dll")] static extern bool   PeekMessageW(out MSG msg, IntPtr hwnd, uint min, uint max, uint remove);
@@ -168,6 +170,9 @@ public sealed class DesktopIconGlow : IDisposable
 
     // Z-order sentinels
     static readonly IntPtr HWND_TOP     = IntPtr.Zero;
+    const uint GW_HWNDPREV      = 3;     // window above in Z-order
+    const int  GWL_EXSTYLE      = -20;
+    const int  ZOrderCheckEvery = 10;    // frames between Z-order re-checks while a glow is visible
     static readonly IntPtr HWND_TOPMOST   = (IntPtr)(-1);
     static readonly IntPtr HWND_NOTOPMOST = (IntPtr)(-2);
 
@@ -279,6 +284,7 @@ public sealed class DesktopIconGlow : IDisposable
     private long _debounceStart;
     private bool _prevLeftDown;
     private int  _refreshCount;
+    private int  _zOrderCount;
     private bool _lastEnabled  = true;
 
     private static readonly WndProcDelegate s_wndProc = WndProc;
@@ -611,6 +617,11 @@ public sealed class DesktopIconGlow : IDisposable
                 PollClick();
                 StepAnimation();
                 StepBursts();
+                if (++_zOrderCount >= ZOrderCheckEvery)
+                {
+                    _zOrderCount = 0;
+                    KeepGlowsAboveDesktop();
+                }
 
                 if (_layoutDirty || ++_refreshCount >= RefreshInterval)
                 {
@@ -1411,6 +1422,62 @@ public sealed class DesktopIconGlow : IDisposable
         if (b.Hbmp != IntPtr.Zero) { DeleteObject(b.Hbmp);   b.Hbmp = IntPtr.Zero; b.Pixels = IntPtr.Zero; }
     }
 
+    // ── Z-order ────────────────────────────────────────────────────────────
+
+    // True when hwnd is in the run of our overlay windows sitting directly above `root`.
+    private static bool IsJustAbove(IntPtr hwnd, IntPtr root)
+    {
+        var sb = new System.Text.StringBuilder(64);
+        for (IntPtr w = GetWindow(root, GW_HWNDPREV); w != IntPtr.Zero; w = GetWindow(w, GW_HWNDPREV))
+        {
+            if (w == hwnd) return true;
+            sb.Clear();
+            GetClassNameW(w, sb, 64);
+            if (sb.ToString() != WndClass) return false;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Puts a glow window immediately above the desktop's top-level window (Progman or
+    /// WorkerW): over the icons, under every app. Never WS_EX_TOPMOST, which would cover
+    /// apps and conflicts with wallpaper tools like Lively.
+    /// </summary>
+    private void PlaceAboveDesktop(IntPtr hwnd)
+    {
+        const uint flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW;
+        IntPtr root = _hListView != IntPtr.Zero ? GetAncestor(_hListView, GA_ROOT) : IntPtr.Zero;
+        if (root == IntPtr.Zero)
+        {
+            SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, flags);
+            return;
+        }
+        if (IsJustAbove(hwnd, root)) return;
+
+        IntPtr above = GetWindow(root, GW_HWNDPREV);
+        if (above == IntPtr.Zero || (GetWindowLongW(above, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0)
+        {
+            // The desktop is the highest normal window (after Show desktop / Win+D).
+            // A plain HWND_TOP from this background process can leave us under it; a
+            // TOPMOST then NOTOPMOST pair reliably lands at the top of the normal band.
+            SetWindowPos(hwnd, HWND_TOPMOST,   0, 0, 0, 0, flags);
+            SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+        }
+        else
+        {
+            // Insert below the window that is above the desktop, i.e. right on top of it.
+            SetWindowPos(hwnd, above, 0, 0, 0, 0, flags);
+        }
+    }
+
+    // While a glow is visible the desktop can move in the Z-order (Win+D, clicking the
+    // desktop), so re-check every few frames and slip back on top of it if needed.
+    private void KeepGlowsAboveDesktop()
+    {
+        foreach (var s in _slots)
+            if (s.WasVisible && s.Hwnd != IntPtr.Zero) PlaceAboveDesktop(s.Hwnd);
+    }
+
     // ── Compositing ────────────────────────────────────────────────────────
 
     private void Composite(int i)
@@ -1423,18 +1490,9 @@ public sealed class DesktopIconGlow : IDisposable
         byte a8  = (byte)(s.Alpha * PulseLevel() * 255f);
         bool nowVisible = a8 > 0;
 
-        // Raise to top of the non-topmost Z-order the moment a glow starts
-        // fading in so it appears above the desktop icon list view without
-        // staying WS_EX_TOPMOST (which conflicts with apps like Lively Wallpaper).
-        // A plain HWND_TOP from this background process leaves the window under the
-        // desktop after "Show desktop" (Win+D); a TOPMOST then NOTOPMOST pair reliably
-        // lands it at the top of the normal band.
-        if (nowVisible && !s.WasVisible)
-        {
-            const uint flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW;
-            SetWindowPos(s.Hwnd, HWND_TOPMOST,   0, 0, 0, 0, flags);
-            SetWindowPos(s.Hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, flags);
-        }
+        // The moment a glow starts fading in, slot it directly above the desktop so it
+        // shows over the icons but stays under every app window.
+        if (nowVisible && !s.WasVisible) PlaceAboveDesktop(s.Hwnd);
         s.WasVisible = nowVisible;
 
         IntPtr screenDC = GetDC(IntPtr.Zero);
