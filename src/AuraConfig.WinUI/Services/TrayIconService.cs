@@ -116,7 +116,20 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern IntPtr LoadIconW(IntPtr hInstance, IntPtr lpIconName);
 
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImageW(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
     private static readonly IntPtr IDI_APPLICATION = new IntPtr(32512);
+    private const uint IMAGE_ICON      = 1;
+    private const uint LR_LOADFROMFILE = 0x00000010;
+    private const int  SM_CXSMICON     = 49;
+    private const int  SM_CYSMICON     = 50;
     private const uint HWND_MESSAGE_VAL = unchecked((uint)-3);
     private static readonly IntPtr HWND_MESSAGE = new IntPtr(-3);
 
@@ -139,6 +152,7 @@ public sealed class TrayIconService : IDisposable
     private IntPtr _hwnd;
     private WndProc? _wndProcDelegate;  // keep alive — used by RegisterClassExW
     private bool _iconAdded;
+    private IntPtr _hIcon;   // owned; destroyed in Dispose (null when the stock icon is used)
     private bool _disposed;
 
     private const string ClassName = "AuraShellTrayWindow";
@@ -177,7 +191,7 @@ public sealed class TrayIconService : IDisposable
             uID             = TrayIconId,
             uFlags          = NIF_MESSAGE | NIF_ICON | NIF_TIP,
             uCallbackMessage = (uint)WM_TRAY,
-            hIcon           = LoadIconW(IntPtr.Zero, IDI_APPLICATION),
+            hIcon           = LoadTrayIcon(),
             szTip           = tooltip,
         };
         if (!Shell_NotifyIconW(NIM_ADD, ref nid))
@@ -191,6 +205,24 @@ public sealed class TrayIconService : IDisposable
             Shell_NotifyIconW(NIM_SETVERSION, ref nid);
             Logger.Info("TrayIconService", "Tray icon added");
         }
+    }
+
+    /// <summary>
+    /// Loads the app's own icon (Assets\AppIcon.ico) at the small-icon size the
+    /// tray uses. Falls back to the stock Windows application icon if the file is
+    /// missing or unreadable.
+    /// </summary>
+    private IntPtr LoadTrayIcon()
+    {
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (System.IO.File.Exists(iconPath))
+        {
+            _hIcon = LoadImageW(IntPtr.Zero, iconPath, IMAGE_ICON,
+                GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE);
+            if (_hIcon != IntPtr.Zero) return _hIcon;
+            Logger.Warn("TrayIconService", $"LoadImageW failed for {iconPath}: {Marshal.GetLastWin32Error()}");
+        }
+        return LoadIconW(IntPtr.Zero, IDI_APPLICATION);
     }
 
     private IntPtr WindowProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
@@ -251,6 +283,7 @@ public sealed class TrayIconService : IDisposable
                 Shell_NotifyIconW(NIM_DELETE, ref nid);
             }
             if (_hwnd != IntPtr.Zero) DestroyWindow(_hwnd);
+            if (_hIcon != IntPtr.Zero) DestroyIcon(_hIcon);
         }
         catch { }
     }

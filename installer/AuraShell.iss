@@ -28,6 +28,8 @@ OutputBaseFilename=AuraShell-{#AppVersion}-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\AuraConfig.WinUI\Assets\AppIcon.ico
+UninstallDisplayIcon={app}\{#AppExeName}
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 
