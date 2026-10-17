@@ -1,6 +1,11 @@
 ; AuraShell.iss — InnoSetup 6 installer script
-; Targets: AuraConfig.exe (UI) + AuraShellService.exe (background service)
-; Build output assumed at: <repo>\out\build\x64-Release\bin\
+; Targets: AuraConfig (WinUI 3 UI) + AuraShellService.exe (background service)
+; AuraConfig is shipped as its whole `dotnet publish` folder (exe, .NET/WinUI DLLs,
+; XBF files and Assets\, which holds the icon the window, tray and shortcuts load):
+;   dotnet publish src\AuraConfig.WinUI\AuraConfig.csproj -c Release -r win-x64
+;     -p:Platform=x64 -p:PublishTrimmed=false -o out\AuraConfig\publish
+; The service comes from the CMake build output (BuildBinDir). Override either
+; folder with ISCC /DBuildBinDir=... or /DConfigPublishDir=...
 
 #define AppName        "AuraShell"
 #define AppVersion     "0.1.0-alpha"
@@ -8,7 +13,12 @@
 #define AppURL         "https://iajensen222222.github.io/AuraShell-Website/"
 #define AppExeName     "AuraConfig.exe"
 #define ServiceExeName "AuraShellService.exe"
-#define BuildBinDir    "..\out\build\x64-Release\bin\Release"
+#ifndef BuildBinDir
+  #define BuildBinDir      "..\out\build\x64-Release\bin\Release"
+#endif
+#ifndef ConfigPublishDir
+  #define ConfigPublishDir "..\out\AuraConfig\publish"
+#endif
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -45,8 +55,8 @@ Name: "desktopicon";    Description: "{cm:CreateDesktopIcon}"; GroupDescription:
 Name: "startupicon";   Description: "Start AuraShell automatically with Windows"; GroupDescription: "Startup"; Flags: unchecked
 
 [Files]
-; Main UI application
-Source: "{#BuildBinDir}\{#AppExeName}";    DestDir: "{app}"; Flags: ignoreversion
+; Main UI application: the whole publish folder, including Assets\ and Pages\
+Source: "{#ConfigPublishDir}\*";            DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Background service
 Source: "{#BuildBinDir}\{#ServiceExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -55,10 +65,10 @@ Source: "{#BuildBinDir}\{#ServiceExeName}"; DestDir: "{app}"; Flags: ignoreversi
 
 [Icons]
 ; Start menu
-Name: "{group}\{#AppName}";              Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppName}";              Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Assets\AppIcon.ico"
 Name: "{group}\Uninstall {#AppName}";    Filename: "{uninstallexe}"
 ; Desktop icon (only when user selected the task)
-Name: "{autodesktop}\{#AppName}";        Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}";        Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\Assets\AppIcon.ico"; Tasks: desktopicon
 
 [Registry]
 ; Persist install path for self-updater and diagnostics

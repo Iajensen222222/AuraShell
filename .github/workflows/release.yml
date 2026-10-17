@@ -47,6 +47,19 @@ jobs:
         shell: pwsh
         run: ctest --test-dir build -C Release --output-on-failure --timeout 120
 
+      # ── AuraConfig (WinUI 3) ─────────────────────────────────────────────────
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish AuraConfig
+        shell: pwsh
+        run: |
+          # Trimming is off: WinUI/CsWinRT relies on reflection the trimmer can strip.
+          dotnet publish src\AuraConfig.WinUI\AuraConfig.csproj `
+            -c Release -r win-x64 -p:Platform=x64 -p:PublishTrimmed=false `
+            -o out\AuraConfig\publish
+
       # ── Inno Setup ───────────────────────────────────────────────────────────
       - name: Install Inno Setup 6
         shell: pwsh
@@ -63,7 +76,10 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = "${env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
           if (-not (Test-Path $iscc)) { $iscc = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" }
-          & $iscc installer\AuraShell.iss
+          # The VS generator puts the service exe in build\bin\Release (paths are
+          # relative to installer\).
+          & $iscc /DBuildBinDir=..\build\bin\Release /DConfigPublishDir=..\out\AuraConfig\publish installer\AuraShell.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Rename output to include version tag for clarity
           $tag   = "${{ github.ref_name }}"
           $setup = Get-ChildItem installer\Output\*.exe | Select-Object -First 1

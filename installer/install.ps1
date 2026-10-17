@@ -11,9 +11,13 @@
     Must be run as Administrator.
 
 .PARAMETER SourceDir
-    Directory containing the built binaries (AuraShellService.exe,
-    AuraConfig.exe).  Defaults to the build output directory relative to
-    the repository root.
+    Directory containing the built AuraShellService.exe.  Defaults to the
+    CMake build output directory relative to the repository root.
+
+.PARAMETER ConfigPublishDir
+    The AuraConfig `dotnet publish` folder (exe, DLLs, XBF files, Assets).
+    Defaults to out\AuraConfig\publish under the repository root.  The whole
+    folder is copied into the install directory.
 
 .PARAMETER InstallDir
     Destination directory.  Defaults to 'C:\Program Files\AuraShell'.
@@ -35,6 +39,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $SourceDir  = "",
+    [string] $ConfigPublishDir = "",
     [string] $InstallDir = "C:\Program Files\AuraShell",
     [switch] $Uninstall
 )
@@ -89,6 +94,11 @@ if (-not $SourceDir) {
         $SourceDir = Join-Path $repoRoot "out\build\x64-Debug\bin"
     }
 }
+if (-not $ConfigPublishDir) {
+    $scriptRoot       = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $repoRoot         = Split-Path -Parent $scriptRoot
+    $ConfigPublishDir = Join-Path $repoRoot "out\AuraConfig\publish"
+}
 
 # ============================================================================
 # UNINSTALL
@@ -140,12 +150,20 @@ if ($Uninstall) {
 
 Write-Step "Validating source binaries in: $SourceDir"
 
-$requiredFiles = @($ServiceExe, $ConfigExe)
+$requiredFiles = @($ServiceExe)
 foreach ($f in $requiredFiles) {
     $path = Join-Path $SourceDir $f
     if (-not (Test-Path $path)) {
         Write-Fail "$f not found at $path"
         Write-Host "  Build AuraShell first: cmake --build . --config Release --parallel 4" -ForegroundColor Yellow
+        exit 1
+    }
+}
+foreach ($f in @($ConfigExe, "Assets\AppIcon.ico")) {
+    $path = Join-Path $ConfigPublishDir $f
+    if (-not (Test-Path $path)) {
+        Write-Fail "$f not found at $path"
+        Write-Host "  Publish AuraConfig first: dotnet publish src\AuraConfig.WinUI\AuraConfig.csproj -c Release -r win-x64 -p:Platform=x64 -p:PublishTrimmed=false -o out\AuraConfig\publish" -ForegroundColor Yellow
         exit 1
     }
 }
@@ -165,6 +183,10 @@ foreach ($f in $requiredFiles) {
     Copy-Item -Force $src $dest
     Write-OK "Copied $f"
 }
+
+# AuraConfig needs its whole publish folder (DLLs, XBF files, Assets\), not just the exe.
+Copy-Item -Recurse -Force (Join-Path $ConfigPublishDir "*") $InstallDir
+Write-OK "Copied AuraConfig from $ConfigPublishDir"
 
 # ---- 3. Create AppData directories for logs and config ---------------------
 
@@ -236,6 +258,7 @@ $lnkConfig = $wshShell.CreateShortcut("$StartMenuGroup\AuraShell Configuration.l
 $lnkConfig.TargetPath       = Join-Path $InstallDir $ConfigExe
 $lnkConfig.WorkingDirectory = $InstallDir
 $lnkConfig.Description      = "Configure AuraShell visual overlays"
+$lnkConfig.IconLocation     = "$(Join-Path $InstallDir 'Assets\AppIcon.ico'),0"
 $lnkConfig.Save()
 Write-OK "AuraShell Configuration.lnk"
 

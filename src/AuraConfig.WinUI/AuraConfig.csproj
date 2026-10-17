@@ -125,4 +125,20 @@
           SkipUnchangedFiles="false"
           ContinueOnError="true" />
   </Target>
+
+  <!--
+    dotnet publish leaves out the XBF files and the Assets folder that the build
+    output has, so a published app fails in InitializeComponent and has no icon
+    file for the window, tray and shortcuts. Copy them from the build output.
+  -->
+  <Target Name="CopyWinUIFilesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_PublishXbfRoot  Include="$(OutDir)*.xbf" />
+      <_PublishXbfPages Include="$(OutDir)Pages\*.xbf" />
+      <_PublishAssets   Include="$(OutDir)Assets\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PublishXbfRoot)"  DestinationFolder="$(PublishDir)"        SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_PublishXbfPages)" DestinationFolder="$(PublishDir)Pages"   SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_PublishAssets)"   DestinationFolder="$(PublishDir)Assets"  SkipUnchangedFiles="true" />
+  </Target>
 </Project>
