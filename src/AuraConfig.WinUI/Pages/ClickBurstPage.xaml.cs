@@ -3,8 +3,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Shapes;
 using Windows.UI;
 
 namespace AuraConfig.Pages;
@@ -15,19 +13,22 @@ namespace AuraConfig.Pages;
 /// </summary>
 public sealed partial class ClickBurstPage : Page
 {
-    private const int    SparkCount        = 8;
-    private const double SparkLength       = 7;
-    private const double SparkThickness    = 2;
-    private const double RingThickness     = 3;
-    private const double RingStartScale    = 0.15;
+    private const double PreviewFrameMs = 16;
+    private const float  BurstSpinStep  = 0.37f;   // same spark angle step between bursts as the engine
 
     private bool _loaded;
     private Color _color = Color.FromArgb(255, 0x00, 0x78, 0xD4);
+    private readonly List<PreviewBurst> _previewBursts = new();
+    private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(PreviewFrameMs) };
+    private int _burstCounter;
 
     public ClickBurstPage()
     {
         InitializeComponent();
-        Loaded += OnLoaded;
+        PreviewCanvas.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, PreviewCanvas.Width, PreviewCanvas.Height) };
+        _previewTimer.Tick += (_, _) => DrawPreviewBursts();
+        Loaded   += OnLoaded;
+        Unloaded += (_, _) => _previewTimer.Stop();
     }
 
     private DesktopIconGlow? DesktopGlow => (Application.Current as App)?.MainWindow?.DesktopIconGlow;
@@ -57,6 +58,16 @@ public sealed partial class ClickBurstPage : Page
         => (Application.Current as App)?.MainWindow?.NavigateTo("fx-glow");
 
     // ── Preview ────────────────────────────────────────────────────────────
+    //
+    // Bursts in the preview are drawn by the same code as the real ones (DesktopFxPainter).
+
+    private sealed class PreviewBurst
+    {
+        public required Image    Image;
+        public required FxBitmap Bitmap;
+        public required long     StartMs;
+        public required float    Spin;
+    }
 
     private void PreviewCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -72,74 +83,46 @@ public sealed partial class ClickBurstPage : Page
 
     private void PlayPreview(double x, double y)
     {
-        var style    = Enum.TryParse(SelectedTag(ClickStyleBox), out DesktopIconGlow.ClickBurstStyle s)
-            ? s : DesktopIconGlow.ClickBurstStyle.RingAndSparks;
-        double size  = ClickSizeSlider.Value;
-        var duration = new Duration(TimeSpan.FromMilliseconds(ClickDurationSlider.Value));
-        var ease     = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var board    = new Storyboard();
-        var parts    = new List<UIElement>();
-
-        if (style is DesktopIconGlow.ClickBurstStyle.Ring or DesktopIconGlow.ClickBurstStyle.RingAndSparks)
+        int side = DesktopFxPainter.BurstBitmapSize((int)ClickSizeSlider.Value);
+        var burst = new PreviewBurst
         {
-            var scale = new CompositeTransform { ScaleX = RingStartScale, ScaleY = RingStartScale };
-            var ring  = new Ellipse
-            {
-                Width = size, Height = size,
-                Stroke = new SolidColorBrush(_color),
-                StrokeThickness = RingThickness,
-                RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-                RenderTransform = scale,
-                IsHitTestVisible = false,
-            };
-            Canvas.SetLeft(ring, x - size / 2);
-            Canvas.SetTop(ring, y - size / 2);
-            parts.Add(ring);
-            board.Children.Add(Animate(scale, "ScaleX", RingStartScale, 1, duration, ease));
-            board.Children.Add(Animate(scale, "ScaleY", RingStartScale, 1, duration, ease));
-            board.Children.Add(Animate(ring, "Opacity", 1, 0, duration, null));
-        }
-
-        if (style is DesktopIconGlow.ClickBurstStyle.Sparks or DesktopIconGlow.ClickBurstStyle.RingAndSparks)
-        {
-            for (int i = 0; i < SparkCount; i++)
-            {
-                double angle = i * 360.0 / SparkCount;
-                double rad   = angle * Math.PI / 180;
-                var move  = new CompositeTransform { Rotation = angle };
-                var spark = new Rectangle
-                {
-                    Width = SparkLength, Height = SparkThickness,
-                    RadiusX = 1, RadiusY = 1,
-                    Fill = new SolidColorBrush(_color),
-                    RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
-                    RenderTransform = move,
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(spark, x - SparkLength / 2);
-                Canvas.SetTop(spark, y - SparkThickness / 2);
-                parts.Add(spark);
-                board.Children.Add(Animate(move, "TranslateX", 0, Math.Cos(rad) * size / 2, duration, ease));
-                board.Children.Add(Animate(move, "TranslateY", 0, Math.Sin(rad) * size / 2, duration, ease));
-                board.Children.Add(Animate(spark, "Opacity", 1, 0, duration, null));
-            }
-        }
-
-        foreach (var part in parts) PreviewCanvas.Children.Add(part);
-        board.Completed += (_, _) =>
-        {
-            foreach (var part in parts) PreviewCanvas.Children.Remove(part);
+            Bitmap  = new FxBitmap(side),
+            Image   = new Image { Width = side, Height = side, Stretch = Stretch.Fill, IsHitTestVisible = false },
+            StartMs = Environment.TickCount64,
+            Spin    = (++_burstCounter * BurstSpinStep) % 1f,
         };
-        board.Begin();
+        burst.Image.Source = burst.Bitmap.Bitmap;
+        Canvas.SetLeft(burst.Image, x - side / 2.0);
+        Canvas.SetTop(burst.Image, y - side / 2.0);
+        PreviewCanvas.Children.Add(burst.Image);
+        _previewBursts.Add(burst);
+        DrawPreviewBursts();
+        _previewTimer.Start();
     }
 
-    private static DoubleAnimation Animate(DependencyObject target, string property,
-        double from, double to, Duration duration, EasingFunctionBase? ease)
+    private unsafe void DrawPreviewBursts()
     {
-        var anim = new DoubleAnimation { From = from, To = to, Duration = duration, EasingFunction = ease };
-        Storyboard.SetTarget(anim, target);
-        Storyboard.SetTargetProperty(anim, property);
-        return anim;
+        var style = Enum.TryParse(SelectedTag(ClickStyleBox), out DesktopIconGlow.ClickBurstStyle s)
+            ? s : DesktopIconGlow.ClickBurstStyle.RingAndSparks;
+        double duration = ClickDurationSlider.Value;
+        long now = Environment.TickCount64;
+
+        for (int i = _previewBursts.Count - 1; i >= 0; i--)
+        {
+            var b = _previewBursts[i];
+            float p = (float)((now - b.StartMs) / duration);
+            if (p >= 1f)
+            {
+                PreviewCanvas.Children.Remove(b.Image);
+                _previewBursts.RemoveAt(i);
+                continue;
+            }
+            fixed (uint* buf = b.Bitmap.Pixels)
+                DesktopFxPainter.PaintBurst(buf, b.Bitmap.Size, style,
+                    b.Bitmap.Size / 2 - DesktopFxPainter.BurstPadding, _color.R, _color.G, _color.B, p, b.Spin);
+            b.Bitmap.Publish();
+        }
+        if (_previewBursts.Count == 0) _previewTimer.Stop();
     }
 
     private void PreviewBurst_Click(object sender, RoutedEventArgs e)
@@ -155,6 +138,9 @@ public sealed partial class ClickBurstPage : Page
             "Tap"     => (DesktopIconGlow.ClickBurstStyle.Ring,          32, 300),
             "Splash"  => (DesktopIconGlow.ClickBurstStyle.RingAndSparks, 100, 700),
             "Sparkle" => (DesktopIconGlow.ClickBurstStyle.Sparks,        64, 550),
+            "Drop"    => (DesktopIconGlow.ClickBurstStyle.Ripple,        72, 900),
+            "Party"   => (DesktopIconGlow.ClickBurstStyle.Confetti,      80, 1000),
+            "Firework"=> (DesktopIconGlow.ClickBurstStyle.Firework,      96, 1100),
             _         => (DesktopIconGlow.ClickBurstStyle.RingAndSparks,
                           DesktopFxSettings.DefaultClickSize, DesktopFxSettings.DefaultClickDurationMs),
         };

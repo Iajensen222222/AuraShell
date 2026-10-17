@@ -18,7 +18,10 @@ public sealed partial class DesktopFxPage : Page
     private bool _loaded = false;
 
     private static readonly Color DefaultGlowColor = Color.FromArgb(255, 0x00, 0x78, 0xD4);  // DesktopIconGlow's default
-    private const double ThumbHaloSolidUntil = 0.4;
+    // Overview thumbnail: a small icon box with the glow drawn by the real painter.
+    private const int ThumbIconBox = 24;
+    private const int ThumbMargin  = 10;
+    private const int ThumbCorner  = 4;
 
     public DesktopFxPage()
     {
@@ -36,7 +39,7 @@ public sealed partial class DesktopFxPage : Page
 
         var color = DesktopFxSettings.GetColor() is var (r, g, b)
             ? Color.FromArgb(255, r, g, b) : DefaultGlowColor;
-        GlowThumbHalo.Fill    = HoverGlowPage.MakeHaloBrush(color, ThumbHaloSolidUntil);
+        DrawGlowThumb(color);
         ClickThumbRing.Stroke = new SolidColorBrush(color);
         GlowSummary.Text  = DescribeGlow();
         ClickSummary.Text = DescribeClick();
@@ -47,31 +50,65 @@ public sealed partial class DesktopFxPage : Page
         if (DesktopGlow is { } dg) DesktopFxSettings.ApplyTo(dg);
     }
 
+    private unsafe void DrawGlowThumb(Color color)
+    {
+        var look = new DesktopFxPainter.GlowLook(color.R, color.G, color.B, 1f, ThumbMargin, ThumbCorner,
+            DesktopFxSettings.GetEnum(DesktopFxSettings.GlowStyleKey, DesktopIconGlow.HoverGlowStyle.Solid),
+            DesktopFxSettings.GetEnum(DesktopFxSettings.GlowShapeKey, DesktopIconGlow.GlowShape.SoftEdge),
+            DesktopFxSettings.DefaultCycleSeconds);
+        var bmp = new FxBitmap(ThumbIconBox + 2 * ThumbMargin);
+        fixed (uint* buf = bmp.Pixels)
+            DesktopFxPainter.PaintGlow(buf, bmp.Size, bmp.Size, look, 0);
+        bmp.Publish();
+        GlowThumb.Source = bmp.Bitmap;
+    }
+
+    internal static string StyleName(DesktopIconGlow.HoverGlowStyle style) => style switch
+    {
+        DesktopIconGlow.HoverGlowStyle.ColorCycle  => "Color cycle",
+        DesktopIconGlow.HoverGlowStyle.Pulse       => "Pulse",
+        DesktopIconGlow.HoverGlowStyle.RainbowRing => "Rainbow ring",
+        DesktopIconGlow.HoverGlowStyle.Orbit       => "Orbiting light",
+        DesktopIconGlow.HoverGlowStyle.Flicker     => "Candle flicker",
+        _                                          => "Solid color",
+    };
+
+    internal static string ShapeName(DesktopIconGlow.GlowShape shape) => shape switch
+    {
+        DesktopIconGlow.GlowShape.Neon      => "Neon outline",
+        DesktopIconGlow.GlowShape.RoundHalo => "Round halo",
+        DesktopIconGlow.GlowShape.Backlight => "Backlight",
+        _                                   => "Soft edge",
+    };
+
+    internal static string BurstName(DesktopIconGlow.ClickBurstStyle style) => style switch
+    {
+        DesktopIconGlow.ClickBurstStyle.Ring     => "Ring",
+        DesktopIconGlow.ClickBurstStyle.Sparks   => "Sparks",
+        DesktopIconGlow.ClickBurstStyle.Ripple   => "Ripple",
+        DesktopIconGlow.ClickBurstStyle.Rays     => "Rays",
+        DesktopIconGlow.ClickBurstStyle.Confetti => "Confetti",
+        DesktopIconGlow.ClickBurstStyle.Firework => "Firework",
+        _                                        => "Ring and sparks",
+    };
+
     private static string DescribeGlow()
     {
-        string style = DesktopFxSettings.GetEnum(DesktopFxSettings.GlowStyleKey,
-            DesktopIconGlow.HoverGlowStyle.Solid) switch
-        {
-            DesktopIconGlow.HoverGlowStyle.ColorCycle => "Color cycle",
-            DesktopIconGlow.HoverGlowStyle.Pulse      => "Pulse",
-            _                                         => "Solid color",
-        };
+        string style = StyleName(DesktopFxSettings.GetEnum(DesktopFxSettings.GlowStyleKey,
+            DesktopIconGlow.HoverGlowStyle.Solid));
+        string shape = ShapeName(DesktopFxSettings.GetEnum(DesktopFxSettings.GlowShapeKey,
+            DesktopIconGlow.GlowShape.SoftEdge));
         string color = AppSettings.Get(DesktopFxSettings.ColorKey) is string hex && hex.Length == 6
             ? $"#{hex}" : "Default color";
         int size       = DesktopFxSettings.GetInt(DesktopFxSettings.GlowRadiusKey, DesktopFxSettings.DefaultGlowRadius, 4, 40);
         int brightness = DesktopFxSettings.GetInt(DesktopFxSettings.IntensityKey, DesktopFxSettings.DefaultIntensityPct, 0, 100);
-        return $"{style} · {color} · {Fmt.Px(size)} · {Fmt.Pct(brightness)} bright";
+        return $"{shape} · {style} · {color} · {Fmt.Px(size)} · {Fmt.Pct(brightness)} bright";
     }
 
     private static string DescribeClick()
     {
-        string style = DesktopFxSettings.GetEnum(DesktopFxSettings.ClickStyleKey,
-            DesktopIconGlow.ClickBurstStyle.RingAndSparks) switch
-        {
-            DesktopIconGlow.ClickBurstStyle.Ring   => "Ring",
-            DesktopIconGlow.ClickBurstStyle.Sparks => "Sparks",
-            _                                      => "Ring and sparks",
-        };
+        string style = BurstName(DesktopFxSettings.GetEnum(DesktopFxSettings.ClickStyleKey,
+            DesktopIconGlow.ClickBurstStyle.RingAndSparks));
         int size = DesktopFxSettings.GetInt(DesktopFxSettings.ClickSizeKey, DesktopFxSettings.DefaultClickSize, 20, 120);
         int ms   = DesktopFxSettings.GetInt(DesktopFxSettings.ClickDurationKey, DesktopFxSettings.DefaultClickDurationMs, 200, 1200);
         string where = DesktopFxSettings.GetBool(DesktopFxSettings.ClickDesktopOnlyKey, true) ? "desktop only" : "everywhere";

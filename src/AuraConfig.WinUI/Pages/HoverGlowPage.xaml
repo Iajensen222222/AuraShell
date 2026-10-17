@@ -43,7 +43,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Style="{StaticResource EffectPreviewStyle}">
-                    <Canvas x:Name="PreviewCanvas" Width="264" Height="132" />
+                    <Canvas x:Name="PreviewCanvas" Width="280" Height="150" />
                 </Border>
 
                 <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
@@ -51,15 +51,48 @@
                                Text="Live preview. Point at an icon to see the glow fade in, then fine-tune it below. Start from a look:" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Content="Subtle"    Tag="Subtle"    Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
-                        <Button Content="Bold"      Tag="Bold"      Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Neon"      Tag="Neon"      Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Backlight" Tag="Backlight" Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Content="Rainbow"   Tag="Rainbow"   Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
-                        <Button Content="Breathing" Tag="Breathing" Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Orbit"     Tag="Orbit"     Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Candle"    Tag="Candle"    Click="Look_Click" IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
 
+            <!-- ── SHAPE ──────────────────────────────────────────────────── -->
+            <TextBlock Text="SHAPE" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE91F;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow shape" />
+                        <TextBlock x:Name="ShapeDescription" Style="{StaticResource SettingDescriptionTextStyle}" />
+                    </StackPanel>
+                    <ComboBox x:Name="GlowShapeBox" Grid.Column="2"
+                              MinWidth="180" Margin="16,0,0,0"
+                              VerticalAlignment="Center"
+                              AutomationProperties.Name="Glow shape"
+                              IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"
+                              SelectionChanged="GlowShapeBox_Changed">
+                        <ComboBoxItem Content="Soft edge"    Tag="SoftEdge" IsSelected="True" />
+                        <ComboBoxItem Content="Neon outline" Tag="Neon" />
+                        <ComboBoxItem Content="Round halo"   Tag="RoundHalo" />
+                        <ComboBoxItem Content="Backlight"    Tag="Backlight" />
+                    </ComboBox>
+                </Grid>
+            </Border>
+
             <!-- ── COLOR ──────────────────────────────────────────────────── -->
-            <TextBlock Text="COLOR" Style="{StaticResource SectionHeaderTextStyle}" />
+            <TextBlock Text="COLOR AND ANIMATION" Style="{StaticResource SectionHeaderTextStyle}" />
 
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="14">
@@ -113,7 +146,7 @@
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Glow style" />
                             <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
-                                       Text="Keep one color, slowly cycle through the rainbow, or gently pulse." />
+                                       Text="Keep one color, or make it cycle, pulse, spin as a rainbow, orbit or flicker like a candle." />
                         </StackPanel>
                         <ComboBox x:Name="GlowStyleBox" Grid.Column="2"
                                   MinWidth="180" Margin="16,0,0,0"
@@ -124,6 +157,9 @@
                             <ComboBoxItem Content="Solid color" Tag="Solid" IsSelected="True" />
                             <ComboBoxItem Content="Color cycle" Tag="ColorCycle" />
                             <ComboBoxItem Content="Pulse" Tag="Pulse" />
+                            <ComboBoxItem Content="Rainbow ring" Tag="RainbowRing" />
+                            <ComboBoxItem Content="Orbiting light" Tag="Orbit" />
+                            <ComboBoxItem Content="Candle flicker" Tag="Flicker" />
                         </ComboBox>
                     </Grid>
 
@@ -139,7 +175,7 @@
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Cycle length" />
                                 <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
-                                           Text="Time for one full color cycle or one pulse." />
+                                           Text="Time for one full cycle, pulse, spin or orbit." />
                             </StackPanel>
                             <TextBlock Grid.Column="1" Style="{StaticResource SliderValueTextStyle}"
                                        Text="{x:Bind local:Fmt.Seconds(CycleSecondsSlider.Value), Mode=OneWay}" />
@@ -246,7 +282,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Reset this effect" />
                         <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
-                                   Text="Put style, size, brightness and fade speed back to default. Your color stays." />
+                                   Text="Put shape, style, size, brightness and fade speed back to default. Your color stays." />
                     </StackPanel>
                     <Button Grid.Column="2" Content="Reset" Margin="16,0,0,0"
                             IsEnabled="{x:Bind GlowToggle.IsOn, Mode=OneWay}"

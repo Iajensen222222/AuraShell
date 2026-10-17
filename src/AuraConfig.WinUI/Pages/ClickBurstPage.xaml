@@ -65,6 +65,11 @@
                         <Button Content="Sparkle"   Tag="Sparkle" Click="Look_Click" IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Water drop" Tag="Drop"     Click="Look_Click" IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Party"      Tag="Party"    Click="Look_Click" IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}" />
+                        <Button Content="Firework"   Tag="Firework" Click="Look_Click" IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Content="Play on screen"
                                 ToolTipService.ToolTip="Play the burst at the mouse pointer now"
                                 IsEnabled="{x:Bind ClickToggle.IsOn, Mode=OneWay}"
@@ -92,7 +97,7 @@
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Burst style" />
                             <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
-                                       Text="An expanding ring, sparks flying outward, or both." />
+                                       Text="Rings, sparks, ripples, light rays, confetti or a small firework." />
                         </StackPanel>
                         <ComboBox x:Name="ClickStyleBox" Grid.Column="2"
                                   MinWidth="180" Margin="16,0,0,0"
@@ -103,6 +108,10 @@
                             <ComboBoxItem Content="Ring" Tag="Ring" />
                             <ComboBoxItem Content="Sparks" Tag="Sparks" />
                             <ComboBoxItem Content="Ring and sparks" Tag="RingAndSparks" IsSelected="True" />
+                            <ComboBoxItem Content="Ripple" Tag="Ripple" />
+                            <ComboBoxItem Content="Light rays" Tag="Rays" />
+                            <ComboBoxItem Content="Confetti" Tag="Confetti" />
+                            <ComboBoxItem Content="Firework" Tag="Firework" />
                         </ComboBox>
                     </Grid>
 

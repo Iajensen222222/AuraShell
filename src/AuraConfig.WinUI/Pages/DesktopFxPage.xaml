@@ -33,7 +33,7 @@
                             </Grid.ColumnDefinitions>
                             <Border Style="{StaticResource EffectThumbStyle}">
                                 <Grid>
-                                    <Ellipse x:Name="GlowThumbHalo" Width="44" Height="44" />
+                                    <Image x:Name="GlowThumb" Width="44" Height="44" Stretch="Fill" />
                                     <FontIcon Glyph="&#xE8B7;" FontSize="20" Foreground="#F2C94C" />
                                 </Grid>
                             </Border>

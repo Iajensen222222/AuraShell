@@ -96,6 +96,10 @@ public sealed class DesktopIconGlow : IDisposable
     [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr hwnd, uint msg, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr hwnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
 
+    // Backlight: render the desktop ListView into our bitmap to copy the hovered icon
+    [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
+    [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr hwnd, out RECT rect);
+
     // ── Structs ────────────────────────────────────────────────────────────
 
     [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
@@ -194,27 +198,20 @@ public sealed class DesktopIconGlow : IDisposable
     const int  DebounceMs      = 50;    // hover debounce
     const int  RefreshInterval = 125;   // iterations between icon re-enumeration (~2 s at 16 ms)
 
-    // Glow styles
-    const float CycleMinSaturation = 0.8f;   // keeps color cycling vivid even from a pastel base color
-    const float CycleMinValue      = 0.8f;
-    const float PulseMinLevel      = 0.35f;  // dimmest point of the pulse, as a fraction of full alpha
-
-    // Click burst
+    // Click burst (drawing constants live in DesktopFxPainter)
     const int   MaxBursts          = 6;      // concurrent bursts; the oldest is recycled beyond this
-    const int   BurstPadding       = 8;      // px around the burst radius for spark dots and ring thickness
-    const float BurstRingThickness = 3.5f;
-    const float BurstSparkRadius   = 3.5f;
-    const int   BurstSparkCount    = 8;
-    const float BurstSparkReach    = 1.1f;   // sparks travel slightly past the ring
-    const float BurstTrailRatio    = 0.75f;  // trailing spark dot position, as a fraction of the lead dot's
-    const float BurstFlashPortion  = 0.25f;  // share of the burst during which the center flash shows
-    const float BurstFlashRadius   = 6f;
     const float BurstSpinStep      = 0.37f;  // spark angle offset between consecutive bursts (fraction of a turn)
+
+    // Backlight: PrintWindow without PW_RENDERFULLCONTENT renders the icons with real alpha.
+    const uint PW_CLIENTONLY_ALPHA = 0;
 
     // ── Effect options ─────────────────────────────────────────────────────
 
-    public enum HoverGlowStyle { Solid, ColorCycle, Pulse }
-    public enum ClickBurstStyle { Ring, Sparks, RingAndSparks }
+    // How the glow's color and brightness move. Values are saved by name: only append.
+    public enum HoverGlowStyle { Solid, ColorCycle, Pulse, RainbowRing, Orbit, Flicker }
+    // Where the glow is drawn around (or behind) the icon.
+    public enum GlowShape { SoftEdge, Neon, RoundHalo, Backlight }
+    public enum ClickBurstStyle { Ring, Sparks, RingAndSparks, Ripple, Rays, Confetti, Firework }
 
     // ── Per-slot GDI state ─────────────────────────────────────────────────
 
@@ -229,6 +226,8 @@ public sealed class DesktopIconGlow : IDisposable
         public float Target;      // target alpha
         public bool  NeedPaint;   // bitmap pixels must be recomputed
         public bool  WasVisible;  // tracks fade-in edge for HWND_TOP raise
+        public uint[]? Icon;      // Backlight: copy of the icon (premultiplied BGRA), drawn over the glow
+        public int IconX, IconY, IconW, IconH;   // where Icon sits in this slot's bitmap
     }
 
     // One click-burst overlay window, reused across clicks.
@@ -259,6 +258,7 @@ public sealed class DesktopIconGlow : IDisposable
     private volatile bool _hideIconLabels = false;
 
     private volatile HoverGlowStyle _glowStyle = HoverGlowStyle.Solid;
+    private volatile GlowShape _glowShape = GlowShape.SoftEdge;
     private volatile float _cycleSeconds = 6f;
 
     private volatile bool _clickEnabled     = true;
@@ -277,7 +277,12 @@ public sealed class DesktopIconGlow : IDisposable
     private IntPtr _hListView    = IntPtr.Zero;
     private IntPtr _hExplorerProc = IntPtr.Zero;   // Explorer.exe process handle for cross-process LVM
 
-    private readonly List<RECT> _iconRects = new();
+    private readonly List<RECT> _iconRects = new();        // overlay window rects (icon box + glow), screen
+    private readonly List<RECT> _iconClientRects = new();  // LVIR_ICON rects, ListView client coords
+
+    // Backlight: one ListView-sized DIB that PrintWindow renders into.
+    private IntPtr _capDc, _capBmp, _capBits;
+    private int    _capW, _capH;
     private readonly List<Slot> _slots     = new();
 
     private int  _hoveredIdx   = -1;
@@ -341,6 +346,13 @@ public sealed class DesktopIconGlow : IDisposable
     {
         get => _glowStyle;
         set { _glowStyle = value; _colorDirty = true; }
+    }
+
+    // SoftEdge, Neon, RoundHalo or Backlight (glow behind the icon).
+    public GlowShape Shape
+    {
+        get => _glowShape;
+        set { _glowShape = value; _colorDirty = true; }
     }
 
     // Seconds for one full color cycle or one pulse (1–20).
@@ -657,6 +669,7 @@ public sealed class DesktopIconGlow : IDisposable
             _slots.Clear();
             foreach (var b in _bursts) FreeBurst(b);
             _bursts.Clear();
+            FreeCapture();
             _iconRects.Clear();
             CloseExplorerHandle();
         }
@@ -766,6 +779,7 @@ public sealed class DesktopIconGlow : IDisposable
         count = Math.Clamp(count, 0, 512);
 
         _iconRects.Clear();
+        _iconClientRects.Clear();
 
         if (count > 0)
         {
@@ -795,6 +809,7 @@ public sealed class DesktopIconGlow : IDisposable
                         // Read the result back into our process
                         ReadProcessMemory(_hExplorerProc, remoteRc, localBuf, (uint)rcSize, out _);
                         RECT rc = Marshal.PtrToStructure<RECT>(localBuf);
+                        _iconClientRects.Add(rc);
 
                         // Convert from SysListView32 client coords → screen coords
                         MapWindowPoints(_hListView, IntPtr.Zero, ref rc, 2);
@@ -988,47 +1003,12 @@ public sealed class DesktopIconGlow : IDisposable
     {
         if (s.Pixels == IntPtr.Zero) return;
         uint* buf = (uint*)s.Pixels.ToPointer();
-        int w = s.W, h = s.H;
-        new Span<uint>(buf, w * h).Clear();
+        var look = CurrentLook();
+        DesktopFxPainter.PaintGlow(buf, s.W, s.H, look, Environment.TickCount64);
 
-        var (r, g, b) = CurrentGlowColor();
-        float intensity = _intensity;
-        float margin = _glowRadius;
-
-        // Rounded-rect SDF: the icon occupies the centre of the square overlay.
-        // _glowRadius pixels of glow surround it on every side.
-        // The inner boundary is a rounded rectangle (corner radius = _cornerRadius)
-        // so corners of the glow appear soft rather than chamfered.
-        float cx = w / 2f, cy = h / 2f;
-        float hw = cx - margin, hh = cy - margin;   // icon half-extents
-        float cr = Math.Min(_cornerRadius, Math.Min(hw, hh));
-
-        for (int py = 0; py < h; py++)
-        {
-            for (int px = 0; px < w; px++)
-            {
-                // Rounded-rect signed distance: negative = inside icon (transparent)
-                float qdx = MathF.Abs(px - cx) - (hw - cr);
-                float qdy = MathF.Abs(py - cy) - (hh - cr);
-                float dist = MathF.Sqrt(MathF.Max(qdx, 0) * MathF.Max(qdx, 0)
-                                      + MathF.Max(qdy, 0) * MathF.Max(qdy, 0)) - cr;
-
-                if (dist < 0) continue;           // inside icon — leave transparent
-                if (dist >= margin) continue;     // outside glow ring
-
-                // Quadratic falloff: full brightness at icon edge, zero at outer rim
-                float t    = dist / margin;
-                float pixA = (1f - t) * (1f - t) * intensity;
-                if (pixA < 0.004f) continue;
-
-                // Premultiplied BGRA (uint32 LE: A<<24 | R<<16 | G<<8 | B)
-                byte a  = (byte)(pixA * 255f);
-                byte pb = (byte)(b * pixA);
-                byte pg = (byte)(g * pixA);
-                byte pr = (byte)(r * pixA);
-                buf[py * w + px] = (uint)((a << 24) | (pr << 16) | (pg << 8) | pb);
-            }
-        }
+        // Backlight: the glow covers the icon, so draw the icon back on top of it.
+        if (look.Shape == GlowShape.Backlight && s.Icon is { } icon)
+            DesktopFxPainter.DrawOver(buf, s.W, s.H, icon, s.IconW, s.IconH, s.IconX, s.IconY);
     }
 
     private static void FreeSlot(Slot s)
@@ -1072,7 +1052,11 @@ public sealed class DesktopIconGlow : IDisposable
                 _hoveredIdx = hitIdx;
                 _debounceStart = 0;
                 if (prev    >= 0 && prev    < _slots.Count) _slots[prev].Target    = 0f;
-                if (hitIdx  >= 0 && hitIdx  < _slots.Count) _slots[hitIdx].Target  = 1f;
+                if (hitIdx  >= 0 && hitIdx  < _slots.Count)
+                {
+                    if (_glowShape == GlowShape.Backlight) CaptureIcon(hitIdx);
+                    _slots[hitIdx].Target = 1f;
+                }
             }
         }
         else
@@ -1096,7 +1080,7 @@ public sealed class DesktopIconGlow : IDisposable
             if (MathF.Abs(diff) < 0.005f)
             {
                 if (cur != tgt) s.Alpha = tgt;
-                else if (style == HoverGlowStyle.Solid || cur <= 0f) continue;
+                else if (cur <= 0f || style == HoverGlowStyle.Solid) continue;
             }
             else
             {
@@ -1104,7 +1088,7 @@ public sealed class DesktopIconGlow : IDisposable
             }
 
             // Animated styles redraw every frame while the glow is visible; idle slots cost nothing.
-            if (style == HoverGlowStyle.ColorCycle && s.Alpha > 0f) PaintBitmap(s);
+            if (DesktopFxPainter.IsAnimatedPaint(style) && s.Alpha > 0f) PaintBitmap(s);
             Composite(i);
         }
     }
@@ -1122,91 +1106,13 @@ public sealed class DesktopIconGlow : IDisposable
         }
     }
 
-    // ── Glow color and pulse ───────────────────────────────────────────────
+    // ── Glow look ──────────────────────────────────────────────────────────
 
-    // Position in the current color cycle or pulse, in [0,1).
-    private float CyclePhase()
-    {
-        long periodMs = (long)(_cycleSeconds * 1000f);
-        return (Environment.TickCount64 % periodMs) / (float)periodMs;
-    }
+    private DesktopFxPainter.GlowLook CurrentLook() => new(
+        _r, _g, _b, _intensity, _glowRadius, _cornerRadius, _glowStyle, _glowShape, _cycleSeconds);
 
     private (byte r, byte g, byte b) CurrentGlowColor()
-    {
-        byte r = _r, g = _g, b = _b;
-        if (_glowStyle != HoverGlowStyle.ColorCycle) return (r, g, b);
-
-        RgbToHsv(r, g, b, out float h, out float sat, out float val);
-        h   = (h + CyclePhase()) % 1f;
-        sat = MathF.Max(sat, CycleMinSaturation);
-        val = MathF.Max(val, CycleMinValue);
-        return HsvToRgb(h, sat, val);
-    }
-
-    // Multiplier on the glow's alpha: 1 except in Pulse style, where it breathes
-    // between PulseMinLevel and 1.
-    private float PulseLevel()
-    {
-        if (_glowStyle != HoverGlowStyle.Pulse) return 1f;
-        float wave = 0.5f * (1f + MathF.Cos(CyclePhase() * MathF.Tau));
-        return PulseMinLevel + (1f - PulseMinLevel) * wave;
-    }
-
-    /// <summary>
-    /// Glow color and alpha multiplier for <paramref name="style"/> at <paramref name="nowMs"/>,
-    /// matching what the real glow shows. Used by the settings page preview.
-    /// </summary>
-    public static (byte r, byte g, byte b, float level) PreviewFrame(
-        byte r, byte g, byte b, HoverGlowStyle style, int cycleSeconds, long nowMs)
-    {
-        long periodMs = Math.Max(1, cycleSeconds) * 1000L;
-        float phase   = (nowMs % periodMs) / (float)periodMs;
-
-        if (style == HoverGlowStyle.ColorCycle)
-        {
-            RgbToHsv(r, g, b, out float h, out float sat, out float val);
-            (r, g, b) = HsvToRgb((h + phase) % 1f, MathF.Max(sat, CycleMinSaturation), MathF.Max(val, CycleMinValue));
-        }
-
-        float level = style == HoverGlowStyle.Pulse
-            ? PulseMinLevel + (1f - PulseMinLevel) * 0.5f * (1f + MathF.Cos(phase * MathF.Tau))
-            : 1f;
-        return (r, g, b, level);
-    }
-
-    private static void RgbToHsv(byte r, byte g, byte b, out float h, out float s, out float v)
-    {
-        float rf = r / 255f, gf = g / 255f, bf = b / 255f;
-        float max = MathF.Max(rf, MathF.Max(gf, bf));
-        float min = MathF.Min(rf, MathF.Min(gf, bf));
-        float d   = max - min;
-        v = max;
-        s = max <= 0f ? 0f : d / max;
-        if (d <= 0f) { h = 0f; return; }
-        if (max == rf)      h = (gf - bf) / d;
-        else if (max == gf) h = (bf - rf) / d + 2f;
-        else                h = (rf - gf) / d + 4f;
-        h /= 6f;
-        if (h < 0f) h += 1f;
-    }
-
-    private static (byte r, byte g, byte b) HsvToRgb(float h, float s, float v)
-    {
-        float c  = v * s;
-        float hp = h * 6f;
-        float x  = c * (1f - MathF.Abs(hp % 2f - 1f));
-        float m  = v - c;
-        var (r, g, b) = (int)hp switch
-        {
-            0 => (c, x, 0f),
-            1 => (x, c, 0f),
-            2 => (0f, c, x),
-            3 => (0f, x, c),
-            4 => (x, 0f, c),
-            _ => (c, 0f, x),
-        };
-        return ((byte)((r + m) * 255f), (byte)((g + m) * 255f), (byte)((b + m) * 255f));
-    }
+        => DesktopFxPainter.GlowColor(CurrentLook(), Environment.TickCount64);
 
     // ── Click burst ────────────────────────────────────────────────────────
 
@@ -1240,7 +1146,7 @@ public sealed class DesktopIconGlow : IDisposable
 
     private void SpawnBurst(int cx, int cy)
     {
-        int size = 2 * (_clickSize + BurstPadding);
+        int size = DesktopFxPainter.BurstBitmapSize(_clickSize);
 
         Burst? burst = null;
         foreach (var b in _bursts)
@@ -1332,88 +1238,11 @@ public sealed class DesktopIconGlow : IDisposable
         finally { ReleaseDC(IntPtr.Zero, screenDC); }
     }
 
-    // Draws the burst at progress p in [0,1): an expanding ring and/or sparks flying
-    // outward, both fading as they go, plus a brief flash at the click point.
     private unsafe void PaintBurst(Burst b, float p)
     {
-        uint* buf = (uint*)b.Pixels.ToPointer();
-        int size = b.Size;
-        new Span<uint>(buf, size * size).Clear();
-
         var (r, g, bl) = CurrentGlowColor();
-        float c     = size / 2f;
-        float eased = 1f - (1f - p) * (1f - p) * (1f - p);   // ease-out cubic
-        float fade  = 1f - p;
-        float reach = _clickSize * eased;
-        ClickBurstStyle style = _clickStyle;
-
-        if (p < BurstFlashPortion)
-        {
-            float fp = p / BurstFlashPortion;
-            DrawDot(buf, size, c, c, BurstFlashRadius * (1f - fp) + 1f, 1f - fp, r, g, bl);
-        }
-
-        if (style != ClickBurstStyle.Sparks)
-        {
-            float thick = BurstRingThickness * (1f - 0.6f * p) + 1f;
-            float outer = reach + thick;
-            for (int py = 0; py < size; py++)
-            {
-                float dy = py + 0.5f - c;
-                for (int px = 0; px < size; px++)
-                {
-                    float dx = px + 0.5f - c;
-                    float d  = MathF.Sqrt(dx * dx + dy * dy);
-                    if (d > outer) continue;
-                    float edge = 1f - MathF.Abs(d - reach) / thick;
-                    if (edge <= 0f) continue;
-                    Blend(buf, py * size + px, edge * fade, r, g, bl);
-                }
-            }
-        }
-
-        if (style != ClickBurstStyle.Ring)
-        {
-            float dist = reach * BurstSparkReach;
-            float rad  = BurstSparkRadius * (1f - 0.7f * p) + 0.75f;
-            for (int k = 0; k < BurstSparkCount; k++)
-            {
-                float ang = (k / (float)BurstSparkCount + b.Spin) * MathF.Tau;
-                float ux = MathF.Cos(ang), uy = MathF.Sin(ang);
-                DrawDot(buf, size, c + ux * dist, c + uy * dist, rad, fade, r, g, bl);
-                // A smaller trailing dot gives each spark a short streak.
-                DrawDot(buf, size, c + ux * dist * BurstTrailRatio, c + uy * dist * BurstTrailRatio,
-                    rad * 0.6f, fade * 0.6f, r, g, bl);
-            }
-        }
-    }
-
-    private static unsafe void DrawDot(uint* buf, int size, float cx, float cy, float radius,
-        float alpha, byte r, byte g, byte b)
-    {
-        int x0 = Math.Max(0, (int)(cx - radius - 1)), x1 = Math.Min(size - 1, (int)(cx + radius + 1));
-        int y0 = Math.Max(0, (int)(cy - radius - 1)), y1 = Math.Min(size - 1, (int)(cy + radius + 1));
-        for (int py = y0; py <= y1; py++)
-        {
-            float dy = py + 0.5f - cy;
-            for (int px = x0; px <= x1; px++)
-            {
-                float dx = px + 0.5f - cx;
-                float cover = radius + 0.5f - MathF.Sqrt(dx * dx + dy * dy);   // 1 px anti-aliased edge
-                if (cover <= 0f) continue;
-                Blend(buf, py * size + px, MathF.Min(cover, 1f) * alpha, r, g, b);
-            }
-        }
-    }
-
-    // Writes a premultiplied BGRA pixel, keeping whichever of old and new is more opaque.
-    private static unsafe void Blend(uint* buf, int idx, float a, byte r, byte g, byte b)
-    {
-        if (a <= 0f) return;
-        if (a > 1f) a = 1f;
-        byte a8 = (byte)(a * 255f);
-        if (a8 <= (byte)(buf[idx] >> 24)) return;
-        buf[idx] = (uint)((a8 << 24) | ((byte)(r * a) << 16) | ((byte)(g * a) << 8) | (byte)(b * a));
+        DesktopFxPainter.PaintBurst((uint*)b.Pixels.ToPointer(), b.Size, _clickStyle,
+            b.Size / 2 - DesktopFxPainter.BurstPadding, r, g, bl, p, b.Spin);
     }
 
     private static void CompositeBurst(Burst b)
@@ -1442,6 +1271,78 @@ public sealed class DesktopIconGlow : IDisposable
         if (b.Hwnd != IntPtr.Zero) { DestroyWindow(b.Hwnd);  b.Hwnd = IntPtr.Zero; }
         if (b.Hdc  != IntPtr.Zero) { DeleteDC(b.Hdc);        b.Hdc  = IntPtr.Zero; }
         if (b.Hbmp != IntPtr.Zero) { DeleteObject(b.Hbmp);   b.Hbmp = IntPtr.Zero; b.Pixels = IntPtr.Zero; }
+    }
+
+    // ── Backlight icon capture ─────────────────────────────────────────────
+    //
+    // The glow windows sit above the desktop, so a glow "behind" the icon is drawn over it
+    // and the icon is drawn back on top. PrintWindow without PW_RENDERFULLCONTENT makes the
+    // ListView paint itself (icons with real alpha, shortcut arrows included) into our
+    // bitmap; we keep the hovered icon's pixels. It costs ~30 ms, so it runs once per hover.
+
+    private unsafe void CaptureIcon(int i)
+    {
+        if (i >= _slots.Count || i >= _iconClientRects.Count || i >= _iconRects.Count) return;
+        if (!GetClientRect(_hListView, out RECT client)) return;
+        int w = client.Right, h = client.Bottom;
+        if (w <= 0 || h <= 0) return;
+
+        if (_capBits == IntPtr.Zero || _capW != w || _capH != h)
+        {
+            FreeCapture();
+            IntPtr screenDC = GetDC(IntPtr.Zero);
+            if (screenDC == IntPtr.Zero) return;
+            try
+            {
+                var bmi = new BITMAPINFOHEADER
+                {
+                    biSize = Marshal.SizeOf<BITMAPINFOHEADER>(), biWidth = w, biHeight = -h,
+                    biPlanes = 1, biBitCount = 32,
+                };
+                _capDc  = CreateCompatibleDC(screenDC);
+                _capBmp = _capDc != IntPtr.Zero
+                    ? CreateDIBSection(_capDc, ref bmi, 0, out _capBits, IntPtr.Zero, 0) : IntPtr.Zero;
+                if (_capBmp == IntPtr.Zero) { FreeCapture(); return; }
+                SelectObject(_capDc, _capBmp);
+                _capW = w; _capH = h;
+            }
+            finally { ReleaseDC(IntPtr.Zero, screenDC); }
+        }
+
+        uint* cap = (uint*)_capBits.ToPointer();
+        new Span<uint>(cap, w * h).Clear();
+        if (!PrintWindow(_hListView, _capDc, PW_CLIENTONLY_ALPHA))
+        {
+            Logger.Warn("DesktopIconGlow", "PrintWindow(desktop) failed: backlight shows without the icon on top");
+            return;
+        }
+
+        RECT ic = _iconClientRects[i];
+        int x0 = Math.Clamp(ic.Left, 0, w), y0 = Math.Clamp(ic.Top, 0, h);
+        int iw = Math.Clamp(ic.Right, 0, w) - x0;
+        int ih = Math.Clamp(ic.Bottom, 0, h) - y0;
+        if (iw <= 0 || ih <= 0) return;
+
+        var icon = new uint[iw * ih];
+        for (int y = 0; y < ih; y++)
+            new ReadOnlySpan<uint>(cap + (y0 + y) * w + x0, iw).CopyTo(icon.AsSpan(y * iw, iw));
+
+        // Place it in the slot bitmap: both rects are in screen coords once mapped.
+        RECT onScreen = new() { Left = x0, Top = y0, Right = x0 + iw, Bottom = y0 + ih };
+        MapWindowPoints(_hListView, IntPtr.Zero, ref onScreen, 2);
+        Slot s = _slots[i];
+        s.Icon  = icon;
+        s.IconW = iw; s.IconH = ih;
+        s.IconX = onScreen.Left - _iconRects[i].Left;
+        s.IconY = onScreen.Top  - _iconRects[i].Top;
+        PaintBitmap(s);
+    }
+
+    private void FreeCapture()
+    {
+        if (_capDc  != IntPtr.Zero) { DeleteDC(_capDc);       _capDc  = IntPtr.Zero; }
+        if (_capBmp != IntPtr.Zero) { DeleteObject(_capBmp);  _capBmp = IntPtr.Zero; }
+        _capBits = IntPtr.Zero; _capW = _capH = 0;
     }
 
     // ── Z-order ────────────────────────────────────────────────────────────
@@ -1509,7 +1410,7 @@ public sealed class DesktopIconGlow : IDisposable
         if (s.Hwnd == IntPtr.Zero || s.Hdc == IntPtr.Zero) return;
 
         RECT rc  = _iconRects[i];
-        byte a8  = (byte)(s.Alpha * PulseLevel() * 255f);
+        byte a8  = (byte)(s.Alpha * DesktopFxPainter.GlowLevel(_glowStyle, _cycleSeconds, Environment.TickCount64) * 255f);
         bool nowVisible = a8 > 0;
 
         // The moment a glow starts fading in, slot it directly above the desktop so it

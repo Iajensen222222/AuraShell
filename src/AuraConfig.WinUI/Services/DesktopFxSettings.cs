@@ -13,6 +13,7 @@ internal static class DesktopFxSettings
     public const string FadeSpeedKey      = "DesktopFxFadeSpeed";
     public const string LabelsVisibleKey  = "DesktopLabelsVisible";
     public const string GlowStyleKey      = "DesktopFxGlowStyle";
+    public const string GlowShapeKey      = "DesktopFxGlowShape";
     public const string CycleSecondsKey   = "DesktopFxCycleSeconds";
     public const string ClickEnabledKey   = "DesktopFxClickEnabled";
     public const string ClickStyleKey     = "DesktopFxClickStyle";
@@ -60,6 +61,7 @@ internal static class DesktopFxSettings
         dg.FadeSpeed      = GetInt(FadeSpeedKey, DefaultFadeSpeedPct, 20, 300) / 100f;
         dg.HideIconLabels = !GetBool(LabelsVisibleKey, true);
         dg.GlowStyle      = GetEnum(GlowStyleKey, DesktopIconGlow.HoverGlowStyle.Solid);
+        dg.Shape          = GetEnum(GlowShapeKey, DesktopIconGlow.GlowShape.SoftEdge);
         dg.CycleSeconds   = GetInt(CycleSecondsKey, DefaultCycleSeconds, 1, 20);
         dg.ClickBurstEnabled     = GetBool(ClickEnabledKey, true);
         dg.ClickBurstDesktopOnly = GetBool(ClickDesktopOnlyKey, true);
