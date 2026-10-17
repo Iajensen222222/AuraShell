@@ -1152,6 +1152,28 @@ public sealed class DesktopIconGlow : IDisposable
         return PulseMinLevel + (1f - PulseMinLevel) * wave;
     }
 
+    /// <summary>
+    /// Glow color and alpha multiplier for <paramref name="style"/> at <paramref name="nowMs"/>,
+    /// matching what the real glow shows. Used by the settings page preview.
+    /// </summary>
+    public static (byte r, byte g, byte b, float level) PreviewFrame(
+        byte r, byte g, byte b, HoverGlowStyle style, int cycleSeconds, long nowMs)
+    {
+        long periodMs = Math.Max(1, cycleSeconds) * 1000L;
+        float phase   = (nowMs % periodMs) / (float)periodMs;
+
+        if (style == HoverGlowStyle.ColorCycle)
+        {
+            RgbToHsv(r, g, b, out float h, out float sat, out float val);
+            (r, g, b) = HsvToRgb((h + phase) % 1f, MathF.Max(sat, CycleMinSaturation), MathF.Max(val, CycleMinValue));
+        }
+
+        float level = style == HoverGlowStyle.Pulse
+            ? PulseMinLevel + (1f - PulseMinLevel) * 0.5f * (1f + MathF.Cos(phase * MathF.Tau))
+            : 1f;
+        return (r, g, b, level);
+    }
+
     private static void RgbToHsv(byte r, byte g, byte b, out float h, out float s, out float v)
     {
         float rf = r / 255f, gf = g / 255f, bf = b / 255f;

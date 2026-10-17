@@ -259,6 +259,7 @@ public sealed partial class MainWindow : Window
 
         _paneMainItems   = mainItems;
         _paneFooterItems = footer;
+        ApplyUnfinishedPagesVisibility();
 
         // Select Dashboard as default
         SelectNavItem(mainItems, "dashboard");
@@ -269,6 +270,32 @@ public sealed partial class MainWindow : Window
     private StackPanel? _paneMainItems;
     private StackPanel? _paneFooterItems;
     private string _currentTag = "dashboard";
+
+    // Pages that are still in progress. They stay out of the sidebar unless the user turns on
+    // Settings > Show unfinished pages. Remove a tag here to make that page permanent again.
+    private static readonly HashSet<string> s_unfinishedPages = new() { "look", "schedule" };
+    public const string ShowUnfinishedPagesKey = "ShowUnfinishedPages";
+
+    public static bool ShowUnfinishedPages => AppSettings.Get(ShowUnfinishedPagesKey) == "1";
+
+    /// <summary>Shows or hides the unfinished pages in the sidebar (Settings page switch).</summary>
+    public void SetShowUnfinishedPages(bool show)
+    {
+        AppSettings.Set(ShowUnfinishedPagesKey, show ? "1" : "0");
+        ApplyUnfinishedPagesVisibility();
+    }
+
+    private void ApplyUnfinishedPagesVisibility()
+    {
+        var visibility = ShowUnfinishedPages ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var panel in new[] { _paneMainItems, _paneFooterItems })
+        {
+            if (panel is null) continue;
+            foreach (var child in panel.Children)
+                if (child is Button { Tag: string tag } btn && s_unfinishedPages.Contains(tag))
+                    btn.Visibility = visibility;
+        }
+    }
 
     private Button MakeNavItem(string glyph, string label, string tag)
     {
@@ -371,14 +398,18 @@ public sealed partial class MainWindow : Window
         _currentTag = tag;
         Logger.Info("Nav", $"Click → {tag}");
 
-        if (_paneMainItems   is not null) SelectNavItem(_paneMainItems,   tag);
-        if (_paneFooterItems is not null) SelectNavItem(_paneFooterItems, tag);
+        // An effect's own page lives under Desktop FX in the sidebar.
+        string navTag = tag.StartsWith("fx-", StringComparison.Ordinal) ? "desktopfx" : tag;
+        if (_paneMainItems   is not null) SelectNavItem(_paneMainItems,   navTag);
+        if (_paneFooterItems is not null) SelectNavItem(_paneFooterItems, navTag);
 
         Type? pageType = tag switch
         {
             "dashboard" => typeof(DashboardPage),
             "visuals"   => typeof(VisualsPage),
             "desktopfx" => typeof(DesktopFxPage),
+            "fx-glow"   => typeof(HoverGlowPage),
+            "fx-click"  => typeof(ClickBurstPage),
             "look"      => typeof(DesktopLookPage),
             "themes"    => typeof(ThemesPage),
             "appcolors" => typeof(AppColorsPage),

@@ -24,7 +24,9 @@ public sealed partial class SettingsPage : Page
         ThemeLight.Checked           -= ThemeRadio_Checked;
         ThemeSystem.Checked          -= ThemeRadio_Checked;
         NotificationsToggle.Toggled  -= NotificationsToggle_Toggled;
+        UnfinishedPagesToggle.Toggled -= UnfinishedPagesToggle_Toggled;
 
+        UnfinishedPagesToggle.IsOn = MainWindow.ShowUnfinishedPages;
         StartupToggle.IsOn = IsStartupEnabled();
 
         string theme = AppSettings.Get(KeyTheme) ?? "Dark";
@@ -43,6 +45,15 @@ public sealed partial class SettingsPage : Page
         ThemeSystem.Checked          += ThemeRadio_Checked;
         NotificationsToggle.Toggled  += NotificationsToggle_Toggled;
         StartupToggle.Toggled        += StartupToggle_Toggled;
+        UnfinishedPagesToggle.Toggled += UnfinishedPagesToggle_Toggled;
+    }
+
+    // ── Unfinished pages ───────────────────────────────────────────────────
+
+    private void UnfinishedPagesToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (UnfinishedPagesToggle is null) return;
+        (Application.Current as App)?.MainWindow?.SetShowUnfinishedPages(UnfinishedPagesToggle.IsOn);
     }
 
     // ── Startup ────────────────────────────────────────────────────────────

@@ -407,6 +407,46 @@
                 </Setter>
             </Style>
 
+            <!-- ── Desktop FX: effect rows and effect pages ──────────────────── -->
+            <!-- A card holding one clickable effect row (the row button supplies the padding). -->
+            <Style x:Key="EffectRowCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+                <Setter Property="Padding" Value="0" />
+            </Style>
+            <Style x:Key="EffectRowButtonStyle" TargetType="Button" BasedOn="{StaticResource SubtleButtonStyle}">
+                <Setter Property="HorizontalAlignment"        Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding"                    Value="16,12" />
+                <Setter Property="CornerRadius"               Value="8" />
+            </Style>
+            <!-- Sits over the row button, left of its chevron (16 padding + 14 chevron + 16 gap). -->
+            <Style x:Key="EffectRowToggleSwitchStyle" TargetType="ToggleSwitch" BasedOn="{StaticResource RowToggleSwitchStyle}">
+                <Setter Property="Margin" Value="0,0,46,0" />
+            </Style>
+            <!-- Small dark tile that shows what an effect looks like. -->
+            <Style x:Key="EffectThumbStyle" TargetType="Border">
+                <Setter Property="Width"        Value="64" />
+                <Setter Property="Height"       Value="44" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Background"   Value="#FF101418" />
+            </Style>
+            <!-- Live preview box at the top of an effect page: a dark stand-in for the desktop. -->
+            <Style x:Key="EffectPreviewStyle" TargetType="Border">
+                <Setter Property="CornerRadius"    Value="8" />
+                <Setter Property="Background"      Value="#FF101418" />
+                <Setter Property="BorderBrush"     Value="{StaticResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+            <!-- "Desktop FX › Effect name" header of an effect page. -->
+            <Style x:Key="BreadcrumbParentTextStyle" TargetType="TextBlock" BasedOn="{StaticResource PageTitleTextStyle}">
+                <Setter Property="FontSize"   Value="28" />
+                <Setter Property="Foreground" Value="{StaticResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <Style x:Key="BreadcrumbTitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource PageTitleTextStyle}">
+                <Setter Property="FontSize"          Value="28" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming"      Value="CharacterEllipsis" />
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

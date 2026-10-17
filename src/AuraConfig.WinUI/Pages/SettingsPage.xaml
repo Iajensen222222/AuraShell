@@ -161,6 +161,29 @@
                 </StackPanel>
             </Border>
 
+            <!-- ── ADVANCED ───────────────────────────────────────────────── -->
+            <TextBlock Text="ADVANCED" Style="{StaticResource SectionHeaderTextStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE7B3;" Style="{StaticResource SettingIconStyle}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SettingTitleTextStyle}" Text="Show unfinished pages" />
+                        <TextBlock Style="{StaticResource SettingDescriptionTextStyle}"
+                                   Text="Adds Wallpaper &amp; Colors and Schedule back to the sidebar. They are still in progress." />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="UnfinishedPagesToggle" Grid.Column="2"
+                                  Style="{StaticResource RowToggleSwitchStyle}"
+                                  IsOn="False"
+                                  Toggled="UnfinishedPagesToggle_Toggled" />
+                </Grid>
+            </Border>
+
             <!-- ── RESET ──────────────────────────────────────────────────── -->
             <TextBlock Text="RESET" Style="{StaticResource SectionHeaderTextStyle}" />
 
